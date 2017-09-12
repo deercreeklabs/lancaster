@@ -40,7 +40,9 @@
    [com.andrewmcveigh/cljs-time "0.5.1"]
    [com.taoensso/timbre "4.10.0"]
    [org.clojure/clojure "1.8.0"]
-   [org.clojure/clojurescript "1.9.908"]]
+   [org.clojure/clojurescript "1.9.908"]
+   [org.clojure/tools.analyzer.jvm "0.7.1"]
+   [org.clojure/tools.reader "1.1.0"]]
 
   :cljsbuild
   {:builds

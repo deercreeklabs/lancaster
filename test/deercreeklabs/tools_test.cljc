@@ -19,13 +19,18 @@
 (at/def-avro-enum why-schema
   :all :stock :limit)
 
+(at/def-avro-fixed some-bytes 16)
+
 ;; TODO: Fix the default for :why field. (->why :all)
 (at/def-avro-rec add-to-cart-rsp-schema
   [:qty-requested :int]
   [:qty-added :int]
   [:current-qty :int]
   [:req add-to-cart-req-schema]
-  [:why why-schema])
+  [:why why-schema]
+  [:data some-bytes])
+
+
 
 (deftest test-def-avro-rec
   (is (= {:namespace "deercreeklabs.tools_test"
@@ -41,6 +46,13 @@
           :type :enum
           :symbols ["ALL" "STOCK" "LIMIT"]}
          why-schema)))
+
+(deftest test-def-avro-fixed
+  (is (= {:namespace "deercreeklabs.tools_test",
+          :name "SomeBytes"
+          :type :fixed
+          :size 16}
+         some-bytes)))
 
 (deftest test-nested-def-avro
   (is (= {:namespace "deercreeklabs.tools_test"
@@ -65,5 +77,12 @@
              :name "Why"
              :type :enum
              :symbols ["ALL" "STOCK" "LIMIT"]}
-            :default "ALL"}]}
+            :default "ALL"}
+           {:name "data"
+            :type
+            {:namespace "deercreeklabs.tools_test"
+             :name "SomeBytes"
+             :type :fixed
+             :size 16}
+            :default ""}]}
          add-to-cart-rsp-schema)))

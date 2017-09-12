@@ -81,12 +81,6 @@
          (assoc :type :record)
          (assoc :fields (mapv make-field fields))))))
 
-(defn avro-rec-constructor [name* fields]
-  (let [builder (-> (csk/->PascalCase name*)
-                    (str "/newBuilder")
-                    (symbol))]
-    `(cond-> (~builder))))
-
 (defn avro-enum
   ([schema-name symbols]
    (avro-enum nil schema-name symbols))
@@ -98,13 +92,23 @@
          (assoc :type :enum)
          (assoc :symbols (mapv make-enum-symbol symbols))))))
 
+(defn avro-fixed
+  ([schema-name size]
+   (avro-fixed nil schema-name size))
+  ([schema-ns schema-name size]
+   (-> (make-named-schema schema-ns schema-name)
+       (assoc :type :fixed)
+       (assoc :size size))))
+
 (defn make-record-constructor-args [fields]
   (mapv #(symbol (name (first %))) fields))
 
 (defmacro def-avro-named-schema
   [schema-fn schema-name args]
   (let [name* (drop-schema-from-name schema-name)
-        args* (vec args)]
+        args* (if (sequential? args)
+                (vec args)
+                args)]
     `(def ~schema-name
        (let [ns# (.getName *ns*)]
          (~schema-fn ns# ~name* ~args*)))))
@@ -116,6 +120,10 @@
 (defmacro def-avro-enum
   [schema-name & symbols]
   `(def-avro-named-schema avro-enum ~schema-name ~symbols))
+
+(defmacro def-avro-fixed
+  [schema-name size]
+  `(def-avro-named-schema avro-fixed ~schema-name ~size))
 
 #(:clj
   (defn write-schema-file [filename schema]
