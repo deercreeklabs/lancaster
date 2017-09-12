@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is use-fixtures]]
    [deercreeklabs.avro-tools :as at]
+   [deercreeklabs.avro-tools.gen :as gen]
    [deercreeklabs.avro-tools.utils :as u]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
@@ -19,7 +20,7 @@
 (at/def-avro-enum why-schema
   :all :stock :limit)
 
-(at/def-avro-fixed some-bytes 16)
+(at/def-avro-fixed some-bytes-schema 16)
 
 ;; TODO: Fix the default for :why field. (->why :all)
 (at/def-avro-rec add-to-cart-rsp-schema
@@ -28,9 +29,20 @@
   [:current-qty :int]
   [:req add-to-cart-req-schema]
   [:why why-schema]
-  [:data some-bytes])
+  [:data some-bytes-schema])
 
+(at/def-avro-union a-union-schema
+  add-to-cart-req-schema
+  some-bytes-schema
+  :int)
 
+(def ^:avro-schema a-non-macro-record
+  (at/avro-rec :mysch
+               [[:field1 :int]
+                [:field2 :int]]))
+
+(def ^:avro-schema a-non-macro-union
+  [add-to-cart-req-schema add-to-cart-rsp-schema])
 
 (deftest test-def-avro-rec
   (is (= {:namespace "deercreeklabs.tools_test"
@@ -52,7 +64,7 @@
           :name "SomeBytes"
           :type :fixed
           :size 16}
-         some-bytes)))
+         some-bytes-schema)))
 
 (deftest test-nested-def-avro
   (is (= {:namespace "deercreeklabs.tools_test"
@@ -86,3 +98,14 @@
              :size 16}
             :default ""}]}
          add-to-cart-rsp-schema)))
+
+(deftest test-var-meta
+  (let [schemas [#'add-to-cart-req-schema #'why-schema #'some-bytes-schema
+                 #'add-to-cart-rsp-schema #'a-union-schema #'a-non-macro-record
+                 #'a-non-macro-union]]
+    (doseq [schema schemas]
+      (is (true? (:avro-schema (meta schema)))))))
+
+(deftest test-get-schemas-in-ns
+  (let [schemas (gen/get-schemas-in-ns (find-ns 'deercreeklabs.tools-test))]
+    (is (= 7 (count schemas)))))

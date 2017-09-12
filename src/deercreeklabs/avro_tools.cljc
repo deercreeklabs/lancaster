@@ -63,8 +63,10 @@
 (defn make-named-schema
   [schema-ns schema-name]
   (let [avro-name (csk/->PascalCase (name schema-name))
-        schema {:namespace nil ;; declare this now to preserve key order
-                :name avro-name}]
+        schema (vary-meta
+                 {:namespace nil ;; declare this now to preserve key order
+                  :name avro-name}
+                 assoc :avro-schema true)]
     (if schema-ns
       (assoc schema :namespace (namespace-munge (name schema-ns)))
       (dissoc schema :namespace))))
@@ -109,7 +111,7 @@
         args* (if (sequential? args)
                 (vec args)
                 args)]
-    `(def ~schema-name
+    `(def ~(vary-meta schema-name assoc :avro-schema true)
        (let [ns# (.getName *ns*)]
          (~schema-fn ns# ~name* ~args*)))))
 
@@ -125,6 +127,7 @@
   [schema-name size]
   `(def-avro-named-schema avro-fixed ~schema-name ~size))
 
-#(:clj
-  (defn write-schema-file [filename schema]
-    (spit filename (json/generate-string schema {:pretty true}))))
+(defmacro def-avro-union
+  [schema-name & elements]
+  `(def ~(vary-meta schema-name assoc :avro-schema true)
+     [~@ elements]))

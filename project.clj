@@ -41,8 +41,7 @@
    [com.taoensso/timbre "4.10.0"]
    [org.clojure/clojure "1.8.0"]
    [org.clojure/clojurescript "1.9.908"]
-   [org.clojure/tools.analyzer.jvm "0.7.1"]
-   [org.clojure/tools.reader "1.1.0"]]
+   [org.clojure/tools.analyzer.jvm "0.7.1"]]
 
   :cljsbuild
   {:builds
