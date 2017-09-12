@@ -1,0 +1,39 @@
+# Clojure stuff
+/target
+/classes
+/checkouts
+pom.xml
+pom.xml.asc
+*.jar
+*.class
+/.lein-*
+/.nrepl-port
+/.cljs_*
+
+# JS stuff
+/node_modules
+
+# C++ stuff
+*.dylib
+*.so
+*.o
+*.a
+*.lib
+bin/
+
+# Emacs stuff
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Mac stuff
+.DS_Store
+
+# Security stuff
+/keys
+/out
