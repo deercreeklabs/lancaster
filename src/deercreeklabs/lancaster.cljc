@@ -1,6 +1,7 @@
 (ns deercreeklabs.lancaster
   (:require
    [camel-snake-kebab.core :as csk]
+   [deercreeklabs.lancaster.utils :as u]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
@@ -9,19 +10,9 @@
 #?(:cljs
    (set! *warn-on-infer* true))
 
-(defn get-avro-type [schema]
-  (cond
-    (sequential? schema) :union
-    (map? schema) (:type schema)
-    (nil? schema) (throw (ex-info "Schema is nil."
-                                  {:type :illegal-schema
-                                   :subtype :schema-is-nil
-                                   :schema schema}))
-    :else schema))
-
 (defn make-default-record [schema]
   (let [add-field (fn [acc {:keys [type name default]}]
-                    (let [avro-type (get-avro-type type)
+                    (let [avro-type (u/get-avro-type type)
                           val (if (= :record avro-type)
                                 (make-default-record type)
                                 default)]
@@ -35,7 +26,7 @@
         (csk/->SCREAMING_SNAKE_CASE))))
 
 (defn get-field-default [field-schema field-default]
-  (let [avro-type (get-avro-type field-schema)]
+  (let [avro-type (u/get-avro-type field-schema)]
     (if (= :enum avro-type)
       (make-default-enum field-schema field-default)
       (or field-default
@@ -76,7 +67,7 @@
   ([schema-ns schema-name fields]
    (let [make-field (fn [[field-name field-type field-default]]
                       {:name (csk/->camelCase (name field-name))
-                       :type field-type
+                       :type (u/get-schema-name field-type)
                        :default (get-field-default field-type field-default)})]
      (-> (make-named-schema schema-ns schema-name)
          (assoc :type :record)
@@ -101,9 +92,10 @@
        (assoc :type :fixed)
        (assoc :size size))))
 
-(defn make-record-constructor-args [fields]
-  (mapv #(symbol (name (first %))) fields))
+(defn avro-union [elements]
+  (mapv u/get-schema-name elements))
 
+;;;;;;;;;;;;;;;;;;;; Macros ;;;;;;;;;;;;;;;;;;;;
 (defmacro def-avro-named-schema
   [schema-fn schema-name args]
   (let [name* (drop-schema-from-name schema-name)
@@ -129,4 +121,4 @@
 (defmacro def-avro-union
   [schema-name & elements]
   `(def ~(vary-meta schema-name assoc :avro-schema true)
-     [~@ elements]))
+     (avro-union [~@elements])))

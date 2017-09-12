@@ -22,7 +22,6 @@
 
 (l/def-avro-fixed some-bytes-schema 16)
 
-;; TODO: Fix the default for :why field. (->why :all)
 (l/def-avro-rec add-to-cart-rsp-schema
   [:qty-requested :int]
   [:qty-added :int]
@@ -31,18 +30,18 @@
   [:why why-schema]
   [:data some-bytes-schema])
 
+(def ^:avro-schema a-non-macro-record
+  (l/avro-rec :mysch
+              [[:field1 :int]
+               [:field2 :int]]))
+
 (l/def-avro-union a-union-schema
   add-to-cart-req-schema
   some-bytes-schema
   :int)
 
-(def ^:avro-schema a-non-macro-record
-  (l/avro-rec :mysch
-               [[:field1 :int]
-                [:field2 :int]]))
-
 (def ^:avro-schema a-non-macro-union
-  [add-to-cart-req-schema add-to-cart-rsp-schema])
+  (l/avro-union [add-to-cart-req-schema add-to-cart-rsp-schema]))
 
 (deftest test-def-avro-rec
   (is (= {:namespace "deercreeklabs.tools_test"
@@ -60,7 +59,7 @@
          why-schema)))
 
 (deftest test-def-avro-fixed
-  (is (= {:namespace "deercreeklabs.tools_test",
+  (is (= {:namespace "deercreeklabs.tools_test"
           :name "SomeBytes"
           :type :fixed
           :size 16}
@@ -75,28 +74,10 @@
            {:name "qtyAdded" :type :int :default -1}
            {:name "currentQty" :type :int :default -1}
            {:name "req"
-            :type
-            {:namespace "deercreeklabs.tools_test"
-             :name "AddToCartReq"
-             :type :record
-             :fields
-             [{:name "sku" :type :int :default -1}
-              {:name "qty" :type :int :default 0}]}
+            :type "AddToCartReq"
             :default {"sku" -1 "qty" 0}}
-           {:name "why"
-            :type
-            {:namespace "deercreeklabs.tools_test"
-             :name "Why"
-             :type :enum
-             :symbols ["ALL" "STOCK" "LIMIT"]}
-            :default "ALL"}
-           {:name "data"
-            :type
-            {:namespace "deercreeklabs.tools_test"
-             :name "SomeBytes"
-             :type :fixed
-             :size 16}
-            :default ""}]}
+           {:name "why" :type "Why" :default "ALL"}
+           {:name "data" :type "SomeBytes" :default ""}]}
          add-to-cart-rsp-schema)))
 
 (deftest test-var-meta
@@ -109,14 +90,24 @@
 (deftest test-get-schemas-in-ns
   (let [schemas (gen/get-schemas-in-ns (find-ns 'deercreeklabs.tools-test))]
     (is (= 7 (count schemas)))
-    (is (= {:namespace "deercreeklabs.tools_test",
-           :name "AddToCartReq",
-           :type :record,
-           :fields
-           [{:name "sku", :type :int, :default -1}
-            {:name "qty", :type :int, :default 0}]}
+    (is (= {:namespace "deercreeklabs.tools_test"
+            :name "AddToCartReq"
+            :type :record
+            :fields
+            [{:name "sku" :type :int :default -1}
+             {:name "qty" :type :int :default 0}]}
            (first schemas)))))
 
-;; (deftest test-write-avsc-files
-;;   (let [dir-path (gen/write-avsc-files (find-ns 'deercreeklabs.tools-test))]
-;;     (is (= :foo dir-path))))
+(deftest test-avro-union
+  (is (= ["AddToCartReq" "AddToCartRsp"]
+         a-non-macro-union)))
+
+(deftest test-def-avro-union
+  (is (= ["AddToCartReq" "SomeBytes" :int]
+         a-union-schema)))
+
+
+;; (deftest test-gen-classes
+;;   (let [dir-path (gen/write-avsc-files (find-ns 'deercreeklabs.tools-test))
+;;         ret (gen/gen-classes dir-path "/Users/chad/Desktop/java")]
+;;     (is (= :foo ret))))

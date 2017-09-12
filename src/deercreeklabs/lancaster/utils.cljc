@@ -10,6 +10,9 @@
 #?(:cljs
    (set! *warn-on-infer* true))
 
+(def avro-primitive-types #{:null :boolean :int :long :float :double
+                            :bytes :string})
+(def avro-named-types #{:record :fixed :enum})
 
 (defmacro sym-map
   "Builds a map from symbols.
@@ -40,3 +43,23 @@
   []
   #?(:clj (System/currentTimeMillis)
      :cljs (.getTime (js/Date.))))
+
+(defn get-schema-name [schema]
+  (cond
+    (avro-primitive-types schema) schema
+    (avro-named-types (:type schema)) (:name schema)
+    (nil? schema) (throw (ex-info "Schema is nil."
+                                  {:type :illegal-argument
+                                   :subtype :schema-is-nil
+                                   :schema schema}))
+    :else schema))
+
+(defn get-avro-type [schema]
+  (cond
+    (sequential? schema) :union
+    (map? schema) (:type schema)
+    (nil? schema) (throw (ex-info "Schema is nil."
+                                  {:type :illegal-schema
+                                   :subtype :schema-is-nil
+                                   :schema schema}))
+    :else schema))

@@ -1,12 +1,14 @@
 (ns deercreeklabs.lancaster.gen
   (:require
    [cheshire.core :as json]
+   [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.tools.analyzer.jvm :as taj]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   (:import
    (clojure.lang Namespace)
-   (java.io File)))
+   (java.io File PrintStream)
+   (org.apache.avro.tool SpecificCompilerTool)))
 
 (def excluded-top-level-namespaces
   #{"camel-snake-kebab" "cheshire" "cider" "clj-time" "cljs-time" "clojure"
@@ -41,7 +43,6 @@
     dir))
 
 (defn write-avsc-files
-  "Returns directory as string."
   ([]
    (write-avsc-files nil))
   ([ns]
@@ -49,16 +50,28 @@
                    (get-schemas-in-ns ns)
                    (get-schemas))
          ^File dir (make-temp-dir)
-         dir-path (.getAbsolutePath dir)]
-     (debugf "# of schemas: %s" (count schemas))
-     (doall
-      (map-indexed (fn [i schema]
-                     (let [f (str dir-path "/" i ".avsc")]
-                       (debugf "@@@ f: %s" f)
-                       (spit f (json/generate-string schema
-                                                     {:pretty true}))))
-                   schemas))
+         dir-path (.getAbsolutePath dir)
+         files (doall
+                (map-indexed (fn [i schema]
+                               (let [f (str dir-path "/" i ".avsc")]
+                                 (debugf "@@@ f: %s" f)
+                                 (spit f (json/generate-string schema
+                                                               {:pretty true}))
+                                 f))
+                             schemas))]
      dir-path)))
+
+(defn gen-classes [in-path out-path]
+  (let [tool (SpecificCompilerTool.)
+        n (rand-int 1000)
+        out (PrintStream. (str "/Users/chad/Desktop/"
+                               n
+                               "-out.txt"))
+        err (PrintStream. (str "/Users/chad/Desktop/"
+                               n
+                               "-err.txt"))
+        args ["schema" in-path out-path]]
+    (.run tool nil out err args)))
 
 (defn remove-dir [^String dir-path]
   (shell/sh (str "rm -rf " dir-path)))
