@@ -10,19 +10,50 @@
 #?(:cljs
    (set! *warn-on-infer* true))
 
-(defn type->default [avro-type]
-  (case avro-type
-    :null nil
-    :boolean false
-    :int (int -1)
-    :long -1
-    :float (float -1.0)
-    :double (double -1.0)
-    :bytes ""
-    :string ""
-    :array []
-    :map {}
-    :fixed ""))
+(defn get-avro-type [schema]
+  (cond
+    (sequential? schema) :union
+    (map? schema) (:type schema)
+    (nil? schema) (throw (ex-info "Schema is nil."
+                                  {:type :illegal-schema
+                                   :subtype :schema-is-nil
+                                   :schema schema}))
+    :else schema))
+
+(defn make-default-record [schema]
+  (let [add-field (fn [acc {:keys [type name default]}]
+                    (let [avro-type (get-avro-type type)
+                          val (if (= :record avro-type)
+                                (make-default-record type)
+                                default)]
+                      (assoc acc name val)))]
+    (reduce add-field {} (:fields schema))))
+
+(defn make-default-enum [enum-schema field-default]
+  (let [sym (or field-default
+                (first (:symbols enum-schema)))]
+    (-> (name sym)
+        (csk/->SCREAMING_SNAKE_CASE))))
+
+(defn get-field-default [field-schema field-default]
+  (let [avro-type (get-avro-type field-schema)]
+    (if( = :enum avro-type)
+      (make-default-enum field-schema field-default)
+      (or field-default
+          (case avro-type
+            :null nil
+            :boolean false
+            :int (int -1)
+            :long -1
+            :float (float -1.0)
+            :double (double -1.0)
+            :bytes ""
+            :string ""
+            :array []
+            :map {}
+            :fixed ""
+            :union (first field-schema)
+            :record (make-default-record field-schema))))))
 
 (defn drop-schema-from-name [s]
   (-> (name s)
@@ -45,8 +76,7 @@
    (let [make-field (fn [[field-name field-type field-default]]
                       {:name (csk/->camelCase (name field-name))
                        :type field-type
-                       :default (or field-default
-                                    (type->default field-type))})]
+                       :default (get-field-default field-type field-default)})]
      (-> (make-named-schema schema-ns schema-name)
          (assoc :type :record)
          (assoc :fields (mapv make-field fields))))))
@@ -83,9 +113,9 @@
   [schema-name & fields]
   `(def-avro-named-schema avro-rec ~schema-name ~fields))
 
-;; (defmacro def-avro-enum
-;;   [schema-name & symbols]
-;;   `(def-avro-named-schema avro-enum ~schema-name ~symbols))
+(defmacro def-avro-enum
+  [schema-name & symbols]
+  `(def-avro-named-schema avro-enum ~schema-name ~symbols))
 
 #(:clj
   (defn write-schema-file [filename schema]
