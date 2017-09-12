@@ -1,11 +1,10 @@
-(ns deercreeklabs.avro-tools
+(ns deercreeklabs.lancaster
   (:require
    [camel-snake-kebab.core :as csk]
-   #?(:clj [cheshire.core :as json])
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
-      deercreeklabs.avro-tools)))
+      deercreeklabs.lancaster)))
 
 #?(:cljs
    (set! *warn-on-infer* true))
@@ -37,7 +36,7 @@
 
 (defn get-field-default [field-schema field-default]
   (let [avro-type (get-avro-type field-schema)]
-    (if( = :enum avro-type)
+    (if (= :enum avro-type)
       (make-default-enum field-schema field-default)
       (or field-default
           (case avro-type

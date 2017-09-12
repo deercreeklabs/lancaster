@@ -1,11 +1,11 @@
-(ns deercreeklabs.avro-tools.utils
+(ns deercreeklabs.lancaster.utils
   (:require
    [#?(:clj clj-time.format :cljs cljs-time.format) :as f]
    [#?(:clj clj-time.core :cljs cljs-time.core) :as t]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
-      deercreeklabs.avro-tools.utils)))
+      deercreeklabs.lancaster.utils)))
 
 #?(:cljs
    (set! *warn-on-infer* true))

@@ -1,9 +1,9 @@
 (ns deercreeklabs.tools-test
   (:require
    [clojure.test :refer [deftest is use-fixtures]]
-   [deercreeklabs.avro-tools :as at]
-   [deercreeklabs.avro-tools.gen :as gen]
-   [deercreeklabs.avro-tools.utils :as u]
+   [deercreeklabs.lancaster :as l]
+   [deercreeklabs.lancaster.gen :as gen]
+   [deercreeklabs.lancaster.utils :as u]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
@@ -13,17 +13,17 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Unit tests
 
-(at/def-avro-rec add-to-cart-req-schema
+(l/def-avro-rec add-to-cart-req-schema
   [:sku :int]
   [:qty :int 0])
 
-(at/def-avro-enum why-schema
+(l/def-avro-enum why-schema
   :all :stock :limit)
 
-(at/def-avro-fixed some-bytes-schema 16)
+(l/def-avro-fixed some-bytes-schema 16)
 
 ;; TODO: Fix the default for :why field. (->why :all)
-(at/def-avro-rec add-to-cart-rsp-schema
+(l/def-avro-rec add-to-cart-rsp-schema
   [:qty-requested :int]
   [:qty-added :int]
   [:current-qty :int]
@@ -31,13 +31,13 @@
   [:why why-schema]
   [:data some-bytes-schema])
 
-(at/def-avro-union a-union-schema
+(l/def-avro-union a-union-schema
   add-to-cart-req-schema
   some-bytes-schema
   :int)
 
 (def ^:avro-schema a-non-macro-record
-  (at/avro-rec :mysch
+  (l/avro-rec :mysch
                [[:field1 :int]
                 [:field2 :int]]))
 
@@ -108,4 +108,15 @@
 
 (deftest test-get-schemas-in-ns
   (let [schemas (gen/get-schemas-in-ns (find-ns 'deercreeklabs.tools-test))]
-    (is (= 7 (count schemas)))))
+    (is (= 7 (count schemas)))
+    (is (= {:namespace "deercreeklabs.tools_test",
+           :name "AddToCartReq",
+           :type :record,
+           :fields
+           [{:name "sku", :type :int, :default -1}
+            {:name "qty", :type :int, :default 0}]}
+           (first schemas)))))
+
+;; (deftest test-write-avsc-files
+;;   (let [dir-path (gen/write-avsc-files (find-ns 'deercreeklabs.tools-test))]
+;;     (is (= :foo dir-path))))
