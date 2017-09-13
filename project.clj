@@ -34,7 +34,7 @@
                           [source-map-support "0.4.17"]]}
 
   :dependencies
-  [[camel-snake-kebab "0.4.0"]  ;; TODO: :dev-dependency?
+  [[camel-snake-kebab "0.4.0"]
    [clj-time "0.14.0"]
    [cheshire "5.8.0"]
    [com.andrewmcveigh/cljs-time "0.5.1"]

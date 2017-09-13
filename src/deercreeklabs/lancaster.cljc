@@ -10,6 +10,7 @@
 #?(:cljs
    (set! *warn-on-infer* true))
 
+;;;;;;;;;;;;;;;;;;;; Fns ;;;;;;;;;;;;;;;;;;;;
 
 (defn avro-rec
   [schema-ns schema-name fields]

@@ -96,7 +96,7 @@
         body-lines (map #(let [arg (csk/->kebab-case %)]
                            (format "    %s (.set%s %s)" arg
                                    (csk/->PascalCase %) arg))
-                    fields)
+                        fields)
         body-lines (concat (butlast body-lines)
                            [(str (last body-lines) "))\n")])]
     (concat [def-line body-header] body-lines)))

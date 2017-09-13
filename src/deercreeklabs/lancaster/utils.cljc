@@ -124,9 +124,9 @@
   [schema-ns schema-name]
   (let [avro-name (csk/->PascalCase (name schema-name))
         schema (vary-meta
-                 {:namespace nil ;; declare this now to preserve key order
-                  :name avro-name}
-                 assoc :avro-schema true)]
+                {:namespace nil ;; declare this now to preserve key order
+                 :name avro-name}
+                assoc :avro-schema true)]
     (if schema-ns
       (assoc schema :namespace (namespace-munge (name schema-ns)))
       (dissoc schema :namespace))))
