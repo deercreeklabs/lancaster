@@ -95,7 +95,16 @@
 (defn avro-union [elements]
   (mapv u/get-schema-name elements))
 
+(defn avro-map [values-schema]
+  {:type :map
+   :values (u/get-schema-name values-schema)})
+
+(defn avro-array [items-schema]
+  {:type :array
+   :values (u/get-schema-name items-schema)})
+
 ;;;;;;;;;;;;;;;;;;;; Macros ;;;;;;;;;;;;;;;;;;;;
+
 (defmacro def-avro-named-schema
   [schema-fn schema-name args]
   (let [name* (drop-schema-from-name schema-name)
@@ -117,8 +126,3 @@
 (defmacro def-avro-fixed
   [schema-name size]
   `(def-avro-named-schema avro-fixed ~schema-name ~size))
-
-(defmacro def-avro-union
-  [schema-name & elements]
-  `(def ~(vary-meta schema-name assoc :avro-schema true)
-     (avro-union [~@elements])))

@@ -35,13 +35,10 @@
               [[:field1 :int]
                [:field2 :int]]))
 
-(l/def-avro-union a-union-schema
-  add-to-cart-req-schema
-  some-bytes-schema
-  :int)
-
-(def ^:avro-schema a-non-macro-union
+(def a-union
   (l/avro-union [add-to-cart-req-schema add-to-cart-rsp-schema]))
+
+(def array-schema (l/avro-array some-bytes-schema))
 
 (deftest test-def-avro-rec
   (is (= {:namespace "deercreeklabs.tools_test"
@@ -82,14 +79,14 @@
 
 (deftest test-var-meta
   (let [schemas [#'add-to-cart-req-schema #'why-schema #'some-bytes-schema
-                 #'add-to-cart-rsp-schema #'a-union-schema #'a-non-macro-record
-                 #'a-non-macro-union]]
+                 #'add-to-cart-rsp-schema #'a-non-macro-record]]
     (doseq [schema schemas]
       (is (true? (:avro-schema (meta schema)))))))
 
-(deftest test-get-schemas-in-ns
-  (let [schemas (gen/get-schemas-in-ns (find-ns 'deercreeklabs.tools-test))]
-    (is (= 7 (count schemas)))
+(deftest test-get-named-schemas-in-ns
+  (let [schemas (gen/get-named-schemas-in-ns
+                 (find-ns 'deercreeklabs.tools-test))]
+    (is (= 5 (count schemas)))
     (is (= {:namespace "deercreeklabs.tools_test"
             :name "AddToCartReq"
             :type :record
@@ -100,14 +97,13 @@
 
 (deftest test-avro-union
   (is (= ["AddToCartReq" "AddToCartRsp"]
-         a-non-macro-union)))
+         a-union)))
 
-(deftest test-def-avro-union
-  (is (= ["AddToCartReq" "SomeBytes" :int]
-         a-union-schema)))
+(deftest test-avro-array
+  (is (= {:type :array :values "SomeBytes"}
+         array-schema)))
 
-
-;; (deftest test-gen-classes
-;;   (let [dir-path (gen/write-avsc-files (find-ns 'deercreeklabs.tools-test))
-;;         ret (gen/gen-classes dir-path "/Users/chad/Desktop/java")]
-;;     (is (= :foo ret))))
+(deftest test-gen-classes
+  (let [ns (find-ns 'deercreeklabs.tools-test)
+        ret (gen/gen-classes ns "/Users/chad/Desktop/java")]
+    (is (= true ret))))
