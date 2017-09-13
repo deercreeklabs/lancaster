@@ -2,6 +2,7 @@
   (:require
    [#?(:clj clj-time.format :cljs cljs-time.format) :as f]
    [#?(:clj clj-time.core :cljs cljs-time.core) :as t]
+   #?(:clj [puget.printer :refer [cprint]])
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
@@ -63,3 +64,22 @@
                                    :subtype :schema-is-nil
                                    :schema schema}))
     :else schema))
+
+(defn drop-schema-from-name [s]
+  (-> (name s)
+      (clojure.string/split #"-schema")
+      (first)))
+
+;; We have to name this pprint* to not conflict with
+;; clojure.repl/pprint, which gets loaded into the repl's namespace
+(defn pprint*
+  "Pretty-prints its argument. Color is used in clj, but not cljs."
+  [x]
+  (#?(:clj cprint :cljs cljs.pprint/pprint) x)
+  nil)
+
+(defn pprint-str
+  "Like pprint, but returns a string."
+  [x]
+  (with-out-str
+    (pprint* x)))

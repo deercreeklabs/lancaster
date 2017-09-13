@@ -30,11 +30,6 @@
   [:why why-schema]
   [:data some-bytes-schema])
 
-(def ^:avro-schema a-non-macro-record
-  (l/avro-rec :mysch
-              [[:field1 :int]
-               [:field2 :int]]))
-
 (def a-union
   (l/avro-union [add-to-cart-req-schema add-to-cart-rsp-schema]))
 
@@ -79,20 +74,21 @@
 
 (deftest test-var-meta
   (let [schemas [#'add-to-cart-req-schema #'why-schema #'some-bytes-schema
-                 #'add-to-cart-rsp-schema #'a-non-macro-record]]
+                 #'add-to-cart-rsp-schema]]
     (doseq [schema schemas]
       (is (true? (:avro-schema (meta schema)))))))
 
 (deftest test-get-named-schemas-in-ns
   (let [schemas (gen/get-named-schemas-in-ns
                  (find-ns 'deercreeklabs.tools-test))]
-    (is (= 5 (count schemas)))
-    (is (= {:namespace "deercreeklabs.tools_test"
-            :name "AddToCartReq"
-            :type :record
-            :fields
-            [{:name "sku" :type :int :default -1}
-             {:name "qty" :type :int :default 0}]}
+    (is (= 4 (count schemas)))
+    (is (= {:name "add-to-cart-req-schema"
+            :val {:namespace "deercreeklabs.tools_test"
+                  :name "AddToCartReq"
+                  :type :record
+                  :fields
+                  [{:name "sku" :type :int :default -1}
+                   {:name "qty" :type :int :default 0}]}}
            (first schemas)))))
 
 (deftest test-avro-union
@@ -103,7 +99,9 @@
   (is (= {:type :array :values "SomeBytes"}
          array-schema)))
 
-(deftest test-gen-classes
+(deftest test-gen-classes-and-constructors
   (let [ns (find-ns 'deercreeklabs.tools-test)
-        ret (gen/gen-classes ns "/Users/chad/Desktop/java")]
+        ret (gen/gen-classes-and-constructors
+             ns "/Users/chad/Desktop/java"
+             "/Users/chad/Desktop/clj")]
     (is (= true ret))))

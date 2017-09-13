@@ -39,6 +39,7 @@
    [cheshire "5.8.0"]
    [com.andrewmcveigh/cljs-time "0.5.1"]
    [com.taoensso/timbre "4.10.0"]
+   [mvxcvi/puget "1.0.1"]
    [org.apache.avro/avro "1.8.2"]
    [org.apache.avro/avro-tools "1.8.2"]
    [org.clojure/clojure "1.8.0"]

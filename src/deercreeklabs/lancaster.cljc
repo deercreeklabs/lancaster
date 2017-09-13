@@ -45,10 +45,6 @@
             :union (first field-schema)
             :record (make-default-record field-schema))))))
 
-(defn drop-schema-from-name [s]
-  (-> (name s)
-      (clojure.string/split #"-schema")
-      (first)))
 
 (defn make-named-schema
   [schema-ns schema-name]
@@ -62,35 +58,29 @@
       (dissoc schema :namespace))))
 
 (defn avro-rec
-  ([schema-name fields]
-   (avro-rec nil schema-name fields))
-  ([schema-ns schema-name fields]
-   (let [make-field (fn [[field-name field-type field-default]]
-                      {:name (csk/->camelCase (name field-name))
-                       :type (u/get-schema-name field-type)
-                       :default (get-field-default field-type field-default)})]
-     (-> (make-named-schema schema-ns schema-name)
-         (assoc :type :record)
-         (assoc :fields (mapv make-field fields))))))
+  [schema-ns schema-name fields]
+  (let [make-field (fn [[field-name field-type field-default]]
+                     {:name (csk/->camelCase (name field-name))
+                      :type (u/get-schema-name field-type)
+                      :default (get-field-default field-type field-default)})]
+    (-> (make-named-schema schema-ns schema-name)
+        (assoc :type :record)
+        (assoc :fields (mapv make-field fields)))))
 
 (defn avro-enum
-  ([schema-name symbols]
-   (avro-enum nil schema-name symbols))
-  ([schema-ns schema-name symbols]
-   (let [make-enum-symbol (fn [sym]
-                            (-> (name sym)
-                                (csk/->SCREAMING_SNAKE_CASE)))]
-     (-> (make-named-schema schema-ns schema-name)
-         (assoc :type :enum)
-         (assoc :symbols (mapv make-enum-symbol symbols))))))
+  [schema-ns schema-name symbols]
+  (let [make-enum-symbol (fn [sym]
+                           (-> (name sym)
+                               (csk/->SCREAMING_SNAKE_CASE)))]
+    (-> (make-named-schema schema-ns schema-name)
+        (assoc :type :enum)
+        (assoc :symbols (mapv make-enum-symbol symbols)))))
 
 (defn avro-fixed
-  ([schema-name size]
-   (avro-fixed nil schema-name size))
-  ([schema-ns schema-name size]
-   (-> (make-named-schema schema-ns schema-name)
-       (assoc :type :fixed)
-       (assoc :size size))))
+  [schema-ns schema-name size]
+  (-> (make-named-schema schema-ns schema-name)
+      (assoc :type :fixed)
+      (assoc :size size)))
 
 (defn avro-union [elements]
   (mapv u/get-schema-name elements))
@@ -105,9 +95,9 @@
 
 ;;;;;;;;;;;;;;;;;;;; Macros ;;;;;;;;;;;;;;;;;;;;
 
-(defmacro def-avro-named-schema
+(defmacro named-schema-helper*
   [schema-fn schema-name args]
-  (let [name* (drop-schema-from-name schema-name)
+  (let [name* (u/drop-schema-from-name schema-name)
         args* (if (sequential? args)
                 (vec args)
                 args)]
@@ -117,12 +107,12 @@
 
 (defmacro def-avro-rec
   [schema-name & fields]
-  `(def-avro-named-schema avro-rec ~schema-name ~fields))
+  `(named-schema-helper* avro-rec ~schema-name ~fields))
 
 (defmacro def-avro-enum
   [schema-name & symbols]
-  `(def-avro-named-schema avro-enum ~schema-name ~symbols))
+  `(named-schema-helper* avro-enum ~schema-name ~symbols))
 
 (defmacro def-avro-fixed
   [schema-name size]
-  `(def-avro-named-schema avro-fixed ~schema-name ~size))
+  `(named-schema-helper* avro-fixed ~schema-name ~size))
