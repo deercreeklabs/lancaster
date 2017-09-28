@@ -34,6 +34,6 @@ tramp
 # Mac stuff
 .DS_Store
 
-# Security stuff
-/keys
-/out
+# Generated code
+/gen-java
+/gen-clj

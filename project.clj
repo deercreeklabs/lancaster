@@ -39,12 +39,13 @@
    [cheshire "5.8.0"]
    [com.andrewmcveigh/cljs-time "0.5.1"]
    [com.taoensso/timbre "4.10.0"]
+   [deercreeklabs/baracus "0.1.0"]
+   [me.raynes/fs "1.4.6" :exclusions [org.apache.commons/commons-compress]]
    [mvxcvi/puget "1.0.1"]
-   [org.apache.avro/avro "1.8.2"]
-   [org.apache.avro/avro-tools "1.8.2"]
+   [org.apache.avro/avro "1.8.2" :exclusions [org.slf4j/slf4j-api]]
+   [org.apache.avro/avro-tools "1.8.2" :exclusions [commons-logging]]
    [org.clojure/clojure "1.8.0"]
-   [org.clojure/clojurescript "1.9.908"]
-   [org.clojure/tools.analyzer.jvm "0.7.1"]]
+   [org.clojure/clojurescript "1.9.908"]]
 
   :cljsbuild
   {:builds

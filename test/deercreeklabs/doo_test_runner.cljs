@@ -1,8 +1,8 @@
 (ns deercreeklabs.doo-test-runner
   (:require
    [doo.runner :refer-macros [doo-tests]]
-   [deercreeklabs.tools-test]))
+   [deercreeklabs.lancaster-test]))
 
 (enable-console-print!)
 
-(doo-tests 'deercreeklabs.tools-test)
+(doo-tests 'deercreeklabs.lancaster-test)

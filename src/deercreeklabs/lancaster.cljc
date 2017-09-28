@@ -1,6 +1,8 @@
 (ns deercreeklabs.lancaster
   (:require
    [camel-snake-kebab.core :as csk]
+   [deercreeklabs.lancaster.gen :as gen]
+   [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
@@ -10,54 +12,40 @@
 #?(:cljs
    (set! *warn-on-infer* true))
 
-;;;;;;;;;;;;;;;;;;;; Fns ;;;;;;;;;;;;;;;;;;;;
 
-(defn avro-rec
-  [schema-ns schema-name fields]
-  (let [make-field (fn [[field-name field-type field-default]]
-                     {:name (csk/->camelCase (name field-name))
-                      :type (u/get-schema-name field-type)
-                      :default (u/get-field-default field-type field-default)})]
-    (-> (u/make-named-schema* schema-ns schema-name)
-        (assoc :type :record)
-        (assoc :fields (mapv make-field fields)))))
+;;;;;;;;;;;;;;;;;;;; Schema Macros ;;;;;;;;;;;;;;;;;;;;
 
-(defn avro-enum
-  [schema-ns schema-name symbols]
-  (let [make-enum-symbol (fn [sym]
-                           (-> (name sym)
-                               (csk/->SCREAMING_SNAKE_CASE)))]
-    (-> (u/make-named-schema* schema-ns schema-name)
-        (assoc :type :enum)
-        (assoc :symbols (mapv make-enum-symbol symbols)))))
-
-(defn avro-fixed
-  [schema-ns schema-name size]
-  (-> (u/make-named-schema* schema-ns schema-name)
-      (assoc :type :fixed)
-      (assoc :size size)))
-
-(defn avro-union [elements]
-  (mapv u/get-schema-name elements))
-
-(defn avro-map [values-schema]
-  {:type :map
-   :values (u/get-schema-name values-schema)})
-
-(defn avro-array [items-schema]
-  {:type :array
-   :values (u/get-schema-name items-schema)})
-
-;;;;;;;;;;;;;;;;;;;; Macros ;;;;;;;;;;;;;;;;;;;;
-
-(defmacro def-avro-rec
+(defmacro def-record-schema
   [schema-name & fields]
-  `(u/named-schema-helper* avro-rec ~schema-name ~fields))
+  `(schemas/named-schema-helper* :record ~schema-name ~fields))
 
-(defmacro def-avro-enum
+(defmacro def-enum-schema
   [schema-name & symbols]
-  `(u/named-schema-helper* avro-enum ~schema-name ~symbols))
+  `(schemas/named-schema-helper* :enum ~schema-name ~symbols))
 
-(defmacro def-avro-fixed
+(defmacro def-fixed-schema
   [schema-name size]
-  `(u/named-schema-helper* avro-fixed ~schema-name ~size))
+  `(schemas/named-schema-helper* :fixed ~schema-name ~size))
+
+;;;;;;;;;;;;;;;;;;;; API Fns ;;;;;;;;;;;;;;;;;;;;
+
+(defn serialize [writer-schema data]
+  (schemas/serialize writer-schema data))
+
+(defn deserialize
+  ([reader-schema writer-schema ba]
+   (schemas/deserialize reader-schema writer-schema ba false))
+  ([reader-schema writer-schema ba return-java?]
+   (schemas/deserialize reader-schema writer-schema ba return-java?)))
+
+(defn get-edn-schema [schema]
+  (schemas/get-edn-schema schema))
+
+(defn get-json-schema [schema]
+  (schemas/get-json-schema schema))
+
+(defn get-canonical-parsing-form [schema]
+  (schemas/get-canonical-parsing-form schema))
+
+(defn get-fingerprint128 [schema]
+  (schemas/get-fingerprint128 schema))
