@@ -2,7 +2,10 @@
   (:require
    [camel-snake-kebab.core :as csk]
    [cheshire.core :as json]
+   [deercreeklabs.baracus :as ba]
    #?(:clj [deercreeklabs.lancaster.gen :as gen])
+   [deercreeklabs.log-utils :as lu :refer [debugs]]
+   #?(:clj [puget.printer :refer [cprint]])
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:clj
      (:import
@@ -15,51 +18,12 @@
      (:require-macros
       deercreeklabs.lancaster.utils)))
 
-(defprotocol IAvroSchema
-  (serialize [this data])
-  (deserialize [this writer-schema ba return-java?])
-  (get-edn-schema [this])
-  (get-json-schema [this])
-  (get-canonical-parsing-form [this])
-  (get-fingerprint128 [this]))
+(declare get-field-default)
 
-(def ^EncoderFactory encoder-factory (EncoderFactory/get))
-(def ^DecoderFactory decoder-factory (DecoderFactory/get))
-
-(defn serialize* [^SpecificDatumWriter writer java-data-obj]
-  (let [^ByteArrayOutputStream output-stream (ByteArrayOutputStream.)
-        ^Encoder encoder (.binaryEncoder encoder-factory output-stream nil)]
-    (.write writer java-data-obj encoder)
-    (.flush encoder)
-    (.toByteArray output-stream)))
-
-(defn deserialize* [^SpecificDatumReader reader ba]
-  ;; TODO: Handle differing read/write schemas (ResolvingDecoder)
-  ;; TODO: Wrap unions
-  (let [^BinaryDecoder decoder (.binaryDecoder decoder-factory ^bytes ba nil)]
-    (.read reader nil decoder)))
-
-(defrecord AvroNamedSchema [edn-schema json-schema canonical-parsing-form
-                            constructor post-converter writer reader
-                            fingerprint128]
-  IAvroSchema
-  (serialize [this data]
-    (serialize* writer (constructor data)))
-  (deserialize [this writer-schema ba return-java?]
-    (let [obj (deserialize* reader ba)]
-      (if return-java?
-        obj
-        (post-converter obj))))
-  (get-edn-schema [this]
-    edn-schema)
-  (get-json-schema [this]
-    json-schema)
-  (get-canonical-parsing-form [this]
-    canonical-parsing-form)
-  (get-fingerprint128 [this]
-    fingerprint128))
-
-(def avro-named-types #{:record :fixed :enum})
+(def avro-primitive-types #{:null :boolean :int :long :float :double
+                            :bytes :string})
+(def avro-named-types   #{:record :fixed :enum})
+(def avro-complex-types #{:record :fixed :enum :array :map :union})
 
 (defn get-schema-name [edn-schema]
   (cond
@@ -93,178 +57,279 @@
 (defn first-arg-dispatch [first-arg & rest-of-args]
   first-arg)
 
+(defn avro-type-dispatch [edn-schema & args]
+  (get-avro-type edn-schema))
+
+(defmulti clj->avro first-arg-dispatch)
+(defmulti avro->clj first-arg-dispatch)
+(defmulti fix-default avro-type-dispatch)
+(defmulti edn-schema->avro-schema avro-type-dispatch)
+
+(defmethod clj->avro :default
+  [dispatch-name x]
+  x)
+
+(defmethod avro->clj :default
+  [dispatch-name x]
+  x)
+
+(defprotocol IAvroSchema
+  (serialize [this data])
+  (deserialize [this writer-schema ba return-java?])
+  (get-edn-schema [this])
+  (get-json-schema [this])
+  (get-canonical-parsing-form [this])
+  (get-fingerprint128 [this]))
+
+(def ^EncoderFactory encoder-factory (EncoderFactory/get))
+(def ^DecoderFactory decoder-factory (DecoderFactory/get))
+
+(defn serialize* [^SpecificDatumWriter writer java-data-obj]
+  (let [^ByteArrayOutputStream output-stream (ByteArrayOutputStream.)
+        ^Encoder encoder (.binaryEncoder encoder-factory output-stream nil)]
+    (.write writer java-data-obj encoder)
+    (.flush encoder)
+    (.toByteArray output-stream)))
+
+(defn deserialize* [^SpecificDatumReader reader ba]
+  ;; TODO: Handle differing read/write schemas (ResolvingDecoder)
+  ;; TODO: Wrap unions
+  (let [^BinaryDecoder decoder (.binaryDecoder decoder-factory ^bytes ba nil)]
+    (.read reader nil decoder)))
+
+(defrecord AvroNamedSchema [dispatch-name edn-schema json-schema
+                            canonical-parsing-form writer reader fingerprint128]
+  IAvroSchema
+  (serialize [this data]
+    (serialize* writer (clj->avro dispatch-name data)))
+  (deserialize [this writer-schema ba return-java?]
+    (let [obj (deserialize* reader ba)]
+      (if return-java?
+        obj
+        (avro->clj dispatch-name obj))))
+  (get-edn-schema [this]
+    edn-schema)
+  (get-json-schema [this]
+    json-schema)
+  (get-canonical-parsing-form [this]
+    canonical-parsing-form)
+  (get-fingerprint128 [this]
+    fingerprint128))
+
+(defn ensure-edn-schema [schema]
+  (if (satisfies? IAvroSchema schema)
+    (get-edn-schema schema)
+    schema))
+
 (defn drop-schema-from-name [s]
   (-> (name s)
       (clojure.string/split #"-schema")
       (first)))
 
-(defn make-default-record [edn-schema]
-  (let [add-field (fn [acc {:keys [type name default]}]
-                    (let [avro-type (get-avro-type type)
-                          val (if (= :record avro-type)
-                                (make-default-record type)
-                                default)]
-                      (assoc acc name val)))]
-    (reduce add-field {} (:fields edn-schema))))
+(defn edn-schema->dispatch-name [edn-schema]
+  (let [avro-type (get-avro-type edn-schema)]
+    (cond
+      (avro-primitive-types avro-type)
+      (get-schema-name edn-schema)
 
-(defn make-default-enum [enum-edn-schema field-default]
-  (let [sym (or field-default
-                (first (:symbols enum-edn-schema)))]
-    (-> (name sym)
-        (csk/->SCREAMING_SNAKE_CASE))))
+      (avro-named-types avro-type)
+      (str (:namespace edn-schema) "." (name (:name edn-schema)))
 
-(defn get-field-default [field-schema avro-type field-default]
-  (if (= :enum avro-type)
-    (make-default-enum field-schema field-default)
-    (or field-default
-        (case avro-type
-          :null nil
-          :boolean false
-          :int (int -1)
-          :long -1
-          :float (float -1.0)
-          :double (double -1.0)
-          :bytes ""
-          :string ""
-          :array []
-          :map {}
-          :fixed ""
-          :union (first field-schema)
-          :record (make-default-record field-schema)))))
+      (= :union avro-type)
+      (str "union-of-" (clojure.string/join
+                        "," (map edn-schema->dispatch-name edn-schema)))
 
-(defmulti make-edn-schema (fn [avro-type & args]
-                            avro-type))
+      (= :map avro-type)
+      (str "map-of-" (edn-schema->dispatch-name (:values edn-schema)))
+
+      (= :array avro-type)
+      (str "array-of-" (edn-schema->dispatch-name (:items edn-schema))))))
+
+(defn make-default-record [record-edn-schema default-record]
+  (reduce (fn [acc field]
+            (let [{field-name :name
+                   field-type :type
+                   field-default :default} field
+                  field-schema (ensure-edn-schema field-type)
+                  v (get-field-default field-schema
+                                       (field-name default-record))]
+              (assoc acc field-name v)))
+          {} (:fields record-edn-schema)))
+
+(defn make-default-fixed-or-bytes [default]
+  (let [src (or default (ba/byte-array []))
+        items (vec src)]
+    `(ba/byte-array ~items)))
+
+(defn get-field-default [field-schema field-default]
+  (let [avro-type (get-avro-type field-schema)]
+    (case avro-type
+      :record (make-default-record field-schema field-default)
+      :fixed (make-default-fixed-or-bytes field-default)
+      (or field-default
+          (case avro-type
+            :null nil
+            :boolean false
+            :int (int -1)
+            :long -1
+            :float (float -1.0)
+            :double (double -1.0)
+            :string ""
+            :enum (first (:symbols field-schema))
+            :union (first field-schema)
+            :array []
+            :map {})))))
+
+(defmulti make-edn-schema first-arg-dispatch)
+
+(defn get-name-or-schema [edn-schema *names]
+  (let [schema-name (get-schema-name edn-schema)]
+    (if (@*names schema-name)
+      schema-name
+      (do
+        (swap! *names conj schema-name)
+        edn-schema))))
+
+(defn fix-repeated-schemas
+  ([edn-schema]
+   (fix-repeated-schemas edn-schema (atom #{})))
+  ([edn-schema *names]
+   (let [fix-child-names (fn [children]
+                           (mapv #(fix-repeated-schemas % *names) children))]
+     (case (get-avro-type edn-schema)
+       :enum (get-name-or-schema edn-schema *names)
+       :fixed (get-name-or-schema edn-schema *names)
+       :array (update edn-schema :items fix-child-names)
+       :map (update edn-schema :values fix-child-names)
+       :union (fix-child-names edn-schema)
+       :record (let [name-or-schema (get-name-or-schema edn-schema *names)
+                     fix-field (fn [field]
+                                 (update field :type
+                                         #(fix-repeated-schemas % *names)))]
+                 (if (map? name-or-schema)
+                   (update edn-schema :fields #(mapv fix-field %))
+                   name-or-schema))
+       edn-schema))))
 
 (defmethod make-edn-schema :record
-  [schema-type schema-ns class-name fields]
-  (let [make-field (fn [[field-name field-schema field-default]]
-
-                     (let [edn-schema (if (satisfies? IAvroSchema field-schema)
-                                        (get-edn-schema field-schema)
-                                        field-schema)
-                           avro-type (get-avro-type edn-schema)]
-                       {:name (csk/->camelCase (name field-name))
-                        :type (get-schema-name edn-schema)
-                        :default (get-field-default edn-schema avro-type
-                                                    field-default)}))]
+  [schema-type schema-ns short-name fields]
+  (let [mk-field (fn [[field-name field-type field-default]]
+                   (let [field-schema (ensure-edn-schema field-type)]
+                     {:name (keyword field-name)
+                      :type field-schema
+                      :default (get-field-default field-schema
+                                                  field-default)}))]
     {:namespace schema-ns
-     :name class-name
+     :name (keyword short-name)
      :type :record
-     :fields (mapv make-field fields)}))
+     :fields (mapv mk-field fields)}))
 
 (defmethod make-edn-schema :enum
-  [schema-type schema-ns class-name symbols]
+  [schema-type schema-ns short-name symbols]
   {:namespace schema-ns
-   :name class-name
+   :name (keyword short-name)
    :type :enum
-   :symbols (vec symbols)})
+   :symbols symbols})
 
 (defmethod make-edn-schema :fixed
-  [schema-type schema-ns class-name size]
+  [schema-type schema-ns short-name size]
   {:namespace schema-ns
-   :name class-name
+   :name (keyword short-name)
    :type :fixed
    :size size})
-
-(defn avro-type-dispatch [edn-schema & args]
-  (get-avro-type edn-schema))
 
 (defmulti make-constructor avro-type-dispatch)
 
 (defmethod make-constructor :record
-  [edn-schema short-name class-expr constructor-sym]
-  (let [{class-name :name
-         schema-ns :namespace
-         fields :fields} edn-schema
-        builder (symbol (str schema-ns "." class-name "/newBuilder"))
-        make-setter #(let [field-name (:name %)
-                           field-sym (symbol (str field-name "#"))
-                           setter (symbol (str ".set"
-                                               (csk/->PascalCase field-name)))]
-                       `(~field-sym (~setter ~field-sym)))
-        setters (-> (mapcat make-setter fields)
-                    (concat `(true (.build))))
+  [edn-schema full-java-name dispatch-name]
+  (let [{:keys [fields]} edn-schema
+        builder (symbol (str full-java-name "/newBuilder"))
         map-sym (gensym "map")
-        make-arg-destructure #(let [field-name (:name %)
-                                    field-sym (symbol (str field-name "#"))
-                                    field-kw (keyword field-name)]
-                                `(~field-sym (get ~map-sym ~field-kw)))
-        destructure-expr (mapcat make-arg-destructure fields)
-        p-constructor-sym (symbol (str "->" short-name))
-        p-constructor-args (map #(-> % :name (str "#") symbol) fields)]
-    `(do
-       (import ~class-expr)
-       (defn ~p-constructor-sym [~@p-constructor-args]
-         (cond-> (~builder)
-           ~@setters))
-       (defn ~constructor-sym [~map-sym]
-         (let [~@destructure-expr]
-           (cond-> (~builder)
-             ~@setters))))))
+        mk-setter #(let [field-type (:type %)
+                         name-kw (:name %)
+                         field-dispatch-name (edn-schema->dispatch-name
+                                              field-type)
+                         setter (symbol (str ".set"
+                                             (csk/->PascalCase (name name-kw))))
+                         getter (if (avro-primitive-types field-type)
+                                  `(~name-kw ~map-sym)
+                                  `(clj->avro ~field-dispatch-name
+                                              (~name-kw ~map-sym)))]
+                     `((~name-kw ~map-sym) (~setter ~getter)))
+        setters (-> (mapcat mk-setter fields)
+                    (concat `(true (.build))))]
+    `(defmethod clj->avro ~dispatch-name
+       [_# ~map-sym]
+       (cond-> (~builder)
+         ~@setters))))
 
 (defmethod make-constructor :enum
-  [edn-schema short-name class-expr constructor-sym]
-  (let [{class-name :name
-         schema-ns :namespace
-         symbols :symbols} edn-schema
-        make-pair (fn [symbol-kw]
-                    (let [const-name (csk/->SCREAMING_SNAKE_CASE
+  [edn-schema full-java-name dispatch-name]
+  (let [make-pair (fn [symbol-kw]
+                    (let [symbol-str (csk/->SCREAMING_SNAKE_CASE
                                       (name symbol-kw))
-                          java-enum (symbol (str schema-ns "." class-name
-                                                 "/" const-name))]
+                          java-enum (symbol (str full-java-name "/"
+                                                 symbol-str))]
                       `(~symbol-kw ~java-enum)))
-        pairs (mapcat make-pair symbols)]
-    `(do
-       (import ~class-expr)
-       (defn ~constructor-sym [enum-kw#]
-         (case enum-kw#
-           ~@pairs)))))
+        pairs (mapcat make-pair (:symbols edn-schema))]
+    `(defmethod clj->avro ~dispatch-name
+       [_# enum-kw#]
+       (case enum-kw#
+         ~@pairs))))
 
 (defmethod make-constructor :fixed
-  [edn-schema short-name class-expr constructor-sym]
-  (let [{class-name :name
-         schema-ns :namespace} edn-schema
-        java-constructor (symbol (str schema-ns "." class-name "."))]
-    `(do
-       (import ~class-expr)
-       (defn ~constructor-sym [ba#]
-         (~java-constructor ba#)))))
+  [edn-schema full-java-name dispatch-name]
+  (let [java-constructor (symbol (str full-java-name "."))]
+    `(defmethod clj->avro ~dispatch-name
+       [_# ba#]
+       (~java-constructor ba#))))
 
 (defmulti make-post-converter avro-type-dispatch)
 
 (defmethod make-post-converter :record
-  [edn-schema fq-class post-convert-sym]
-  (let [field-names (map :name (:fields edn-schema))
-        avro-obj-sym (symbol "avro-obj")
-        make-kv (fn [field-name]
-                  (let [kw (keyword field-name)
-                        getter (symbol (str ".get"
-                                            (csk/->PascalCase field-name)))]
-                    `(~kw (~getter ~avro-obj-sym))))
-        m (apply hash-map (mapcat make-kv field-names))]
-    `(defn ~post-convert-sym [~(with-meta avro-obj-sym {:tag fq-class})]
+  [edn-schema full-java-name dispatch-name]
+  (let [avro-obj-sym (symbol "avro-obj")
+        make-kv (fn [field]
+                  (let [field-type (:type field)
+                        dispatch-name (edn-schema->dispatch-name field-type)
+                        name-kw (:name field)
+                        getter (->> name-kw
+                                    (name)
+                                    (csk/->PascalCase)
+                                    (str ".get")
+                                    (symbol))
+                        get-expr (if (avro-primitive-types (get-avro-type
+                                                            field-type))
+                                   `(~getter ~avro-obj-sym)
+                                   `(avro->clj ~dispatch-name
+                                               (~getter ~avro-obj-sym)))
+                        class-nk (class name-kw)
+                        class-ge (class get-expr)]
+                    `(~name-kw ~get-expr)))
+        m (apply hash-map (mapcat make-kv (:fields edn-schema)))]
+    `(defmethod avro->clj ~dispatch-name
+       [_# ~(with-meta avro-obj-sym {:tag (symbol full-java-name)})]
        ~m)))
 
 (defmethod make-post-converter :enum
-  [edn-schema fq-class post-convert-sym]
-  (let [{class-name :name
-         schema-ns :namespace
-         symbols :symbols} edn-schema
-        make-pair (fn [symbol-kw]
-                    (let [const-name (csk/->SCREAMING_SNAKE_CASE
+  [edn-schema full-java-name dispatch-name]
+  (let [make-pair (fn [symbol-kw]
+                    (let [symbol-str (csk/->SCREAMING_SNAKE_CASE
                                       (name symbol-kw))
-                          java-enum (symbol (str schema-ns "." class-name
-                                                 "/" const-name))]
+                          java-enum (symbol (str full-java-name "/"
+                                                 symbol-str))]
                       `(~java-enum ~symbol-kw)))
         pairs (mapcat make-pair (:symbols edn-schema))]
-    `(defn ~post-convert-sym [java-enum#]
+    `(defmethod avro->clj ~dispatch-name
+       [_# java-enum#]
        (condp = java-enum#
          ~@pairs))))
 
 (defmethod make-post-converter :fixed
-  [edn-schema fq-class post-convert-sym]
+  [edn-schema full-java-name dispatch-name]
   (let [avro-obj-sym (symbol "avro-obj")]
-    `(defn ~post-convert-sym [~(with-meta avro-obj-sym {:tag fq-class})]
+    `(defmethod avro->clj ~dispatch-name
+       [_# ~(with-meta avro-obj-sym {:tag (symbol full-java-name)})]
        (.bytes ~avro-obj-sym))))
 
 (defn get-schema-constructor [avro-type]
@@ -272,58 +337,126 @@
     ->AvroNamedSchema
     (throw (ex-info "Bad avro type" {:avro-type avro-type}))))
 
-(defn xf-record-schema [edn-schema]
-  (let [xf-enum-default #(-> % name csk/->SCREAMING_SNAKE_CASE)
-        xf-field (fn [field]
-                   (let [field-schema (:type field)
-                         edn-schema (if (satisfies? IAvroSchema field-schema)
-                                      (get-edn-schema field-schema)
-                                      field-schema)
-                         avro-type (get-avro-type edn-schema)]
-                     (case avro-type
-                       :enum (update field :default xf-enum-default)
-                       field)))]
-    (update edn-schema :fields #(mapv xf-field %))))
+(defn fix-name [edn-schema]
+  (-> edn-schema
+      (update :namespace namespace-munge)
+      (update :name #(csk/->PascalCase (name %)))))
 
-(defn xf-enum-schema [edn-schema]
-  (let [xf-symbol #(-> % name csk/->SCREAMING_SNAKE_CASE)]
-    (update edn-schema :symbols #(mapv xf-symbol %))))
+(defn byte-array->byte-str [ba]
+  (apply str (map char ba)))
 
-(defn make-json-schema [edn-schema]
-  (let [avro-type (get-avro-type edn-schema)
-        xfer (case avro-type
-               :record xf-record-schema
-               :enum xf-enum-schema
-               identity)]
-    (json/generate-string (xfer edn-schema) {:pretty true})))
+(defmethod fix-default :fixed
+  [field-schema default]
+  (byte-array->byte-str default))
+
+(defmethod fix-default :bytes
+  [field-schema default]
+  (byte-array->byte-str default))
+
+(defmethod fix-default :enum
+  [field-schema default]
+  (-> (name default)
+      (csk/->SCREAMING_SNAKE_CASE)))
+
+(defmethod fix-default :record
+  [default-schema default-record]
+  (reduce (fn [acc field]
+            (let [{field-name :name
+                   field-type :type
+                   field-default :default} field]
+              (assoc acc field-name (fix-default field-type field-default))))
+          {} (:fields default-schema)))
+
+(defmethod fix-default :array
+  [field-schema default]
+  (let [child-schema (:items field-schema)]
+    (mapv #(fix-default child-schema %) default)))
+
+(defmethod fix-default :map
+  [field-schema default]
+  (let [child-schema (:values field-schema)]
+    (reduce-kv (fn [acc k v]
+                 (assoc k (fix-default child-schema v)))
+               {} default)))
+
+(defmethod fix-default :union
+  [field-schema default]
+  ;; Union default's type must be the first type in the union
+  (fix-default (first field-schema) default))
+
+(defmethod fix-default :default
+  [field-schema default]
+  default)
+
+(defn fix-fields [edn-schema]
+  (update edn-schema :fields
+          (fn [fields]
+            (mapv (fn [field]
+                    (let [field-type (:type field)
+                          avro-type (get-avro-type field-type)]
+                      (cond-> field
+                        true
+                        (update :name #(csk/->camelCase (name %)))
+
+                        (avro-complex-types avro-type)
+                        (update :type edn-schema->avro-schema)
+
+                        true
+                        (update :default #(fix-default field-type %)))))
+                  fields))))
+
+(defn fix-symbols [edn-schema]
+  (update edn-schema :symbols #(mapv csk/->SCREAMING_SNAKE_CASE %)))
+
+(defmethod edn-schema->avro-schema :record
+  [edn-schema]
+  (-> edn-schema
+      (fix-name)
+      (fix-fields)
+      (fix-repeated-schemas)))
+
+(defmethod edn-schema->avro-schema :enum
+  [edn-schema]
+  (-> edn-schema
+      (fix-name)
+      (fix-symbols)
+      (fix-repeated-schemas)))
+
+(defmethod edn-schema->avro-schema :fixed
+  [edn-schema]
+  (-> edn-schema
+      (fix-name)
+      (fix-repeated-schemas)))
 
 (defmacro named-schema-helper*
   [schema-type clj-var-name args]
-  (let [short-name (drop-schema-from-name clj-var-name)
-        schema-ns (namespace-munge *ns*)
-        class-name (csk/->PascalCase short-name)
-        class-expr (map symbol [schema-ns class-name])
-        fq-class (symbol (str schema-ns "." class-name))
-        edn-schema (make-edn-schema schema-type schema-ns class-name args)
-        json-schema (make-json-schema edn-schema)
-        schema-name (get-schema-name edn-schema)
+  (let [args (eval args)
+        short-name (drop-schema-from-name clj-var-name)
+        schema-ns (str *ns*)
+        java-ns (namespace-munge schema-ns)
+        java-class-name (csk/->PascalCase short-name)
+        class-expr (map symbol [java-ns java-class-name])
+        full-java-name (str java-ns "." java-class-name)
+        edn-schema (make-edn-schema schema-type schema-ns short-name args)
         avro-type (get-avro-type edn-schema)
-        constructor-sym (gensym (str "clj->" short-name))
-        post-convert-sym (gensym (str short-name "->clj"))
+        dispatch-name (edn-schema->dispatch-name edn-schema)
+        constructor (make-constructor edn-schema full-java-name
+                                      dispatch-name)
+        post-converter (make-post-converter edn-schema full-java-name
+                                            dispatch-name)
         schema-constructor (get-schema-constructor avro-type)
-        constructor (make-constructor edn-schema short-name class-expr
-                                      constructor-sym)
-        post-converter (make-post-converter edn-schema fq-class
-                                            post-convert-sym)]
-    #?(:clj (gen/generate-class class-name json-schema))
+        avro-schema (edn-schema->avro-schema (eval edn-schema))
+        json-schema (json/generate-string avro-schema {:pretty true})]
+    #?(:clj (gen/generate-classes json-schema))
     `(let [avro-schema-obj# (.parse (Schema$Parser.) ^String ~json-schema)
            cpf# (SchemaNormalization/toParsingForm avro-schema-obj#)
            fingerprint# (SchemaNormalization/parsingFingerprint
                          "MD5" avro-schema-obj#)
            writer# (SpecificDatumWriter. ^Schema avro-schema-obj#)
            reader# (SpecificDatumReader. ^Schema avro-schema-obj#)]
+       (import ~class-expr)
        ~constructor
        ~post-converter
-       (def ~clj-var-name (~schema-constructor ~edn-schema ~json-schema
-                           cpf# ~constructor-sym ~post-convert-sym
-                           writer# reader# fingerprint#)))))
+       (def ~clj-var-name (~schema-constructor ~dispatch-name
+                           ~edn-schema ~json-schema
+                           cpf# writer# reader# fingerprint#)))))

@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.java.shell :as shell]
    [clojure.string :refer [join split]]
-   [deercreeklabs.lancaster.utils :as u]
+   [deercreeklabs.log-utils :as lu]
    [me.raynes.fs :as fs]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   (:import
@@ -60,16 +60,15 @@
   (shell/sh "rm" "-rf" dir-path))
 
 (defn write-avsc-file
-  [class-name json-schema]
+  [schema]
   (let [^File dir (make-temp-dir)
         dir-path (.getAbsolutePath dir)
-        avsc-filename (str dir-path "/" class-name ".avsc")]
-    (spit avsc-filename json-schema)
+        avsc-filename (str dir-path "/schema.avsc")]
+    (spit avsc-filename schema)
     dir-path))
 
-(defn generate-class [class-name json-schema]
-  (println (str "#### Generatin' class for " class-name ", yo!"))
-  (let [dir-path (write-avsc-file class-name json-schema)]
+(defn generate-classes [json-schema]
+  (let [dir-path (write-avsc-file json-schema)]
     (try
       (let [ret (write-classes dir-path dir-path)]
         (when (not= 0 ret)
@@ -79,7 +78,7 @@
                            :ret ret})))
         (compile-classes dir-path))
       (catch Exception e
-        (errorf "Error in ensure-class: \n%s"
-                (u/get-exception-msg-and-stacktrace e)))
+        (errorf "Error in generate-class: \n%s"
+                (lu/get-exception-msg-and-stacktrace e)))
       (finally
         (remove-dir dir-path)))))

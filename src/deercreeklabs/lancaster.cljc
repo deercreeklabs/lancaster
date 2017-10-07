@@ -17,11 +17,11 @@
 
 (defmacro def-record-schema
   [schema-name & fields]
-  `(schemas/named-schema-helper* :record ~schema-name ~fields))
+  `(schemas/named-schema-helper* :record ~schema-name ~(vec fields)))
 
 (defmacro def-enum-schema
   [schema-name & symbols]
-  `(schemas/named-schema-helper* :enum ~schema-name ~symbols))
+  `(schemas/named-schema-helper* :enum ~schema-name ~(vec symbols)))
 
 (defmacro def-fixed-schema
   [schema-name size]

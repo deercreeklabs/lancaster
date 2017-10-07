@@ -13,14 +13,6 @@ pom.xml.asc
 # JS stuff
 /node_modules
 
-# C++ stuff
-*.dylib
-*.so
-*.o
-*.a
-*.lib
-bin/
-
 # Emacs stuff
 *~
 \#*\#
@@ -33,7 +25,3 @@ tramp
 
 # Mac stuff
 .DS_Store
-
-# Generated code
-/gen-java
-/gen-clj
