@@ -10,6 +10,7 @@
   #?(:clj
      (:import
       (java.io ByteArrayOutputStream)
+      (java.nio ByteBuffer)
       (org.apache.avro Schema Schema$Parser SchemaNormalization)
       (org.apache.avro.io BinaryDecoder Decoder DecoderFactory
                           Encoder EncoderFactory)
@@ -65,9 +66,17 @@
 (defmulti fix-default avro-type-dispatch)
 (defmulti edn-schema->avro-schema avro-type-dispatch)
 
+(defmethod clj->avro :bytes
+  [dispatch-name ba]
+  (ByteBuffer/wrap ba))
+
 (defmethod clj->avro :default
   [dispatch-name x]
   x)
+
+(defmethod avro->clj :bytes
+  [dispatch-name ^ByteBuffer bb]
+  (.array bb))
 
 (defmethod avro->clj :default
   [dispatch-name x]
@@ -78,7 +87,7 @@
   (deserialize [this writer-schema ba return-java?])
   (get-edn-schema [this])
   (get-json-schema [this])
-  (get-canonical-parsing-form [this])
+  (get-parsing-canonical-form [this])
   (get-fingerprint128 [this]))
 
 (def ^EncoderFactory encoder-factory (EncoderFactory/get))
@@ -97,11 +106,14 @@
   (let [^BinaryDecoder decoder (.binaryDecoder decoder-factory ^bytes ba nil)]
     (.read reader nil decoder)))
 
-(defrecord AvroNamedSchema [dispatch-name edn-schema json-schema
-                            canonical-parsing-form writer reader fingerprint128]
+(defrecord AvroSchema [dispatch-name edn-schema json-schema
+                       parsing-canonical-form writer reader fingerprint128]
   IAvroSchema
   (serialize [this data]
-    (serialize* writer (clj->avro dispatch-name data)))
+    ;; TODO: Use macro to optimize clj->avro and avro->clj for cases where
+    ;; they are not needed (primitives, etc.)
+    (let [avro (clj->avro dispatch-name data)]
+      (serialize* writer avro)))
   (deserialize [this writer-schema ba return-java?]
     (let [obj (deserialize* reader ba)]
       (if return-java?
@@ -111,10 +123,22 @@
     edn-schema)
   (get-json-schema [this]
     json-schema)
-  (get-canonical-parsing-form [this]
-    canonical-parsing-form)
+  (get-parsing-canonical-form [this]
+    parsing-canonical-form)
   (get-fingerprint128 [this]
     fingerprint128))
+
+(defn make-primitive-schema [edn-schema]
+  (let [dispatch-name edn-schema
+        json-schema (json/generate-string edn-schema)
+        parsing-canonical-form json-schema
+        avro-schema-obj (.parse (Schema$Parser.) ^String json-schema)
+        writer (SpecificDatumWriter. ^Schema avro-schema-obj)
+        reader (SpecificDatumReader. ^Schema avro-schema-obj)
+        fingerprint128 (SchemaNormalization/parsingFingerprint
+                        "MD5" avro-schema-obj)]
+    (->AvroSchema dispatch-name edn-schema json-schema parsing-canonical-form
+                  writer reader fingerprint128)))
 
 (defn ensure-edn-schema [schema]
   (if (satisfies? IAvroSchema schema)
@@ -166,6 +190,7 @@
     (case avro-type
       :record (make-default-record field-schema field-default)
       :fixed (make-default-fixed-or-bytes field-default)
+      :bytes (make-default-fixed-or-bytes field-default)
       (or field-default
           (case avro-type
             :null nil
@@ -244,17 +269,19 @@
   [edn-schema full-java-name dispatch-name]
   (let [{:keys [fields]} edn-schema
         builder (symbol (str full-java-name "/newBuilder"))
+        need-conversion (conj avro-complex-types :bytes)
         map-sym (gensym "map")
-        mk-setter #(let [field-type (:type %)
+        mk-setter #(let [field-schema (:type %)
+                         avro-type (get-avro-type field-schema)
                          name-kw (:name %)
                          field-dispatch-name (edn-schema->dispatch-name
-                                              field-type)
+                                              field-schema)
                          setter (symbol (str ".set"
                                              (csk/->PascalCase (name name-kw))))
-                         getter (if (avro-primitive-types field-type)
-                                  `(~name-kw ~map-sym)
+                         getter (if (need-conversion avro-type)
                                   `(clj->avro ~field-dispatch-name
-                                              (~name-kw ~map-sym)))]
+                                              (~name-kw ~map-sym))
+                                  `(~name-kw ~map-sym))]
                      `((~name-kw ~map-sym) (~setter ~getter)))
         setters (-> (mapcat mk-setter fields)
                     (concat `(true (.build))))]
@@ -289,26 +316,27 @@
 (defmethod make-post-converter :record
   [edn-schema full-java-name dispatch-name]
   (let [avro-obj-sym (symbol "avro-obj")
+        need-conversion (conj avro-complex-types :bytes)
         make-kv (fn [field]
-                  (let [field-type (:type field)
-                        dispatch-name (edn-schema->dispatch-name field-type)
+                  (let [field-schema (:type field)
+                        avro-type (get-avro-type field-schema)
+                        dispatch-name (edn-schema->dispatch-name field-schema)
                         name-kw (:name field)
                         getter (->> name-kw
                                     (name)
                                     (csk/->PascalCase)
                                     (str ".get")
                                     (symbol))
-                        get-expr (if (avro-primitive-types (get-avro-type
-                                                            field-type))
-                                   `(~getter ~avro-obj-sym)
+                        get-expr (if (need-conversion avro-type)
                                    `(avro->clj ~dispatch-name
-                                               (~getter ~avro-obj-sym)))
+                                               (~getter ~avro-obj-sym))
+                                   `(~getter ~avro-obj-sym))
                         class-nk (class name-kw)
                         class-ge (class get-expr)]
                     `(~name-kw ~get-expr)))
         m (apply hash-map (mapcat make-kv (:fields edn-schema)))]
     `(defmethod avro->clj ~dispatch-name
-       [_# ~(with-meta avro-obj-sym {:tag (symbol full-java-name)})]
+       [dispatch-name# ~(with-meta avro-obj-sym {:tag (symbol full-java-name)})]
        ~m)))
 
 (defmethod make-post-converter :enum
@@ -331,11 +359,6 @@
     `(defmethod avro->clj ~dispatch-name
        [_# ~(with-meta avro-obj-sym {:tag (symbol full-java-name)})]
        (.bytes ~avro-obj-sym))))
-
-(defn get-schema-constructor [avro-type]
-  (if (avro-named-types avro-type)
-    ->AvroNamedSchema
-    (throw (ex-info "Bad avro type" {:avro-type avro-type}))))
 
 (defn fix-name [edn-schema]
   (-> edn-schema
@@ -442,14 +465,14 @@
         dispatch-name (edn-schema->dispatch-name edn-schema)
         constructor (make-constructor edn-schema full-java-name
                                       dispatch-name)
+
         post-converter (make-post-converter edn-schema full-java-name
                                             dispatch-name)
-        schema-constructor (get-schema-constructor avro-type)
         avro-schema (edn-schema->avro-schema (eval edn-schema))
         json-schema (json/generate-string avro-schema {:pretty true})]
     #?(:clj (gen/generate-classes json-schema))
     `(let [avro-schema-obj# (.parse (Schema$Parser.) ^String ~json-schema)
-           cpf# (SchemaNormalization/toParsingForm avro-schema-obj#)
+           pf# (SchemaNormalization/toParsingForm avro-schema-obj#)
            fingerprint# (SchemaNormalization/parsingFingerprint
                          "MD5" avro-schema-obj#)
            writer# (SpecificDatumWriter. ^Schema avro-schema-obj#)
@@ -457,6 +480,6 @@
        (import ~class-expr)
        ~constructor
        ~post-converter
-       (def ~clj-var-name (~schema-constructor ~dispatch-name
-                           ~edn-schema ~json-schema
-                           cpf# writer# reader# fingerprint#)))))
+       (def ~clj-var-name (->AvroSchema ~dispatch-name
+                                        ~edn-schema ~json-schema
+                                        pf# writer# reader# fingerprint#)))))

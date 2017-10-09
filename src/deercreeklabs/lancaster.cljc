@@ -12,6 +12,16 @@
 #?(:cljs
    (set! *warn-on-infer* true))
 
+;;;;;;;;;;;;;;;;;;;; Primitive Schemas ;;;;;;;;;;;;;;;;;;;;
+
+(def null-schema (schemas/make-primitive-schema :null))
+(def boolean-schema (schemas/make-primitive-schema :boolean))
+(def int-schema (schemas/make-primitive-schema :int))
+(def long-schema (schemas/make-primitive-schema :long))
+(def float-schema (schemas/make-primitive-schema :float))
+(def double-schema (schemas/make-primitive-schema :double))
+(def bytes-schema (schemas/make-primitive-schema :bytes))
+(def string-schema (schemas/make-primitive-schema :string))
 
 ;;;;;;;;;;;;;;;;;;;; Schema Macros ;;;;;;;;;;;;;;;;;;;;
 
@@ -44,8 +54,8 @@
 (defn get-json-schema [schema]
   (schemas/get-json-schema schema))
 
-(defn get-canonical-parsing-form [schema]
-  (schemas/get-canonical-parsing-form schema))
+(defn get-parsing-canonical-form [schema]
+  (schemas/get-parsing-canonical-form schema))
 
 (defn get-fingerprint128 [schema]
   (schemas/get-fingerprint128 schema))
