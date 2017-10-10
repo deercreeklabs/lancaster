@@ -27,15 +27,23 @@
 
 (defmacro def-record-schema
   [schema-name & fields]
-  `(schemas/named-schema-helper* :record ~schema-name ~(vec fields)))
+  `(schemas/schema-helper :record ~schema-name ~(vec fields)))
 
 (defmacro def-enum-schema
   [schema-name & symbols]
-  `(schemas/named-schema-helper* :enum ~schema-name ~(vec symbols)))
+  `(schemas/schema-helper :enum ~schema-name ~(vec symbols)))
 
 (defmacro def-fixed-schema
   [schema-name size]
-  `(schemas/named-schema-helper* :fixed ~schema-name ~size))
+  `(schemas/schema-helper :fixed ~schema-name ~size))
+
+(defmacro def-array-schema
+  [schema-name items-schema]
+  `(schemas/schema-helper :array ~schema-name ~items-schema))
+
+(defmacro def-map-schema
+  [schema-name values-schema]
+  `(schemas/schema-helper :map ~schema-name ~values-schema))
 
 ;;;;;;;;;;;;;;;;;;;; API Fns ;;;;;;;;;;;;;;;;;;;;
 

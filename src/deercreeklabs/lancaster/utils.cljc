@@ -16,3 +16,6 @@
   (timbre/merge-config!
    {:level :debug
     :output-fn lu/short-log-output-fn}))
+
+(defn byte-array->byte-str [ba]
+  (apply str (map char ba)))

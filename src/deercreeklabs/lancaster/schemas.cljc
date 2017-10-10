@@ -4,6 +4,7 @@
    [cheshire.core :as json]
    [deercreeklabs.baracus :as ba]
    #?(:clj [deercreeklabs.lancaster.gen :as gen])
+   [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    #?(:clj [puget.printer :refer [cprint]])
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
@@ -185,9 +186,7 @@
           {} (:fields record-edn-schema)))
 
 (defn make-default-fixed-or-bytes [default]
-  (let [src (or default (ba/byte-array []))
-        items (vec src)]
-    `(ba/byte-array ~items)))
+  (u/byte-array->byte-str (or default (ba/byte-array []))))
 
 (defn get-field-default [field-schema field-default]
   (let [avro-type (get-avro-type field-schema)]
@@ -267,6 +266,16 @@
    :type :fixed
    :size size})
 
+(defmethod make-edn-schema :array
+  [schema-type schema-ns short-name items]
+  {:type :array
+   :items (ensure-edn-schema items)})
+
+(defmethod make-edn-schema :map
+  [schema-type schema-ns short-name values]
+  {:type :map
+   :values (ensure-edn-schema values)})
+
 (defmulti make-constructor avro-type-dispatch)
 
 (defmethod make-constructor :record
@@ -315,6 +324,36 @@
        [_# ba#]
        (~java-constructor ba#))))
 
+(defmethod make-constructor :array
+  [edn-schema _ dispatch-name]
+  (let [{:keys [items]} edn-schema
+        need-conversion (conj avro-complex-types :bytes)
+        items-dispatch-name (edn-schema->dispatch-name items)
+        items-avro-type (get-avro-type items)]
+    (if (need-conversion items-avro-type)
+      `(defmethod clj->avro ~dispatch-name
+         [dispatch-name# arr#]
+         (mapv #(clj->avro ~items-dispatch-name %) arr#))
+      `(defmethod clj->avro ~dispatch-name
+         [dispatch-name# arr#]
+         arr#))))
+
+(defmethod make-constructor :map
+  [edn-schema _ dispatch-name]
+  (let [{:keys [values]} edn-schema
+        need-conversion (conj avro-complex-types :bytes)
+        values-dispatch-name (edn-schema->dispatch-name values)
+        values-avro-type (get-avro-type values)]
+    (if (need-conversion values-avro-type)
+      `(defmethod clj->avro ~dispatch-name
+         [dispatch-name# m#]
+         (reduce-kv (fn [acc# k# v#]
+                      (assoc acc# k# (clj->avro ~values-dispatch-name v#)))
+                    {} m#))
+      `(defmethod clj->avro ~dispatch-name
+         [dispatch-name# m#]
+         m#))))
+
 (defmulti make-post-converter avro-type-dispatch)
 
 (defmethod make-post-converter :record
@@ -353,7 +392,7 @@
                       `(~java-enum ~symbol-kw)))
         pairs (mapcat make-pair (:symbols edn-schema))]
     `(defmethod avro->clj ~dispatch-name
-       [_# java-enum#]
+       [dispatch-name# java-enum#]
        (condp = java-enum#
          ~@pairs))))
 
@@ -361,24 +400,57 @@
   [edn-schema full-java-name dispatch-name]
   (let [avro-obj-sym (symbol "avro-obj")]
     `(defmethod avro->clj ~dispatch-name
-       [_# ~(with-meta avro-obj-sym {:tag (symbol full-java-name)})]
+       [dispatch-name# ~(with-meta avro-obj-sym {:tag (symbol full-java-name)})]
        (.bytes ~avro-obj-sym))))
+
+(defmethod make-post-converter :array
+  [edn-schema _ dispatch-name]
+  (let [{:keys [items]} edn-schema
+        items-dispatch-name (edn-schema->dispatch-name items)
+        items-avro-type (get-avro-type items)
+        need-conversion (conj avro-complex-types :bytes :string)]
+    (if (need-conversion items-avro-type)
+      `(defmethod avro->clj ~dispatch-name
+         [dispatch-name# arr#]
+         (mapv #(avro->clj ~items-dispatch-name %) arr#))
+      `(defmethod avro->clj ~dispatch-name
+         [dispatch-name# arr#]
+         arr#))))
+
+(defmethod make-post-converter :map
+  [edn-schema _ dispatch-name]
+  (let [{:keys [values]} edn-schema
+        need-conversion (conj avro-complex-types :bytes :string)
+        values-dispatch-name (edn-schema->dispatch-name values)
+        values-avro-type (get-avro-type values)
+        xf (if (need-conversion values-avro-type)
+             #(avro->clj values-dispatch-name %)
+             identity)]
+    (if (need-conversion values-avro-type)
+      `(defmethod avro->clj ~dispatch-name
+         [dispatch-name# m#]
+         (reduce (fn [acc# [^org.apache.avro.util.Utf8 k# v#]]
+                   (assoc acc# (.toString k#)
+                          (avro->clj ~values-dispatch-name v#)))
+                 {} m#))
+      `(defmethod avro->clj ~dispatch-name
+         [dispatch-name# m#]
+         (reduce (fn [acc# [^org.apache.avro.util.Utf8 k# v#]]
+                   (assoc acc# (.toString k#) v#))
+                 {} m#)))))
 
 (defn fix-name [edn-schema]
   (-> edn-schema
       (update :namespace namespace-munge)
       (update :name #(csk/->PascalCase (name %)))))
 
-(defn byte-array->byte-str [ba]
-  (apply str (map char ba)))
-
 (defmethod fix-default :fixed
   [field-schema default]
-  (byte-array->byte-str default))
+  (u/byte-array->byte-str default))
 
 (defmethod fix-default :bytes
   [field-schema default]
-  (byte-array->byte-str default))
+  (u/byte-array->byte-str default))
 
 (defmethod fix-default :enum
   [field-schema default]
@@ -455,7 +527,19 @@
       (fix-name)
       (fix-repeated-schemas)))
 
-(defmacro named-schema-helper*
+(defmethod edn-schema->avro-schema :array
+  [edn-schema]
+  (update edn-schema :items edn-schema->avro-schema))
+
+(defmethod edn-schema->avro-schema :map
+  [edn-schema]
+  (update edn-schema :values edn-schema->avro-schema))
+
+(defmethod edn-schema->avro-schema :default
+  [edn-schema]
+  edn-schema)
+
+(defmacro schema-helper
   [schema-type clj-var-name args]
   (let [args (eval args)
         short-name (drop-schema-from-name clj-var-name)
@@ -467,21 +551,22 @@
         edn-schema (make-edn-schema schema-type schema-ns short-name args)
         avro-type (get-avro-type edn-schema)
         dispatch-name (edn-schema->dispatch-name edn-schema)
-        constructor (make-constructor edn-schema full-java-name
-                                      dispatch-name)
-
+        constructor (make-constructor edn-schema full-java-name dispatch-name)
         post-converter (make-post-converter edn-schema full-java-name
                                             dispatch-name)
-        avro-schema (edn-schema->avro-schema (eval edn-schema))
-        json-schema (json/generate-string avro-schema {:pretty true})]
-    #?(:clj (gen/generate-classes json-schema))
+        avro-schema (edn-schema->avro-schema edn-schema)
+        json-schema (json/generate-string avro-schema {:pretty true})
+        avro-type (get-avro-type edn-schema)]
+    #?(:clj (when (avro-named-types avro-type)
+              (gen/generate-classes json-schema)))
     `(let [avro-schema-obj# (.parse (Schema$Parser.) ^String ~json-schema)
            pf# (SchemaNormalization/toParsingForm avro-schema-obj#)
            fingerprint# (SchemaNormalization/parsingFingerprint
                          "MD5" avro-schema-obj#)
            writer# (SpecificDatumWriter. ^Schema avro-schema-obj#)
            reader# (SpecificDatumReader. ^Schema avro-schema-obj#)]
-       (import ~class-expr)
+       (when (avro-named-types ~avro-type)
+         (import ~class-expr))
        ~constructor
        ~post-converter
        (def ~clj-var-name (->AvroSchema ~dispatch-name
