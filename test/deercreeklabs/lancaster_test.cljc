@@ -175,11 +175,49 @@
     (is (= (sanitize-byte-arrays expected)
            (sanitize-byte-arrays decoded)))))
 
+(deftest test-null-schema
+  (let [data nil
+        encoded (l/serialize l/null-schema data)
+        decoded (l/deserialize l/null-schema l/null-schema encoded)]
+    (is (ba/equivalent-byte-arrays? (ba/byte-array []) encoded))
+    (is (= data decoded))))
+
+(deftest test-boolean-schema
+  (let [data true
+        encoded (l/serialize l/boolean-schema data)
+        decoded (l/deserialize l/boolean-schema l/boolean-schema encoded)]
+    (is (ba/equivalent-byte-arrays? (ba/byte-array [1]) encoded))
+    (is (= data decoded))))
+
 (deftest test-int-schema
   (let [data 7890
         encoded (l/serialize l/int-schema data)
         decoded (l/deserialize l/int-schema l/int-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-92 123]) encoded))
+    (is (= data decoded))))
+
+(deftest test-long-schema
+  (let [data 9223372036854775807
+        encoded (l/serialize l/long-schema data)
+        decoded (l/deserialize l/long-schema l/long-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [-2 -1 -1 -1 -1 -1 -1 -1 -1 1])
+         encoded))
+    (is (= data decoded))))
+
+(deftest test-float-schema
+  (let [data (float 3.14159)
+        encoded (l/serialize l/float-schema data)
+        decoded (l/deserialize l/float-schema l/float-schema encoded)]
+    (is (ba/equivalent-byte-arrays? (ba/byte-array [-48 15 73 64]) encoded))
+    (is (= data decoded))))
+
+(deftest test-double-schema
+  (let [data (double 3.14159265359)
+        encoded (l/serialize l/double-schema data)
+        decoded (l/deserialize l/double-schema l/double-schema encoded)]
+    (is (ba/equivalent-byte-arrays? (ba/byte-array [-22 46 68 84 -5 33 9 64])
+                                    encoded))
     (is (= data decoded))))
 
 (deftest test-bytes-schema
@@ -189,5 +227,15 @@
     (is (ba/equivalent-byte-arrays? (ba/byte-array [16 1 1 2 3 5 8 13 21])
                                     encoded))
     (is (ba/equivalent-byte-arrays? data decoded))))
+
+(deftest test-string-schema
+  (let [data "Hello world!"
+        encoded (l/serialize l/string-schema data)
+        decoded (l/deserialize l/string-schema l/string-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [24 72 101 108 108 111 32 119 111 114 108 100 33])
+         encoded))
+    (is (= data decoded))))
+
 
 ;; TODO: Test all primitives alone and as fields with and without defaults

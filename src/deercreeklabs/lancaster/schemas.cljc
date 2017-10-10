@@ -70,13 +70,17 @@
   [dispatch-name ba]
   (ByteBuffer/wrap ba))
 
-(defmethod clj->avro :default
-  [dispatch-name x]
-  x)
-
 (defmethod avro->clj :bytes
   [dispatch-name ^ByteBuffer bb]
   (.array bb))
+
+(defmethod avro->clj :string
+  [dispatch-name ^org.apache.avro.util.Utf8 s]
+  (.toString s))
+
+(defmethod clj->avro :default
+  [dispatch-name x]
+  x)
 
 (defmethod avro->clj :default
   [dispatch-name x]
@@ -316,7 +320,7 @@
 (defmethod make-post-converter :record
   [edn-schema full-java-name dispatch-name]
   (let [avro-obj-sym (symbol "avro-obj")
-        need-conversion (conj avro-complex-types :bytes)
+        need-conversion (conj avro-complex-types :bytes :string)
         make-kv (fn [field]
                   (let [field-schema (:type field)
                         avro-type (get-avro-type field-schema)
