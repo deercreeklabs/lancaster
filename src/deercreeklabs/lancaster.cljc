@@ -45,6 +45,10 @@
   [schema-name values-schema]
   `(schemas/schema-helper :map ~schema-name ~values-schema))
 
+(defmacro def-union-schema
+  [schema-name & member-schemas]
+  `(schemas/schema-helper :union ~schema-name ~(vec member-schemas)))
+
 ;;;;;;;;;;;;;;;;;;;; API Fns ;;;;;;;;;;;;;;;;;;;;
 
 (defn serialize [writer-schema data]
@@ -55,6 +59,9 @@
    (schemas/deserialize reader-schema writer-schema ba false))
   ([reader-schema writer-schema ba return-java?]
    (schemas/deserialize reader-schema writer-schema ba return-java?)))
+
+(defn wrap [schema data]
+  (schemas/wrap schema data))
 
 (defn get-edn-schema [schema]
   (schemas/get-edn-schema schema))

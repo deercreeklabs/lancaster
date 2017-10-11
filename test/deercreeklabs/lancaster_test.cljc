@@ -45,6 +45,9 @@
 (l/def-map-schema nested-map-schema
   add-to-cart-rsp-schema)
 
+(l/def-union-schema union-schema
+  :int add-to-cart-req-schema a-fixed-schema)
+
 (deftest test-record-schema
   (let [expected-cpf (str "{\"name\":\"deercreeklabs.lancaster_test."
                           "AddToCartReq\",\"type\":\"record\",\"fields\":"
@@ -406,6 +409,32 @@
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [4 2 65 -10 1 8 20 -10 1 -10 1 4 66 67 4
                          123 123 2 66 8 8 8 20 8 0 100 110 4 64 74 0])
+         encoded))
+    (is (= (xf-byte-arrays data)
+           (xf-byte-arrays decoded)))))
+
+(deftest test-union-schema
+  (is (= [:int
+             {:namespace "deercreeklabs.lancaster-test",
+              :name :add-to-cart-req,
+              :type :record,
+              :fields
+              [{:name :sku, :type :int, :default -1}
+               {:name :qty-requested, :type :int, :default 0}]}
+             {:namespace "deercreeklabs.lancaster-test",
+              :name :a-fixed,
+              :type :fixed,
+              :size 2}]
+         (l/get-edn-schema union-schema)))
+  (is (= "eoZHecFG3sfECWnaKrqwtQ=="
+         (ba/byte-array->b64 (l/get-fingerprint128 union-schema)))))
+
+(deftest test-union-schema-serdes
+  (let [data (l/wrap add-to-cart-req-schema {:sku 123 :qty-requested 4})
+        encoded (l/serialize union-schema data)
+        decoded (l/deserialize union-schema union-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [2 -10 1 8])
          encoded))
     (is (= (xf-byte-arrays data)
            (xf-byte-arrays decoded)))))
