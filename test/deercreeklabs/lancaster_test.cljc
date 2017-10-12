@@ -13,8 +13,6 @@
 
 (u/configure-logging)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Unit tests
-
 (l/def-record-schema add-to-cart-req-schema
   [:sku :int]
   [:qty-requested :int 0])
@@ -48,17 +46,22 @@
 (l/def-union-schema union-schema
   :int add-to-cart-req-schema a-fixed-schema)
 
+(l/def-record-schema tree-schema
+  [:value :int]
+  [:right l/nil-or-recur-schema]
+  [:left l/nil-or-recur-schema])
+
 (deftest test-record-schema
   (let [expected-cpf (str "{\"name\":\"deercreeklabs.lancaster_test."
                           "AddToCartReq\",\"type\":\"record\",\"fields\":"
                           "[{\"name\":\"sku\",\"type\":\"int\"},{\"name\":"
                           "\"qtyRequested\",\"type\":\"int\"}]}")
-        expected-edn-schema {:namespace "deercreeklabs.lancaster-test",
-                             :name :add-to-cart-req,
-                             :type :record,
+        expected-edn-schema {:namespace "deercreeklabs.lancaster-test"
+                             :name :add-to-cart-req
+                             :type :record
                              :fields
-                             [{:name :sku, :type :int, :default -1}
-                              {:name :qty-requested, :type :int, :default 0}]}]
+                             [{:name :sku :type :int :default -1}
+                              {:name :qty-requested :type :int :default 0}]}]
     (is (= "u7RfQa4gIP8+iNcQxGO+Ng=="
            (ba/byte-array->b64 (l/get-fingerprint128 add-to-cart-req-schema))))
     (is (= expected-edn-schema (l/get-edn-schema add-to-cart-req-schema)))
@@ -269,7 +272,12 @@
          (ba/byte-array [6 10 65 108 105 99 101 100 6 66 111 98 110 8
                          67 104 97 100 -78 1 0])
          encoded))
-    (is (= data decoded))))
+    (is (= data decoded))
+    #?(:clj
+       (let [decoded-native (l/deserialize ages-schema ages-schema
+                                           encoded true)]
+         (is (= java.util.HashMap
+                (class decoded-native)))))))
 
 (deftest test-def-array-schema
   (is (= {:type :array :items :string}
@@ -287,7 +295,13 @@
          (ba/byte-array [6 18 70 101 114 100 105 110 97 110 100 8 79
                          109 97 114 6 76 105 110 0])
          encoded))
-    (is (= names decoded))))
+    (is (= names decoded))
+    #?(:clj
+       (let [decoded-native (l/deserialize simple-array-schema
+                                           simple-array-schema
+                                           encoded true)]
+         (is (= org.apache.avro.generic.GenericData$Array
+                (class decoded-native)))))))
 
 (deftest test-nested-array-schema
   (is (= {:type :array
@@ -327,7 +341,7 @@
   (is (= "+BBySe1XenuRgfqEKzDfXQ=="
          (ba/byte-array->b64 (l/get-fingerprint128 rsps-schema)))))
 
-(deftest test-array-schema-serdes
+(deftest test-nested-array-schema-serdes
   (let [data [{:qty-requested 123
                :qty-added 4
                :current-qty 10
@@ -352,39 +366,39 @@
            (xf-byte-arrays decoded)))))
 
 (deftest test-nested-map-schema
-  (is (= {:type :map,
+  (is (= {:type :map
           :values
-          {:namespace "deercreeklabs.lancaster-test",
-           :name :add-to-cart-rsp,
-           :type :record,
+          {:namespace "deercreeklabs.lancaster-test"
+           :name :add-to-cart-rsp
+           :type :record
            :fields
-           [{:name :qty-requested, :type :int, :default -1}
-            {:name :qty-added, :type :int, :default -1}
-            {:name :current-qty, :type :int, :default -1}
-            {:name :req,
+           [{:name :qty-requested :type :int :default -1}
+            {:name :qty-added :type :int :default -1}
+            {:name :current-qty :type :int :default -1}
+            {:name :req
              :type
-             {:namespace "deercreeklabs.lancaster-test",
-              :name :add-to-cart-req,
-              :type :record,
+             {:namespace "deercreeklabs.lancaster-test"
+              :name :add-to-cart-req
+              :type :record
               :fields
-              [{:name :sku, :type :int, :default -1}
-               {:name :qty-requested, :type :int, :default 0}]},
-             :default {:sku 10, :qty-requested 1}}
-            {:name :the-reason-why,
+              [{:name :sku :type :int :default -1}
+               {:name :qty-requested :type :int :default 0}]}
+             :default {:sku 10 :qty-requested 1}}
+            {:name :the-reason-why
              :type
-             {:namespace "deercreeklabs.lancaster-test",
-              :name :why,
-              :type :enum,
-              :symbols [:all :stock :limit]},
+             {:namespace "deercreeklabs.lancaster-test"
+              :name :why
+              :type :enum
+              :symbols [:all :stock :limit]}
              :default :stock}
-            {:name :data,
+            {:name :data
              :type
-             {:namespace "deercreeklabs.lancaster-test",
-              :name :a-fixed,
-              :type :fixed,
-              :size 2},
+             {:namespace "deercreeklabs.lancaster-test"
+              :name :a-fixed
+              :type :fixed
+              :size 2}
              :default "MX"}
-            {:name :other-data, :type :bytes, :default ""}]}}
+            {:name :other-data :type :bytes :default ""}]}}
          (l/get-edn-schema nested-map-schema)))
   (is (= "WjAyzZpCvsP3vrmPavaK1w=="
          (ba/byte-array->b64 (l/get-fingerprint128 nested-map-schema)))))
@@ -415,26 +429,67 @@
 
 (deftest test-union-schema
   (is (= [:int
-             {:namespace "deercreeklabs.lancaster-test",
-              :name :add-to-cart-req,
-              :type :record,
-              :fields
-              [{:name :sku, :type :int, :default -1}
-               {:name :qty-requested, :type :int, :default 0}]}
-             {:namespace "deercreeklabs.lancaster-test",
-              :name :a-fixed,
-              :type :fixed,
-              :size 2}]
+          {:namespace "deercreeklabs.lancaster-test"
+           :name :add-to-cart-req
+           :type :record
+           :fields
+           [{:name :sku :type :int :default -1}
+            {:name :qty-requested :type :int :default 0}]}
+          {:namespace "deercreeklabs.lancaster-test"
+           :name :a-fixed
+           :type :fixed
+           :size 2}]
          (l/get-edn-schema union-schema)))
   (is (= "eoZHecFG3sfECWnaKrqwtQ=="
          (ba/byte-array->b64 (l/get-fingerprint128 union-schema)))))
 
 (deftest test-union-schema-serdes
-  (let [data (l/wrap add-to-cart-req-schema {:sku 123 :qty-requested 4})
+  (let [data {:sku 123 :qty-requested 4}
         encoded (l/serialize union-schema data)
-        decoded (l/deserialize union-schema union-schema encoded)]
-    (is (ba/equivalent-byte-arrays?
-         (ba/byte-array [2 -10 1 8])
-         encoded))
-    (is (= (xf-byte-arrays data)
-           (xf-byte-arrays decoded)))))
+        decoded (l/deserialize union-schema union-schema encoded)
+        _ (is (ba/equivalent-byte-arrays? (ba/byte-array [2 -10 1 8])
+                                          encoded))
+        _ (is (= data decoded))
+        data 5
+        encoded (l/serialize union-schema data)
+        decoded (l/deserialize union-schema union-schema encoded)
+        _ (is (ba/equivalent-byte-arrays? (ba/byte-array [0 10])
+                                          encoded))
+        _ (is (= data decoded))]))
+
+(deftest test-recursive-schema
+  (is (= {:namespace "deercreeklabs.lancaster-test"
+          :name :tree
+          :type :record
+          :fields
+          [{:name :value :type :int :default -1}
+           {:name :right
+            :type [:null "deercreeklabs.lancaster-test.tree"]
+            :default nil}
+           {:name :left
+            :type [:null "deercreeklabs.lancaster-test.tree"]
+            :default nil}]}
+         (l/get-edn-schema tree-schema)))
+  (is (= "7S/pDrRPpfq+cxuNpMNKlw=="
+         (ba/byte-array->b64 (l/get-fingerprint128 tree-schema)))))
+
+(deftest test-recursive-schema-serdes
+  (let [data {:value 5
+              :right {:value -10
+                      :right {:value -20
+                             :right nil
+                             :left nil}
+                      :left nil}
+              :left {:value 10
+                     :right nil
+                     :left {:value 20
+                            :right nil
+                            :left {:value 40
+                                   :right nil
+                                   :left nil}}}}
+        encoded (l/serialize tree-schema data)
+        decoded (l/deserialize tree-schema tree-schema encoded)
+        _ (is (ba/equivalent-byte-arrays?
+               (ba/byte-array [10 2 19 2 39 0 0 0 2 20 0 2 40 0 2 80 0 0])
+               encoded))
+        _ (is (= data decoded))]))

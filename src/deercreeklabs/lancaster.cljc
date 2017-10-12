@@ -4,6 +4,7 @@
    [deercreeklabs.lancaster.gen :as gen]
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]
+   [deercreeklabs.log-utils :as lu :refer [debugs]]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
@@ -49,6 +50,10 @@
   [schema-name & member-schemas]
   `(schemas/schema-helper :union ~schema-name ~(vec member-schemas)))
 
+;;;;;;;;;;;;;;;;;;;; Recursion Schema ;;;;;;;;;;;;;;;;;;;;
+
+(def nil-or-recur-schema :__nil_or_recur_schema__)
+
 ;;;;;;;;;;;;;;;;;;;; API Fns ;;;;;;;;;;;;;;;;;;;;
 
 (defn serialize [writer-schema data]
@@ -62,6 +67,9 @@
 
 (defn wrap [schema data]
   (schemas/wrap schema data))
+
+(defn unwrap [wrapped-data]
+  (first (vals wrapped-data)))
 
 (defn get-edn-schema [schema]
   (schemas/get-edn-schema schema))

@@ -47,6 +47,7 @@
     edn-schema))
 
 (defn get-avro-type [edn-schema]
+
   (cond
     (sequential? edn-schema) :union
     (map? edn-schema) (:type edn-schema)
@@ -54,6 +55,7 @@
                                       {:type :illegal-schema
                                        :subtype :schema-is-nil
                                        :schema edn-schema}))
+    (string? edn-schema) :string-reference
     :else edn-schema))
 
 (defn first-arg-dispatch [first-arg & rest-of-args]
@@ -67,19 +69,59 @@
 (defmulti fix-default avro-type-dispatch)
 (defmulti edn-schema->avro-schema avro-type-dispatch)
 
-(defmethod clj->avro :bytes
-  [dispatch-name ba]
-  (ByteBuffer/wrap ba))
+(defmethod clj->avro :null
+  [dispatch-name x]
+  nil)
+
+(defmethod clj->avro :boolean
+  [dispatch-name x]
+  x)
 
 (defmethod clj->avro :int
   [dispatch-name n]
   (int n))
 
+(defmethod clj->avro :long
+  [dispatch-name x]
+  (long x))
+
+(defmethod clj->avro :double
+  [dispatch-name x]
+  (double x))
+
 (defmethod clj->avro :float
   [dispatch-name n]
   (float n))
 
-(defmethod clj->avro :default
+(defmethod clj->avro :string
+  [dispatch-name x]
+  x)
+
+(defmethod clj->avro :bytes
+  [dispatch-name ba]
+  (ByteBuffer/wrap ba))
+
+(defmethod avro->clj :null
+  [dispatch-name x]
+  nil)
+
+(defmethod avro->clj :boolean
+  [dispatch-name x]
+  x)
+
+(defmethod avro->clj :int
+  [dispatch-name x]
+  x)
+
+(defmethod avro->clj :long
+  [dispatch-name x]
+  x)
+
+(defmethod avro->clj :float
+  [dispatch-name x]
+  x)
+
+(defmethod avro->clj :double
   [dispatch-name x]
   x)
 
@@ -90,10 +132,6 @@
 (defmethod avro->clj :string
   [dispatch-name ^org.apache.avro.util.Utf8 s]
   (.toString s))
-
-(defmethod avro->clj :default
-  [dispatch-name x]
-  x)
 
 (defprotocol IAvroSchema
   (serialize [this data])
@@ -116,7 +154,6 @@
 
 (defn deserialize* [^SpecificDatumReader reader ba]
   ;; TODO: Handle differing read/write schemas (ResolvingDecoder)
-  ;; TODO: Wrap unions
   (let [^BinaryDecoder decoder (.binaryDecoder decoder-factory ^bytes ba nil)]
     (.read reader nil decoder)))
 
@@ -157,14 +194,17 @@
                   writer reader fingerprint128)))
 
 (defn ensure-edn-schema [schema]
-  (if (satisfies? IAvroSchema schema)
-    (get-edn-schema schema)
-    schema))
+  (cond
+    (satisfies? IAvroSchema schema) (get-edn-schema schema)
+    (string? schema) (str *ns* "." schema)
+    (sequential? schema) (mapv ensure-edn-schema schema) ;; union
+    :else schema))
 
 (defn drop-schema-from-name [s]
-  (-> (name s)
-      (clojure.string/split #"-schema")
-      (first)))
+  (when s
+    (-> (name s)
+        (clojure.string/split #"-schema")
+        (first))))
 
 (defn edn-schema->dispatch-name [edn-schema]
   (let [avro-type (get-avro-type edn-schema)]
@@ -177,13 +217,22 @@
 
       (= :union avro-type)
       (str "union-of-" (clojure.string/join
-                        "," (map edn-schema->dispatch-name edn-schema)))
+                        "," (map #(name (edn-schema->dispatch-name %))
+                                 edn-schema)))
 
       (= :map avro-type)
-      (str "map-of-" (edn-schema->dispatch-name (:values edn-schema)))
+      (str "map-of-" (name (edn-schema->dispatch-name
+                            (:values edn-schema))))
 
       (= :array avro-type)
-      (str "array-of-" (edn-schema->dispatch-name (:items edn-schema))))))
+      (str "array-of-" (name (edn-schema->dispatch-name
+                              (:items edn-schema))))
+      (string? edn-schema)
+      edn-schema
+
+      :else
+      (throw (ex-info (str "Could not find dispatch name for " edn-schema)
+                      {:edn-schema edn-schema})))))
 
 (defn make-default-record [record-edn-schema default-record]
   (reduce (fn [acc field]
@@ -203,6 +252,7 @@
   (let [avro-type (get-avro-type field-schema)]
     (case avro-type
       :record (make-default-record field-schema field-default)
+      :union (get-field-default (first field-schema) field-default)
       :fixed (make-default-fixed-or-bytes field-default)
       :bytes (make-default-fixed-or-bytes field-default)
       (or field-default
@@ -215,7 +265,6 @@
             :double (double -1.0)
             :string ""
             :enum (first (:symbols field-schema))
-            :union (first field-schema)
             :array []
             :map {})))))
 
@@ -288,8 +337,16 @@
    :values (ensure-edn-schema values)})
 
 (defmethod make-edn-schema :union
-  [schema-type schema-ns short-name member-schemas]
-  (mapv ensure-edn-schema member-schemas))
+  [schema-type _ _ member-schemas]
+  (let [schemas (mapv ensure-edn-schema member-schemas)
+        types (set (map get-avro-type schemas))]
+    (when-not (= (count schemas) (count types))
+      (throw (ex-info "Unions may not have members with identical types."
+                      {:type :illegal-argument
+                       :subtype :duplicate-types-in-union
+                       :schemas schemas
+                       :types types})))
+    schemas))
 
 (defn need-pre-conversion? [avro-type]
   ((conj avro-complex-types :bytes :int :float) avro-type))
@@ -369,12 +426,63 @@
          [dispatch-name# m#]
          m#))))
 
+(defn more-than-one? [set schemas]
+  (> (count (keep #(set (get-avro-type %)) schemas)) 1))
+
+(defn wrapping-required? [schemas]
+  (or (more-than-one? #{:map :record} schemas)
+      (more-than-one? #{:int :long :float :double} schemas)
+      (more-than-one? #{:null} schemas)
+      (more-than-one? #{:boolean} schemas)
+      (more-than-one? #{:string :enum} schemas)
+      (more-than-one? #{:bytes :fixed} schemas)
+      (more-than-one? #{:array} schemas)))
+
+
+(defn make-data->dispatch-cond-line [data-sym member-schema]
+  ;; Note that we only care about putting things in the right
+  ;; category, as this is only used by unwrapped unions
+  (let [dispatch-name (edn-schema->dispatch-name member-schema)]
+    (case (get-avro-type member-schema)
+      :null `((nil? ~data-sym) ~dispatch-name)
+      :boolean `((instance? Boolean ~data-sym) ~dispatch-name)
+      :int `((integer? ~data-sym) ~dispatch-name)
+      :long `((integer? ~data-sym) ~dispatch-name)
+      :float `((float? ~data-sym) ~dispatch-name)
+      :double `((float? ~data-sym) ~dispatch-name)
+      :bytes `((ba/byte-array? ~data-sym) ~dispatch-name)
+      :string `((string? ~data-sym) ~dispatch-name)
+      :record `((map? ~data-sym) ~dispatch-name)
+      :fixed `((ba/byte-array? ~data-sym) ~dispatch-name)
+      :enum `((string? ~data-sym) ~dispatch-name)
+      :array `((sequential? ~data-sym) ~dispatch-name)
+      :map `((map? ~data-sym) ~dispatch-name)
+      ;; Since unions can't contain other unions, we don't
+      ;; have a case for :union
+      )))
+
 (defmethod make-constructor :union
   [edn-schema _ dispatch-name]
-  `(defmethod clj->avro ~dispatch-name
-     [dispatch-name# wrapped-data#]
-     (when-not (nil? wrapped-data#)
-       (apply clj->avro (first wrapped-data#)))))
+  (if (wrapping-required? edn-schema)
+    `(defmethod clj->avro ~dispatch-name
+       [dispatch-name# wrapped-data#]
+       (when-not (nil? wrapped-data#)
+         (try
+           (apply clj->avro (first wrapped-data#))
+           (catch java.lang.IllegalArgumentException e#
+             (throw
+              (ex-info "This union requires wrapping, but data is not wrapped."
+                       {:type :illegal-argument
+                        :subtype :union-data-not-wrapped
+                        :dispatch-name dispatch-name#
+                        :data wrapped-data#}))))))
+    (let [data-sym (gensym "data")
+          cond-lines (mapcat (partial make-data->dispatch-cond-line data-sym)
+                             edn-schema)]
+      `(defmethod clj->avro ~dispatch-name
+         [dispatch-name# ~data-sym]
+         (when-not (nil? ~data-sym)
+           (clj->avro (cond ~@cond-lines) ~data-sym))))))
 
 (defn need-post-conversion? [avro-type]
   ((conj avro-complex-types :bytes :string) avro-type))
@@ -463,17 +571,20 @@
         java-class-name (csk/->PascalCase (name (:name edn-schema)))]
     (Class/forName (str java-ns "." java-class-name))))
 
-(defn edn-schema->java-class [edn-schema]
-  (case (get-avro-type edn-schema)
-    :boolean java.lang.Boolean
-    :int java.lang.Integer
-    :long java.lang.Long
-    :float java.lang.Float
-    :double java.lang.Double
-    :bytes java.nio.HeapByteBuffer
-    :string org.apache.avro.util.Utf8
-    :map java.util.HashMap
-    (named-schema->java-class edn-schema)))
+#?(:clj
+   (defn edn-schema->java-class [edn-schema]
+     (case (get-avro-type edn-schema)
+       :null nil
+       :boolean java.lang.Boolean
+       :int java.lang.Integer
+       :long java.lang.Long
+       :float java.lang.Float
+       :double java.lang.Double
+       :bytes java.nio.HeapByteBuffer
+       :string org.apache.avro.util.Utf8
+       :array org.apache.avro.generic.GenericData$Array
+       :map java.util.HashMap
+       (named-schema->java-class edn-schema))))
 
 (defn make-class->name [union-schema]
   (let [java-classes (map edn-schema->java-class union-schema)
@@ -483,12 +594,18 @@
 (defmethod make-post-converter :union
   [edn-schema _ dispatch-name]
   (let [class->name (make-class->name edn-schema)]
-    `(defmethod avro->clj ~dispatch-name
-       [union-dispatch-name# avro-data#]
-       (when-not (nil? avro-data#)
-         (let [member-dispatch-name# (~class->name (class avro-data#))]
-           {member-dispatch-name# (avro->clj member-dispatch-name#
-                                             avro-data#)})))))
+    (if (wrapping-required? edn-schema)
+      `(defmethod avro->clj ~dispatch-name
+         [union-dispatch-name# avro-data#]
+         (when-not (nil? avro-data#)
+           (let [member-dispatch-name# (~class->name (class avro-data#))]
+             {member-dispatch-name# (avro->clj member-dispatch-name#
+                                               avro-data#)})))
+      `(defmethod avro->clj ~dispatch-name
+         [union-dispatch-name# avro-data#]
+         (when-not (nil? avro-data#)
+           (let [member-dispatch-name# (~class->name (class avro-data#))]
+             (avro->clj member-dispatch-name# avro-data#)))))))
 
 (defn fix-name [edn-schema]
   (-> edn-schema
@@ -590,21 +707,52 @@
   [edn-schema]
   (mapv edn-schema->avro-schema edn-schema))
 
+(defmethod edn-schema->avro-schema :string-reference
+  [edn-schema]
+  (let [name-parts (clojure.string/split edn-schema #"\.")
+        schema-ns (clojure.string/join "." (butlast name-parts))
+        schema-name (last name-parts)]
+    (str (namespace-munge schema-ns) "." (csk/->PascalCase schema-name))))
+
 (defmethod edn-schema->avro-schema :default
   [edn-schema]
   edn-schema)
 
+(defn replace-nil-or-recur-schema [short-name args]
+  (clojure.walk/postwalk
+   (fn [form]
+     (if (and (symbol? form)
+              (= :__nil_or_recur_schema__ (eval form)))
+       (let [edn-schema [:null short-name]
+             record-dispatch-name (str *ns* "." short-name)
+             union-dispatch-name (str "union-of-null," record-dispatch-name)
+             constructor `(defmethod clj->avro ~union-dispatch-name
+                            [union-dispatch-name# data#]
+                            (when-not (nil? data#)
+                              (clj->avro ~record-dispatch-name data#)))
+             post-converter `(defmethod avro->clj ~union-dispatch-name
+                               [union-dispatch-name# avro-data#]
+                               (when-not (nil? avro-data#)
+                                 (avro->clj ~record-dispatch-name avro-data#)))]
+         `(do
+            ~constructor
+            ~post-converter
+            ~edn-schema))
+       form))
+   args))
+
 (defmacro schema-helper
   [schema-type clj-var-name args]
-  (let [args (eval args)
-        short-name (drop-schema-from-name clj-var-name)
+  (let [short-name (drop-schema-from-name clj-var-name)
+        args (cond->> args
+               (= :record schema-type) (replace-nil-or-recur-schema short-name)
+               true (eval))
         schema-ns (str *ns*)
         java-ns (namespace-munge schema-ns)
         java-class-name (csk/->PascalCase short-name)
         class-expr (map symbol [java-ns java-class-name])
         full-java-name (str java-ns "." java-class-name)
         edn-schema (make-edn-schema schema-type schema-ns short-name args)
-        avro-type (get-avro-type edn-schema)
         dispatch-name (edn-schema->dispatch-name edn-schema)
         constructor (make-constructor edn-schema full-java-name dispatch-name)
         post-converter (make-post-converter edn-schema full-java-name
@@ -619,11 +767,12 @@
            fingerprint# (SchemaNormalization/parsingFingerprint
                          "MD5" avro-schema-obj#)
            writer# (SpecificDatumWriter. ^Schema avro-schema-obj#)
-           reader# (SpecificDatumReader. ^Schema avro-schema-obj#)]
+           reader# (SpecificDatumReader. ^Schema avro-schema-obj#)
+           schema-obj# (->AvroSchema ~dispatch-name
+                                     ~edn-schema ~json-schema
+                                     pf# writer# reader# fingerprint#)]
        (when (avro-named-types ~avro-type)
          (import ~class-expr))
        ~constructor
        ~post-converter
-       (def ~clj-var-name (->AvroSchema ~dispatch-name
-                                        ~edn-schema ~json-schema
-                                        pf# writer# reader# fingerprint#)))))
+       (def ~clj-var-name schema-obj#))))
