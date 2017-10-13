@@ -13,9 +13,22 @@
 
 (u/configure-logging)
 
+(defn deserialize-same
+  "Deserialize with the same reader and writer schemas. Use for testing only."
+  ([schema encoded]
+   (deserialize-same schema encoded false))
+  ([schema encoded return-java?]
+   (l/deserialize schema (l/get-json-schema schema) encoded return-java?)))
+
 (l/def-record-schema add-to-cart-req-schema
   [:sku :int]
   [:qty-requested :int 0])
+
+(l/def-record-schema add-to-cart-req-v2-schema
+  [:username :string]
+  [:sku :int]
+  [:qty-requested :int 0])
+
 
 (l/def-enum-schema why-schema
   :all :stock :limit)
@@ -72,12 +85,11 @@
   (let [data {:sku 123
               :qty-requested 5}
         encoded (l/serialize add-to-cart-req-schema data)
-        decoded (l/deserialize add-to-cart-req-schema add-to-cart-req-schema
-                               encoded)]
+        decoded (deserialize-same add-to-cart-req-schema encoded)]
     (is (= "9gEK" (ba/byte-array->b64 encoded)))
     (is (= data decoded))
     #?(:clj
-       (let [decoded-native (l/deserialize add-to-cart-req-schema
+       (let [decoded-native (deserialize-same
                                            add-to-cart-req-schema
                                            encoded true)
              sku (.getSku ^AddToCartReq decoded-native)
@@ -100,11 +112,11 @@
 (deftest test-def-enum-schema-serdes
   (let [data :stock
         encoded (l/serialize why-schema data)
-        decoded (l/deserialize why-schema why-schema encoded)]
+        decoded (deserialize-same why-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [2]) encoded))
     (is (= data decoded))
     #?(:clj
-       (let [decoded-native (l/deserialize why-schema why-schema encoded true)]
+       (let [decoded-native (deserialize-same why-schema encoded true)]
          (is (= Why/STOCK decoded-native))))))
 
 (deftest test-def-fixed-schema
@@ -122,12 +134,12 @@
 (deftest test-def-fixed-schema-serdes
   (let [data (ba/byte-array [12 24])
         encoded (l/serialize a-fixed-schema data)
-        decoded (l/deserialize a-fixed-schema a-fixed-schema encoded)]
+        decoded (deserialize-same a-fixed-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          data encoded))
     (is (ba/equivalent-byte-arrays? data decoded))
     #?(:clj
-       (let [decoded-native (l/deserialize a-fixed-schema a-fixed-schema
+       (let [decoded-native (deserialize-same a-fixed-schema
                                            encoded true)]
          (is (= (AFixed. data) decoded-native))))))
 
@@ -186,7 +198,7 @@
                         :current-qty -1
                         :the-reason-why :stock)
         encoded (l/serialize add-to-cart-rsp-schema data)
-        decoded (l/deserialize add-to-cart-rsp-schema add-to-cart-rsp-schema
+        decoded (deserialize-same add-to-cart-rsp-schema
                                encoded)]
     (is (= "9gEBAfYB9gECQkMEe3s=" (ba/byte-array->b64 encoded)))
     (is (= (xf-byte-arrays expected)
@@ -195,28 +207,28 @@
 (deftest test-null-schema
   (let [data nil
         encoded (l/serialize l/null-schema data)
-        decoded (l/deserialize l/null-schema l/null-schema encoded)]
+        decoded (deserialize-same l/null-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array []) encoded))
     (is (= data decoded))))
 
 (deftest test-boolean-schema
   (let [data true
         encoded (l/serialize l/boolean-schema data)
-        decoded (l/deserialize l/boolean-schema l/boolean-schema encoded)]
+        decoded (deserialize-same l/boolean-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [1]) encoded))
     (is (= data decoded))))
 
 (deftest test-int-schema
   (let [data 7890
         encoded (l/serialize l/int-schema data)
-        decoded (l/deserialize l/int-schema l/int-schema encoded)]
+        decoded (deserialize-same l/int-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-92 123]) encoded))
     (is (= data decoded))))
 
 (deftest test-long-schema
   (let [data 9223372036854775807
         encoded (l/serialize l/long-schema data)
-        decoded (l/deserialize l/long-schema l/long-schema encoded)]
+        decoded (deserialize-same l/long-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [-2 -1 -1 -1 -1 -1 -1 -1 -1 1])
          encoded))
@@ -225,14 +237,14 @@
 (deftest test-float-schema
   (let [data (float 3.14159)
         encoded (l/serialize l/float-schema data)
-        decoded (l/deserialize l/float-schema l/float-schema encoded)]
+        decoded (deserialize-same l/float-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-48 15 73 64]) encoded))
     (is (= data decoded))))
 
 (deftest test-double-schema
   (let [data (double 3.14159265359)
         encoded (l/serialize l/double-schema data)
-        decoded (l/deserialize l/double-schema l/double-schema encoded)]
+        decoded (deserialize-same l/double-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-22 46 68 84 -5 33 9 64])
                                     encoded))
     (is (= data decoded))))
@@ -240,7 +252,7 @@
 (deftest test-bytes-schema
   (let [data (ba/byte-array [1 1 2 3 5 8 13 21])
         encoded (l/serialize l/bytes-schema data)
-        decoded (l/deserialize l/bytes-schema l/bytes-schema encoded)]
+        decoded (deserialize-same l/bytes-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [16 1 1 2 3 5 8 13 21])
                                     encoded))
     (is (ba/equivalent-byte-arrays? data decoded))))
@@ -248,7 +260,7 @@
 (deftest test-string-schema
   (let [data "Hello world!"
         encoded (l/serialize l/string-schema data)
-        decoded (l/deserialize l/string-schema l/string-schema encoded)]
+        decoded (deserialize-same l/string-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [24 72 101 108 108 111 32 119 111 114 108 100 33])
          encoded))
@@ -267,14 +279,14 @@
               "Bob" 55
               "Chad" 89}
         encoded (l/serialize ages-schema data)
-        decoded (l/deserialize ages-schema ages-schema encoded)]
+        decoded (deserialize-same ages-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [6 10 65 108 105 99 101 100 6 66 111 98 110 8
                          67 104 97 100 -78 1 0])
          encoded))
     (is (= data decoded))
     #?(:clj
-       (let [decoded-native (l/deserialize ages-schema ages-schema
+       (let [decoded-native (deserialize-same ages-schema
                                            encoded true)]
          (is (= java.util.HashMap
                 (class decoded-native)))))))
@@ -290,14 +302,14 @@
 (deftest test-array-schema-serdes
   (let [names ["Ferdinand" "Omar" "Lin"]
         encoded (l/serialize simple-array-schema names)
-        decoded (l/deserialize simple-array-schema simple-array-schema encoded)]
+        decoded (deserialize-same simple-array-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [6 18 70 101 114 100 105 110 97 110 100 8 79
                          109 97 114 6 76 105 110 0])
          encoded))
     (is (= names decoded))
     #?(:clj
-       (let [decoded-native (l/deserialize simple-array-schema
+       (let [decoded-native (deserialize-same
                                            simple-array-schema
                                            encoded true)]
          (is (= org.apache.avro.generic.GenericData$Array
@@ -357,7 +369,7 @@
                :data (ba/byte-array [100 110])
                :other-data (ba/byte-array [64 74])}]
         encoded (l/serialize rsps-schema data)
-        decoded (l/deserialize rsps-schema rsps-schema encoded)]
+        decoded (deserialize-same rsps-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [4 -10 1 8 20 -10 1 -10 1 4 66 67 4 123 123
                          8 8 8 20 8 0 100 110 4 64 74 0])
@@ -419,7 +431,7 @@
                    :data (ba/byte-array [100 110])
                    :other-data (ba/byte-array [64 74])}}
         encoded (l/serialize nested-map-schema data)
-        decoded (l/deserialize nested-map-schema nested-map-schema encoded)]
+        decoded (deserialize-same nested-map-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [4 2 65 -10 1 8 20 -10 1 -10 1 4 66 67 4
                          123 123 2 66 8 8 8 20 8 0 100 110 4 64 74 0])
@@ -446,13 +458,13 @@
 (deftest test-union-schema-serdes
   (let [data {:sku 123 :qty-requested 4}
         encoded (l/serialize union-schema data)
-        decoded (l/deserialize union-schema union-schema encoded)
+        decoded (deserialize-same union-schema encoded)
         _ (is (ba/equivalent-byte-arrays? (ba/byte-array [2 -10 1 8])
                                           encoded))
         _ (is (= data decoded))
         data 5
         encoded (l/serialize union-schema data)
-        decoded (l/deserialize union-schema union-schema encoded)
+        decoded (deserialize-same union-schema encoded)
         _ (is (ba/equivalent-byte-arrays? (ba/byte-array [0 10])
                                           encoded))
         _ (is (= data decoded))]))
@@ -488,8 +500,31 @@
                                    :right nil
                                    :left nil}}}}
         encoded (l/serialize tree-schema data)
-        decoded (l/deserialize tree-schema tree-schema encoded)
+        decoded (deserialize-same tree-schema encoded)
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [10 2 19 2 39 0 0 0 2 20 0 2 40 0 2 80 0 0])
                encoded))
         _ (is (= data decoded))]))
+
+(deftest test-schema-evolution-add-a-field
+  (let [data {:sku 789
+              :qty-requested 10}
+        encoded-orig (l/serialize add-to-cart-req-schema data)
+        _ (is (ba/equivalent-byte-arrays? (ba/byte-array [-86 12 20])
+                                          encoded-orig))
+        decoded-new (l/deserialize add-to-cart-req-v2-schema
+                                   (l/get-json-schema add-to-cart-req-schema)
+                                   encoded-orig)]
+    (is (= (assoc data :username "") decoded-new))))
+
+(deftest test-schema-evolution-remove-a-field
+  (let [data {:username ""
+              :sku 789
+              :qty-requested 10}
+        encoded-orig (l/serialize add-to-cart-req-v2-schema data)
+        _ (is (ba/equivalent-byte-arrays? (ba/byte-array [0 -86 12 20])
+                                          encoded-orig))
+        decoded-new (l/deserialize add-to-cart-req-schema
+                                   (l/get-json-schema add-to-cart-req-v2-schema)
+                                   encoded-orig)]
+    (is (= (dissoc data :username) decoded-new))))

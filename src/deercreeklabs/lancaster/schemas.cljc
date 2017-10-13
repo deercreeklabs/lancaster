@@ -6,6 +6,7 @@
    #?(:clj [deercreeklabs.lancaster.gen :as gen])
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
+   [deercreeklabs.stockroom :as sr]
    #?(:clj [puget.printer :refer [cprint]])
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:clj
@@ -14,7 +15,7 @@
       (java.nio ByteBuffer)
       (org.apache.avro Schema Schema$Parser SchemaNormalization)
       (org.apache.avro.io BinaryDecoder Decoder DecoderFactory
-                          Encoder EncoderFactory)
+                          Encoder EncoderFactory ResolvingDecoder)
       (org.apache.avro.specific SpecificDatumReader SpecificDatumWriter))
      :cljs
      (:require-macros
@@ -22,6 +23,7 @@
 
 (declare get-field-default)
 
+(def reader-cache-size 50)
 (def avro-primitive-types #{:null :boolean :int :long :float :double
                             :bytes :string})
 (def avro-named-types   #{:record :fixed :enum})
@@ -135,7 +137,7 @@
 
 (defprotocol IAvroSchema
   (serialize [this data])
-  (deserialize [this writer-schema ba return-java?])
+  (deserialize [this writer-json-schema ba return-java?])
   (wrap [this data])
   (get-edn-schema [this])
   (get-json-schema [this])
@@ -152,21 +154,41 @@
     (.flush encoder)
     (.toByteArray output-stream)))
 
+(defn get-resolving-reader [reader-schema-obj writer-json-schema reader-cache]
+  (or (sr/get reader-cache writer-json-schema)
+      (let [writer-schema-obj (.parse ^Schema$Parser (Schema$Parser.)
+                                      ^String writer-json-schema)
+            resolving-reader (SpecificDatumReader. writer-schema-obj
+                                                   reader-schema-obj)]
+        (sr/put reader-cache writer-json-schema resolving-reader)
+        resolving-reader)))
+
+(defn deserialize-resolving*
+  [reader-schema-obj writer-json-schema reader-cache ba]
+  (let [^BinaryDecoder decoder (.binaryDecoder decoder-factory ^bytes ba nil)
+        resolving-reader (get-resolving-reader
+                          reader-schema-obj writer-json-schema reader-cache)]
+    (.read resolving-reader nil decoder)))
+
 (defn deserialize* [^SpecificDatumReader reader ba]
-  ;; TODO: Handle differing read/write schemas (ResolvingDecoder)
   (let [^BinaryDecoder decoder (.binaryDecoder decoder-factory ^bytes ba nil)]
     (.read reader nil decoder)))
 
-(defrecord AvroSchema [dispatch-name edn-schema json-schema
-                       parsing-canonical-form writer reader fingerprint128]
+(defrecord AvroSchema [dispatch-name edn-schema json-schema avro-schema-obj
+                       parsing-canonical-form writer reader fingerprint128
+                       reader-cache]
   IAvroSchema
   (serialize [this data]
-    ;; TODO: Use macro to optimize clj->avro and avro->clj for cases where
-    ;; they are not needed (primitives, etc.)
     (let [avro (clj->avro dispatch-name data)]
       (serialize* writer avro)))
-  (deserialize [this writer-schema ba return-java?]
-    (let [obj (deserialize* reader ba)]
+  (deserialize [this writer-json-schema ba return-java?]
+    (let [deser-fn (if (= writer-json-schema json-schema)
+                     deserialize*
+                     deserialize-resolving*)
+          obj (if (= writer-json-schema json-schema)
+                (deserialize* reader ba)
+                (deserialize-resolving* avro-schema-obj writer-json-schema
+                                        reader-cache ba))]
       (if return-java?
         obj
         (avro->clj dispatch-name obj))))
@@ -189,9 +211,11 @@
         writer (SpecificDatumWriter. ^Schema avro-schema-obj)
         reader (SpecificDatumReader. ^Schema avro-schema-obj)
         fingerprint128 (SchemaNormalization/parsingFingerprint
-                        "MD5" avro-schema-obj)]
-    (->AvroSchema dispatch-name edn-schema json-schema parsing-canonical-form
-                  writer reader fingerprint128)))
+                        "MD5" avro-schema-obj)
+        reader-cache (sr/make-stockroom reader-cache-size)]
+    (->AvroSchema dispatch-name edn-schema json-schema avro-schema-obj
+                  parsing-canonical-form writer reader fingerprint128
+                  reader-cache)))
 
 (defn ensure-edn-schema [schema]
   (cond
@@ -768,9 +792,11 @@
                          "MD5" avro-schema-obj#)
            writer# (SpecificDatumWriter. ^Schema avro-schema-obj#)
            reader# (SpecificDatumReader. ^Schema avro-schema-obj#)
+           reader-cache# (sr/make-stockroom reader-cache-size)
            schema-obj# (->AvroSchema ~dispatch-name
-                                     ~edn-schema ~json-schema
-                                     pf# writer# reader# fingerprint#)]
+                                     ~edn-schema ~json-schema avro-schema-obj#
+                                     pf# writer# reader# fingerprint#
+                                     reader-cache#)]
        (when (avro-named-types ~avro-type)
          (import ~class-expr))
        ~constructor

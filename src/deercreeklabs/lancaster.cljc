@@ -52,18 +52,21 @@
 
 ;;;;;;;;;;;;;;;;;;;; Recursion Schema ;;;;;;;;;;;;;;;;;;;;
 
-(def nil-or-recur-schema :__nil_or_recur_schema__)
+
+(def nil-or-recur-schema
+  "This is a special schema that can only be used inside record fields."
+  :__nil_or_recur_schema__)
 
 ;;;;;;;;;;;;;;;;;;;; API Fns ;;;;;;;;;;;;;;;;;;;;
 
-(defn serialize [writer-schema data]
-  (schemas/serialize writer-schema data))
+(defn serialize [schema-obj data]
+  (schemas/serialize schema-obj data))
 
 (defn deserialize
-  ([reader-schema writer-schema ba]
-   (schemas/deserialize reader-schema writer-schema ba false))
-  ([reader-schema writer-schema ba return-java?]
-   (schemas/deserialize reader-schema writer-schema ba return-java?)))
+  ([reader-schema-obj writer-json-schema ba]
+   (schemas/deserialize reader-schema-obj writer-json-schema ba false))
+  ([reader-schema-obj writer-json-schema ba return-java?]
+   (schemas/deserialize reader-schema-obj writer-json-schema ba return-java?)))
 
 (defn wrap [schema data]
   (schemas/wrap schema data))

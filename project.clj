@@ -39,6 +39,7 @@
    [com.taoensso/timbre "4.10.0"]
    [deercreeklabs/baracus "0.1.0" :exclusions [prismatic/schema]]
    [deercreeklabs/log-utils "0.1.0"]
+   [deercreeklabs/stockroom "0.1.11"]
    [me.raynes/fs "1.4.6" :exclusions [org.apache.commons/commons-compress]]
    [org.apache.avro/avro "1.8.2" :exclusions [org.slf4j/slf4j-api]]
    [org.apache.avro/avro-tools "1.8.2" :exclusions [commons-logging]]
