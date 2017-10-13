@@ -225,7 +225,8 @@
     :else schema))
 
 (defn drop-schema-from-name [s]
-  (when s
+  (if-not (clojure.string/ends-with? s "schema")
+    s
     (-> (name s)
         (clojure.string/split #"-schema")
         (first))))
