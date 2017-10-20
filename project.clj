@@ -66,10 +66,10 @@
      :notify-command ["node" "target/test/node_test_adv/test_main.js"]
      :compiler
      {:optimizations :advanced
-      ;; :pseudo-names true
-      ;; :pretty-print true
-      ;; :infer-externs true
-      :externs ["externs.js"]
+      ;;:pseudo-names true
+      ;;:pretty-print true
+      ;;:infer-externs true
+      :externs ["lancaster_externs.js"]
       :parallel-build true
       :main "deercreeklabs.node-test-runner"
       :target :nodejs
@@ -114,7 +114,7 @@
       ;; :pseudo-names true
       ;; :pretty-print true
       ;; :infer-externs true
-      :externs ["externs.js"]
+      :externs ["lancaster_externs.js"]
       :parallel-build true
       :main "deercreeklabs.doo-test-runner"
       :static-fns true

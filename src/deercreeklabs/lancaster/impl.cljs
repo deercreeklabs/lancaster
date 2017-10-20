@@ -5,19 +5,21 @@
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    [deercreeklabs.stockroom :as sr]
+   [oops.core :refer [ocall oget oget+]]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
 
 (def avsc (js/require "avsc"))
-(def Type (goog.object.get avsc "Type"))
+(def Type (oget avsc "Type"))
 (def resolver-cache-size 50)
 
 (defn json-schema->avro-schema-obj [json-schema]
-  (.forSchema Type (js/JSON.parse json-schema)))
+  (ocall Type "forSchema" (js/JSON.parse json-schema)))
 
 (defn get-resolver [reader-schema-obj writer-json-schema resolver-cache]
   (or (sr/get resolver-cache writer-json-schema)
       (let [writer-schema-obj (json-schema->avro-schema-obj writer-json-schema)
-            resolver (.createResolver reader-schema-obj writer-schema-obj)]
+            resolver (ocall reader-schema-obj "createResolver"
+                            writer-schema-obj)]
         (sr/put resolver-cache writer-json-schema resolver)
         resolver)))
 
@@ -27,14 +29,15 @@
   u/IAvroSchema
   (serialize [this data]
     (->> (pre-converter data)
-         (.toBuffer avro-schema-obj)
+         (ocall avro-schema-obj "toBuffer")
          (js/Int8Array.)))
   (deserialize [this writer-json-schema ba return-native?]
     (let [obj (if (= writer-json-schema json-schema)
-                (.fromBuffer avro-schema-obj (js/Buffer. ba))
+                (ocall avro-schema-obj "fromBuffer" (js/Buffer. ba))
                 (let [resolver (get-resolver avro-schema-obj writer-json-schema
                                              resolver-cache)]
-                  (.fromBuffer avro-schema-obj (js/Buffer. ba) resolver)))]
+                  (ocall avro-schema-obj "fromBuffer"
+                         (js/Buffer. ba) resolver)))]
       (if return-native?
         obj
         (post-converter obj))))
@@ -216,7 +219,7 @@
                       ((field-converters i) v))]
     (fn post-convert [js-m]
       (binding [**parent-post-converter** post-convert]
-        (let [js-vals (map #(goog.object.get js-m %) js-ks)
+        (let [js-vals (map #(oget+ js-m %) js-ks)
               clj-vals (map-indexed get-clj-val js-vals)]
           (zipmap clj-ks clj-vals))))))
 
@@ -245,7 +248,7 @@
         xf (fn [[k v]]
                 [k (converter v)])]
     (fn [js-obj]
-      (let [entries (.entries js/Object js-obj)
+      (let [entries (ocall js/Object "entries" js-obj)
             kvps (mapcat xf entries)]
         (apply hash-map kvps)))))
 
@@ -302,7 +305,7 @@
                                       edn-schema)]
     (if (u/wrapping-required? edn-schema)
       (fn [wrapped-js-v]
-        (let [[avro-name js-v] (first (.entries js/Object wrapped-js-v))
+        (let [[avro-name js-v] (first (ocall js/Object "entries" wrapped-js-v))
               schema-name (avro-name->clj-schema-name avro-name)
               converter (schema-name->converter schema-name)]
           {schema-name (converter js-v)}))
@@ -316,8 +319,9 @@
 (defn make-schema-obj [edn-schema json-schema]
   (let [edn-schema-name (u/get-schema-name edn-schema)
         avro-schema-obj (json-schema->avro-schema-obj json-schema)
-        parsing-canonical-form (js/JSON.stringify (.schema avro-schema-obj))
-        fp (js/Int8Array. (.fingerprint avro-schema-obj "md5"))
+        parsing-canonical-form (js/JSON.stringify
+                                (ocall avro-schema-obj "schema"))
+        fp (js/Int8Array. (ocall avro-schema-obj "fingerprint" "md5"))
         resolver-cache (sr/make-stockroom resolver-cache-size)
         pre-converter (make-pre-converter edn-schema)
         post-converter (make-post-converter edn-schema)]
