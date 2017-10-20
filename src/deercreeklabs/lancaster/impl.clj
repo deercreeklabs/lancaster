@@ -278,7 +278,7 @@
                                              (csk/->PascalCase (name name-kw))))
                          getter (if (need-pre-conversion? avro-type)
                                   `(u/clj->avro ~field-dispatch-name
-                                              (~name-kw ~map-sym))
+                                                (~name-kw ~map-sym))
                                   `(~name-kw ~map-sym))]
                      `((~name-kw ~map-sym) (~setter ~getter)))
         setters (-> (mapcat mk-setter fields)
@@ -405,7 +405,7 @@
                                     (symbol))
                         get-expr (if (need-post-conversion? avro-type)
                                    `(u/avro->clj ~dispatch-name
-                                               (~getter ~avro-obj-sym))
+                                                 (~getter ~avro-obj-sym))
                                    `(~getter ~avro-obj-sym))
                         class-nk (class name-kw)
                         class-ge (class get-expr)]
@@ -500,7 +500,7 @@
          (when-not (nil? avro-data#)
            (let [member-dispatch-name# (~class->name (class avro-data#))]
              {member-dispatch-name# (u/avro->clj member-dispatch-name#
-                                               avro-data#)})))
+                                                 avro-data#)})))
       `(defmethod u/avro->clj ~dispatch-name
          [union-dispatch-name# avro-data#]
          (when-not (nil? avro-data#)

@@ -100,7 +100,7 @@
   (let [{:keys [values]} edn-schema
         converter (make-pre-converter values)
         xf (fn [[k v]]
-                [k (converter v)])]
+             [k (converter v)])]
     (fn [m]
       (apply js-obj (mapcat xf m)))))
 
@@ -186,7 +186,7 @@
         converters (map make-pre-converter edn-schema)
         clj-schema-name->converter (zipmap schema-names converters)
         clj-schema-name->avro-name (make-clj-schema-name->avro-name
-                                      edn-schema)]
+                                    edn-schema)]
     (if (u/wrapping-required? edn-schema)
       (fn [wrapped-clj-v]
         (let [[clj-schema-name clj-v] (first wrapped-clj-v)
@@ -196,7 +196,7 @@
       (let [test-name-pairs (map make-clj-test-name-pair edn-schema)]
         (fn [clj-v]
           (let [schema-name (some (partial find-schema-name clj-v)
-                                    test-name-pairs)
+                                  test-name-pairs)
                 converter (clj-schema-name->converter schema-name)]
             (converter clj-v)))))))
 
@@ -246,7 +246,7 @@
   (let [{:keys [values]} edn-schema
         converter (make-post-converter values)
         xf (fn [[k v]]
-                [k (converter v)])]
+             [k (converter v)])]
     (fn [js-obj]
       (let [entries (ocall js/Object "entries" js-obj)
             kvps (mapcat xf entries)]
@@ -302,7 +302,7 @@
         converters (mapv make-post-converter edn-schema)
         schema-name->converter (zipmap schema-names converters)
         avro-name->clj-schema-name (make-avro-name->clj-schema-name
-                                      edn-schema)]
+                                    edn-schema)]
     (if (u/wrapping-required? edn-schema)
       (fn [wrapped-js-v]
         (let [[avro-name js-v] (first (ocall js/Object "entries" wrapped-js-v))
@@ -312,7 +312,7 @@
       (let [test-name-pairs (mapv make-js-test-name-pair edn-schema)]
         (fn [js-v]
           (let [schema-name (some (partial find-schema-name js-v)
-                                    test-name-pairs)
+                                  test-name-pairs)
                 converter (schema-name->converter schema-name)]
             (converter js-v)))))))
 

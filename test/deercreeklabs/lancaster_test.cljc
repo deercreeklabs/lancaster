@@ -616,8 +616,8 @@
   (let [data {:value 5
               :right {:value -10
                       :right {:value -20
-                             :right nil
-                             :left nil}
+                              :right nil
+                              :left nil}
                       :left nil}
               :left {:value 10
                      :right nil
@@ -645,14 +645,14 @@
     (is (= (assoc data :username "") decoded-new))))
 
 (deftest test-schema-evolution-remove-a-field
-   (let [data {:username ""
-               :sku 789
-               :qty-requested 10}
-         encoded-orig (l/serialize add-to-cart-req-v2-schema data)
-         _ (is (ba/equivalent-byte-arrays? (ba/byte-array [0 -86 12 20])
-                                           encoded-orig))
-         decoded-new (l/deserialize
-                      add-to-cart-req-v3-schema
-                      (l/get-json-schema add-to-cart-req-v2-schema)
-                      encoded-orig)]
-     (is (= (dissoc data :username) decoded-new))))
+  (let [data {:username ""
+              :sku 789
+              :qty-requested 10}
+        encoded-orig (l/serialize add-to-cart-req-v2-schema data)
+        _ (is (ba/equivalent-byte-arrays? (ba/byte-array [0 -86 12 20])
+                                          encoded-orig))
+        decoded-new (l/deserialize
+                     add-to-cart-req-v3-schema
+                     (l/get-json-schema add-to-cart-req-v2-schema)
+                     encoded-orig)]
+    (is (= (dissoc data :username) decoded-new))))
