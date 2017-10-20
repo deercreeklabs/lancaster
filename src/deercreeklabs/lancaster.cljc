@@ -1,63 +1,88 @@
 (ns deercreeklabs.lancaster
   (:require
    [camel-snake-kebab.core :as csk]
+   [deercreeklabs.lancaster.impl :as i]
+   #?(:clj [deercreeklabs.lancaster.schemas :as schemas])
    [deercreeklabs.lancaster.utils :as u]
+   [deercreeklabs.log-utils :as lu :refer [debugs]]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
-      deercreeklabs.lancaster)))
+      [deercreeklabs.lancaster :refer [def-primitive-schema]])))
 
 #?(:cljs
    (set! *warn-on-infer* true))
 
-;;;;;;;;;;;;;;;;;;;; Fns ;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;; Schema Macros ;;;;;;;;;;;;;;;;;;;;
 
-(defn avro-rec
-  [schema-ns schema-name fields]
-  (let [make-field (fn [[field-name field-type field-default]]
-                     {:name (csk/->camelCase (name field-name))
-                      :type (u/get-schema-name field-type)
-                      :default (u/get-field-default field-type field-default)})]
-    (-> (u/make-named-schema* schema-ns schema-name)
-        (assoc :type :record)
-        (assoc :fields (mapv make-field fields)))))
+#?(:clj
+   (defmacro def-record-schema [schema-name & args]
+     (schemas/schema-helper :record schema-name (vec args))))
 
-(defn avro-enum
-  [schema-ns schema-name symbols]
-  (let [make-enum-symbol (fn [sym]
-                           (-> (name sym)
-                               (csk/->SCREAMING_SNAKE_CASE)))]
-    (-> (u/make-named-schema* schema-ns schema-name)
-        (assoc :type :enum)
-        (assoc :symbols (mapv make-enum-symbol symbols)))))
+#?(:clj
+   (defmacro def-enum-schema [schema-name & symbols]
+     (schemas/schema-helper :enum schema-name (vec symbols))))
 
-(defn avro-fixed
-  [schema-ns schema-name size]
-  (-> (u/make-named-schema* schema-ns schema-name)
-      (assoc :type :fixed)
-      (assoc :size size)))
+#?(:clj
+   (defmacro def-fixed-schema [schema-name size]
+     (schemas/schema-helper :fixed schema-name size)))
 
-(defn avro-union [elements]
-  (mapv u/get-schema-name elements))
+#?(:clj
+   (defmacro def-array-schema [schema-name items-schema]
+     (schemas/schema-helper :array schema-name items-schema)))
 
-(defn avro-map [values-schema]
-  {:type :map
-   :values (u/get-schema-name values-schema)})
+#?(:clj
+   (defmacro def-map-schema [schema-name values-schema]
+     (schemas/schema-helper :map schema-name values-schema)))
 
-(defn avro-array [items-schema]
-  {:type :array
-   :values (u/get-schema-name items-schema)})
+#?(:clj
+   (defmacro def-union-schema [schema-name & member-schemas]
+     (schemas/schema-helper :union schema-name (vec member-schemas))))
 
-;;;;;;;;;;;;;;;;;;;; Macros ;;;;;;;;;;;;;;;;;;;;
+#?(:clj
+   (defmacro def-primitive-schema [schema-name]
+     (schemas/schema-helper :primitive schema-name
+                            (keyword (u/drop-schema-from-name schema-name)))))
 
-(defmacro def-avro-rec
-  [schema-name & fields]
-  `(u/named-schema-helper* avro-rec ~schema-name ~fields))
+;;;;;;;;;;;;;;;;;;;; Recursion Schema ;;;;;;;;;;;;;;;;;;;;
 
-(defmacro def-avro-enum
-  [schema-name & symbols]
-  `(u/named-schema-helper* avro-enum ~schema-name ~symbols))
+(def nil-or-recur-schema
+  "This is a special schema that can only be used inside record fields."
+  :__nil_or_recur_schema__)
 
-(defmacro def-avro-fixed
-  [schema-name size]
-  `(u/named-schema-helper* avro-fixed ~schema-name ~size))
+;;;;;;;;;;;;;;;;;;;; Primitive Schemas ;;;;;;;;;;;;;;;;;;;;
+
+(def-primitive-schema null-schema)
+(def-primitive-schema boolean-schema)
+(def-primitive-schema int-schema)
+(def-primitive-schema long-schema)
+(def-primitive-schema float-schema)
+(def-primitive-schema double-schema)
+(def-primitive-schema bytes-schema)
+(def-primitive-schema string-schema)
+
+;;;;;;;;;;;;;;;;;;;; API Fns ;;;;;;;;;;;;;;;;;;;;
+
+(defn serialize [schema-obj data]
+  (u/serialize schema-obj data))
+
+(defn deserialize
+  ([reader-schema-obj writer-json-schema ba]
+   (u/deserialize reader-schema-obj writer-json-schema ba false))
+  ([reader-schema-obj writer-json-schema ba return-java?]
+   (u/deserialize reader-schema-obj writer-json-schema ba return-java?)))
+
+(defn wrap [schema data]
+  (u/wrap schema data))
+
+(defn get-edn-schema [schema]
+  (u/get-edn-schema schema))
+
+(defn get-json-schema [schema]
+  (u/get-json-schema schema))
+
+(defn get-parsing-canonical-form [schema]
+  (u/get-parsing-canonical-form schema))
+
+(defn get-fingerprint128 [schema]
+  (u/get-fingerprint128 schema))

@@ -1,4 +1,4 @@
-(defproject deercreeklabs/lancaster "0.1.1-SNAPSHOT"
+(defproject deercreeklabs/lancaster "0.1.1"
   :description "Tools for working with Apache Avro"
   :url "http://www.deercreeklabs.com"
   :license {:name "Apache License, Version 2.0"
@@ -14,16 +14,16 @@
     :source-paths ["dev" "src"]
     :repl-options {:init-ns user}
     :plugins
-    [[lein-ancient "0.6.10"]
+    [[lein-ancient "0.6.12"]
      [lein-cljsbuild "1.1.7" :exclusions [org.clojure/clojure]]
      [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure]]
-     [lein-doo "0.1.7"]
-     [lein-npm "0.6.2"]
+     [lein-doo "0.1.8"]
+     [lein-npm "0.6.2" :exclusions [com.fasterxml.jackson.core/jackson-core]]
      ;; Because of confusion with a defunct project also called
      ;; lein-release, we exclude lein-release from lein-ancient.
      [lein-release "1.0.9" :upgrade false :exclusions [org.clojure/clojure]]]
     :dependencies
-    [[doo "0.1.7"]
+    [[doo "0.1.8"]
      [org.clojure/tools.namespace "0.2.11"]]}}
 
   :npm {:dependencies [[avsc "5.0.5"]]
@@ -34,17 +34,19 @@
                           [source-map-support "0.4.17"]]}
 
   :dependencies
-  [[camel-snake-kebab "0.4.0"]
-   [clj-time "0.14.0"]
+  [[binaryage/oops "0.5.6"]
+   [camel-snake-kebab "0.4.0"]
    [cheshire "5.8.0"]
-   [com.andrewmcveigh/cljs-time "0.5.1"]
+   [cljsjs/long "3.0.3-1"]
    [com.taoensso/timbre "4.10.0"]
-   [mvxcvi/puget "1.0.1"]
-   [org.apache.avro/avro "1.8.2"]
-   [org.apache.avro/avro-tools "1.8.2"]
-   [org.clojure/clojure "1.8.0"]
-   [org.clojure/clojurescript "1.9.908"]
-   [org.clojure/tools.analyzer.jvm "0.7.1"]]
+   [deercreeklabs/baracus "0.1.0" :exclusions [prismatic/schema]]
+   [deercreeklabs/log-utils "0.1.0"]
+   [deercreeklabs/stockroom "0.1.11"]
+   [me.raynes/fs "1.4.6" :exclusions [org.apache.commons/commons-compress]]
+   [org.apache.avro/avro "1.8.2" :exclusions [org.slf4j/slf4j-api]]
+   [org.apache.avro/avro-tools "1.8.2" :exclusions [commons-logging]]
+   [org.clojure/clojure "1.9.0-beta2"]
+   [org.clojure/clojurescript "1.9.946"]]
 
   :cljsbuild
   {:builds
