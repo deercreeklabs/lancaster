@@ -1,4 +1,4 @@
-(defproject deercreeklabs/lancaster "0.1.3-SNAPSHOT"
+(defproject deercreeklabs/lancaster "0.1.3"
   :description "Tools for working with Apache Avro"
   :url "http://www.deercreeklabs.com"
   :license {:name "Apache License, Version 2.0"
