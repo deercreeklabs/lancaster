@@ -710,7 +710,7 @@
          (ba/byte-array->b64 (l/get-fingerprint128
                               rec-w-map-schema)))))
 
-(deftest test-rec-w-array-and-enum-serdes
+(deftest test-rec-w-map-serdes
   (let [data {:name-to-age {"Aria" 22
                             "Beth" 33
                             "Cindy" 44}
