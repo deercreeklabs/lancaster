@@ -14,7 +14,7 @@
     :source-paths ["dev" "src"]
     :repl-options {:init-ns user}
     :plugins
-    [[lein-ancient "0.6.12"]
+    [[lein-ancient "0.6.14"]
      [lein-cljsbuild "1.1.7" :exclusions [org.clojure/clojure]]
      [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure]]
      [lein-doo "0.1.8"]
