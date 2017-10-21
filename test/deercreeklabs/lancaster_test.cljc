@@ -58,8 +58,16 @@
 (l/def-array-schema simple-array-schema
   :string)
 
+(l/def-record-schema rec-w-array-and-enum-schema
+  [:names simple-array-schema]
+  [:why why-schema])
+
 (l/def-map-schema ages-schema
   :int)
+
+(l/def-record-schema rec-w-map-schema
+  [:name-to-age ages-schema]
+  [:what :string])
 
 (l/def-map-schema nested-map-schema
   add-to-cart-rsp-schema)
@@ -656,3 +664,61 @@
                      (l/get-json-schema add-to-cart-req-v2-schema)
                      encoded-orig)]
     (is (= (dissoc data :username) decoded-new))))
+
+(deftest test-rec-w-array-and-enum-schema
+  (is (= {:namespace "deercreeklabs.lancaster-test",
+          :name :rec-w-array-and-enum,
+          :type :record,
+          :fields
+          [{:name :names,
+            :type {:type :array, :items :string},
+            :default []}
+           {:name :why,
+            :type
+            {:namespace "deercreeklabs.lancaster-test",
+             :name :why,
+             :type :enum,
+             :symbols [:all :stock :limit]},
+            :default :all}]}
+         (l/get-edn-schema rec-w-array-and-enum-schema)))
+  (is (= "S4LnLBpK4ryY7W53bb+MeQ=="
+         (ba/byte-array->b64 (l/get-fingerprint128
+                              rec-w-array-and-enum-schema)))))
+
+(deftest test-rec-w-array-and-enum-serdes
+  (let [data {:names ["Aria" "Beth" "Cindy"]
+              :why :stock}
+        encoded (l/serialize rec-w-array-and-enum-schema data)
+        decoded (deserialize-same rec-w-array-and-enum-schema encoded)
+        _ (is (ba/equivalent-byte-arrays?
+               (ba/byte-array [6 8 65 114 105 97 8 66 101 116 104 10 67 105
+                               110 100 121 0 2])
+               encoded))
+        _ (is (= data decoded))]))
+
+(deftest test-rec-w-map-schema
+  (is (= {:namespace "deercreeklabs.lancaster-test",
+           :name :rec-w-map,
+           :type :record,
+           :fields
+           [{:name :name-to-age,
+             :type {:type :map, :values :int},
+             :default {}}
+            {:name :what, :type :string, :default ""}]}
+         (l/get-edn-schema rec-w-map-schema)))
+  (is (= "IygOJrA0iLdJTu8vBhtFOw=="
+         (ba/byte-array->b64 (l/get-fingerprint128
+                              rec-w-map-schema)))))
+
+(deftest test-rec-w-array-and-enum-serdes
+  (let [data {:name-to-age {"Aria" 22
+                            "Beth" 33
+                            "Cindy" 44}
+              :what "yo"}
+        encoded (l/serialize rec-w-map-schema data)
+        decoded (deserialize-same rec-w-map-schema encoded)
+        _ (is (ba/equivalent-byte-arrays?
+               (ba/byte-array [6 8 65 114 105 97 44 8 66 101 116 104 66 10
+                               67 105 110 100 121 88 0 4 121 111])
+               encoded))
+        _ (is (= data decoded))]))

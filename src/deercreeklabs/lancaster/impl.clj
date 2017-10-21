@@ -190,22 +190,20 @@
   ([edn-schema]
    (fix-repeated-schemas edn-schema (atom #{})))
   ([edn-schema *names]
-   (let [fix-child-names (fn [children]
-                           (mapv #(fix-repeated-schemas % *names) children))]
-     (case (u/get-avro-type edn-schema)
-       :enum (get-name-or-schema edn-schema *names)
-       :fixed (get-name-or-schema edn-schema *names)
-       :array (update edn-schema :items fix-child-names)
-       :map (update edn-schema :values fix-child-names)
-       :union (fix-child-names edn-schema)
-       :record (let [name-or-schema (get-name-or-schema edn-schema *names)
-                     fix-field (fn [field]
-                                 (update field :type
-                                         #(fix-repeated-schemas % *names)))]
-                 (if (map? name-or-schema)
-                   (update edn-schema :fields #(mapv fix-field %))
-                   name-or-schema))
-       edn-schema))))
+   (case (u/get-avro-type edn-schema)
+     :enum (get-name-or-schema edn-schema *names)
+     :fixed (get-name-or-schema edn-schema *names)
+     :array (update edn-schema :items #(fix-repeated-schemas % *names))
+     :map (update edn-schema :values #(fix-repeated-schemas % *names))
+     :union (mapv #(fix-repeated-schemas % *names) edn-schema)
+     :record (let [name-or-schema (get-name-or-schema edn-schema *names)
+                   fix-field (fn [field]
+                               (update field :type
+                                       #(fix-repeated-schemas % *names)))]
+               (if (map? name-or-schema)
+                 (update edn-schema :fields #(mapv fix-field %))
+                 name-or-schema))
+     edn-schema)))
 
 (defmethod u/make-edn-schema :primitive
   [schema-type schema-ns short-name primitive-type]
