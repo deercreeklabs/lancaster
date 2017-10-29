@@ -45,7 +45,7 @@
    [me.raynes/fs "1.4.6" :exclusions [org.apache.commons/commons-compress]]
    [org.apache.avro/avro "1.8.2" :exclusions [org.slf4j/slf4j-api]]
    [org.apache.avro/avro-tools "1.8.2" :exclusions [commons-logging]]
-   [org.clojure/clojure "1.9.0-beta2"]
+   [org.clojure/clojure "1.8.0"]
    [org.clojure/clojurescript "1.9.946"]]
 
   :cljsbuild

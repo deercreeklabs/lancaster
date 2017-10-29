@@ -614,7 +614,8 @@
 
 (defmethod u/edn-schema->avro-schema :union
   [edn-schema]
-  (mapv u/edn-schema->avro-schema edn-schema))
+  (-> (mapv u/edn-schema->avro-schema edn-schema)
+      (fix-repeated-schemas)))
 
 (defmethod u/edn-schema->avro-schema :string-reference
   [edn-schema]
