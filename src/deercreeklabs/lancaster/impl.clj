@@ -371,7 +371,9 @@
                        {:type :illegal-argument
                         :subtype :union-data-not-wrapped
                         :dispatch-name dispatch-name#
-                        :data wrapped-data#}))))))
+                        :data wrapped-data#
+                        :orig-exception-msg
+                        (lu/get-exception-msg e#)}))))))
     (let [data-sym (gensym "data")
           cond-lines (mapcat (partial make-data->dispatch-cond-line data-sym)
                              edn-schema)]

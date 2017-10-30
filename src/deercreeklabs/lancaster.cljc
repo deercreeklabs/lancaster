@@ -1,10 +1,12 @@
 (ns deercreeklabs.lancaster
   (:require
    [camel-snake-kebab.core :as csk]
+   [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.impl :as i]
    #?(:clj [deercreeklabs.lancaster.schemas :as schemas])
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
+   [schema.core :as s :include-macros true]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
@@ -63,13 +65,20 @@
 
 ;;;;;;;;;;;;;;;;;;;; API Fns ;;;;;;;;;;;;;;;;;;;;
 
-(defn serialize [schema-obj data]
+(s/defn serialize :- ba/ByteArray
+  [schema-obj :- (s/protocol u/IAvroSchema)
+   data :- s/Any]
   (u/serialize schema-obj data))
 
-(defn deserialize
-  ([reader-schema-obj writer-json-schema ba]
+(s/defn deserialize :- s/Any
+  ([reader-schema-obj :- (s/protocol u/IAvroSchema)
+    writer-json-schema :- s/Str
+    ba :- ba/ByteArray]
    (u/deserialize reader-schema-obj writer-json-schema ba false))
-  ([reader-schema-obj writer-json-schema ba return-java?]
+  ([reader-schema-obj :- (s/protocol u/IAvroSchema)
+    writer-json-schema :- s/Str
+    ba :- ba/ByteArray
+    return-java? :- s/Bool]
    (u/deserialize reader-schema-obj writer-json-schema ba return-java?)))
 
 (defn wrap [schema data]
