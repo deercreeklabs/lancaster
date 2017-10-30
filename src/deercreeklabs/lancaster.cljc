@@ -81,17 +81,23 @@
     return-java? :- s/Bool]
    (u/deserialize reader-schema-obj writer-json-schema ba return-java?)))
 
-(defn wrap [schema data]
+(s/defn wrap :- u/WrappedData
+  [schema :- (s/protocol u/IAvroSchema)
+   data :- s/Any]
   (u/wrap schema data))
 
-(defn get-edn-schema [schema]
+(s/defn get-edn-schema :- s/Any
+  [schema :- (s/protocol u/IAvroSchema)]
   (u/get-edn-schema schema))
 
-(defn get-json-schema [schema]
+(s/defn get-json-schema :- s/Str
+  [schema :- (s/protocol u/IAvroSchema)]
   (u/get-json-schema schema))
 
-(defn get-parsing-canonical-form [schema]
+(s/defn get-parsing-canonical-form :- s/Str
+  [schema :- (s/protocol u/IAvroSchema)]
   (u/get-parsing-canonical-form schema))
 
-(defn get-fingerprint128 [schema]
+(s/defn get-fingerprint128 :- ba/ByteArray
+  [schema :- (s/protocol u/IAvroSchema)]
   (u/get-fingerprint128 schema))

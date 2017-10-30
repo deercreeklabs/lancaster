@@ -6,6 +6,7 @@
    [#?(:clj clj-time.core :cljs cljs-time.core) :as t]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    #?(:clj [puget.printer :refer [cprint]])
+   [schema.core :as s]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
@@ -15,6 +16,8 @@
    (set! *warn-on-infer* true))
 
 (declare get-avro-type)
+
+(def WrappedData {s/Keyword s/Any})
 
 (def avro-primitive-types #{:null :boolean :int :long :float :double
                             :bytes :string})

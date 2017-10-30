@@ -367,7 +367,8 @@
            (apply u/clj->avro (first wrapped-data#))
            (catch java.lang.IllegalArgumentException e#
              (throw
-              (ex-info "This union requires wrapping, but data is not wrapped."
+              (ex-info (str "This union requires wrapping, but data is "
+                            "not properly wrapped.")
                        {:type :illegal-argument
                         :subtype :union-data-not-wrapped
                         :dispatch-name dispatch-name#
