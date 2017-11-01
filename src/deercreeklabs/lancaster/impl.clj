@@ -6,7 +6,7 @@
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    [deercreeklabs.stockroom :as sr]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]])
+   [taoensso.timbre :as timbre :refer [debugf errorf infof warnf]])
   (:import
    (java.io ByteArrayOutputStream)
    (java.nio ByteBuffer)
@@ -95,20 +95,21 @@
     (.flush encoder)
     (.toByteArray output-stream)))
 
-(defn get-resolving-reader [reader-schema-obj writer-json-schema resolver-cache]
-  (or (sr/get resolver-cache writer-json-schema)
+(defn get-resolving-reader [reader-schema-obj writer-pcf resolver-cache]
+  (or (sr/get resolver-cache writer-pcf)
       (let [writer-schema-obj (.parse ^Schema$Parser (Schema$Parser.)
-                                      ^String writer-json-schema)
+                                      ^String writer-pcf)
             resolving-reader (SpecificDatumReader. writer-schema-obj
                                                    reader-schema-obj)]
-        (sr/put resolver-cache writer-json-schema resolving-reader)
+        (sr/put resolver-cache writer-pcf resolving-reader)
         resolving-reader)))
 
 (defn deserialize-resolving*
-  [reader-schema-obj writer-json-schema resolver-cache ba]
+  [reader-schema-obj writer-pcf resolver-cache ba]
   (let [^BinaryDecoder decoder (.binaryDecoder decoder-factory ^bytes ba nil)
         resolving-reader (get-resolving-reader
-                          reader-schema-obj writer-json-schema resolver-cache)]
+                          reader-schema-obj writer-pcf resolver-cache)]
+    (warnf "Schemas don't match. Using resolving decoder.")
     (.read ^SpecificDatumReader resolving-reader nil decoder)))
 
 (defn deserialize* [^SpecificDatumReader reader ba]
@@ -122,13 +123,10 @@
   (serialize [this data]
     (let [avro (u/clj->avro dispatch-name data)]
       (serialize* writer avro)))
-  (deserialize [this writer-json-schema ba return-java?]
-    (let [deser-fn (if (= writer-json-schema json-schema)
-                     deserialize*
-                     deserialize-resolving*)
-          obj (if (= writer-json-schema json-schema)
+  (deserialize [this writer-pcf ba return-java?]
+    (let [obj (if (= writer-pcf parsing-canonical-form)
                 (deserialize* reader ba)
-                (deserialize-resolving* avro-schema-obj writer-json-schema
+                (deserialize-resolving* avro-schema-obj writer-pcf
                                         resolver-cache ba))]
       (if return-java?
         obj
@@ -254,9 +252,6 @@
   [schema-type _ _ member-schemas]
   (mapv u/ensure-edn-schema member-schemas))
 
-(defn need-pre-conversion? [avro-type]
-  ((conj u/avro-complex-types :bytes :int :float) avro-type))
-
 (defmethod u/make-constructor :default
   [edn-schema full-java-name dispatch-name]
   ;; nil means don't generate a constructor
@@ -274,10 +269,8 @@
                                               field-schema)
                          setter (symbol (str ".set"
                                              (csk/->PascalCase (name name-kw))))
-                         getter (if (need-pre-conversion? avro-type)
-                                  `(u/clj->avro ~field-dispatch-name
-                                                (~name-kw ~map-sym))
-                                  `(~name-kw ~map-sym))]
+                         getter `(u/clj->avro ~field-dispatch-name
+                                              (~name-kw ~map-sym))]
                      `((~name-kw ~map-sym) (~setter ~getter)))
         setters (-> (mapcat mk-setter fields)
                     (concat `(true (.build))))]
@@ -312,28 +305,20 @@
   (let [{:keys [items]} edn-schema
         items-dispatch-name (u/edn-schema->dispatch-name items)
         items-avro-type (u/get-avro-type items)]
-    (if (need-pre-conversion? items-avro-type)
-      `(defmethod u/clj->avro ~dispatch-name
-         [dispatch-name# arr#]
-         (mapv #(u/clj->avro ~items-dispatch-name %) arr#))
-      `(defmethod u/clj->avro ~dispatch-name
-         [dispatch-name# arr#]
-         arr#))))
+    `(defmethod u/clj->avro ~dispatch-name
+       [dispatch-name# arr#]
+       (mapv #(u/clj->avro ~items-dispatch-name %) arr#))))
 
 (defmethod u/make-constructor :map
   [edn-schema _ dispatch-name]
   (let [{:keys [values]} edn-schema
         values-dispatch-name (u/edn-schema->dispatch-name values)
         values-avro-type (u/get-avro-type values)]
-    (if (need-pre-conversion? values-avro-type)
-      `(defmethod u/clj->avro ~dispatch-name
-         [dispatch-name# m#]
-         (reduce-kv (fn [acc# k# v#]
-                      (assoc acc# k# (u/clj->avro ~values-dispatch-name v#)))
-                    {} m#))
-      `(defmethod u/clj->avro ~dispatch-name
-         [dispatch-name# m#]
-         m#))))
+    `(defmethod u/clj->avro ~dispatch-name
+       [dispatch-name# m#]
+       (reduce-kv (fn [acc# k# v#]
+                    (assoc acc# k# (u/clj->avro ~values-dispatch-name v#)))
+                  {} m#))))
 
 (defn make-data->dispatch-cond-line [data-sym member-schema]
   ;; Note that we only care about putting things in the right

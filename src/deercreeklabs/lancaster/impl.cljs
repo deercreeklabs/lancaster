@@ -15,12 +15,12 @@
 (defn json-schema->avro-schema-obj [json-schema]
   (ocall Type "forSchema" (js/JSON.parse json-schema)))
 
-(defn get-resolver [reader-schema-obj writer-json-schema resolver-cache]
-  (or (sr/get resolver-cache writer-json-schema)
-      (let [writer-schema-obj (json-schema->avro-schema-obj writer-json-schema)
+(defn get-resolver [reader-schema-obj writer-pcf resolver-cache]
+  (or (sr/get resolver-cache writer-pcf)
+      (let [writer-schema-obj (json-schema->avro-schema-obj writer-pcf)
             resolver (ocall reader-schema-obj "createResolver"
                             writer-schema-obj)]
-        (sr/put resolver-cache writer-json-schema resolver)
+        (sr/put resolver-cache writer-pcf resolver)
         resolver)))
 
 (defrecord AvroSchema [edn-schema edn-schema-name json-schema avro-schema-obj
@@ -31,10 +31,10 @@
     (->> (pre-converter data)
          (ocall avro-schema-obj "toBuffer")
          (js/Int8Array.)))
-  (deserialize [this writer-json-schema ba return-native?]
-    (let [obj (if (= writer-json-schema json-schema)
+  (deserialize [this writer-pcf ba return-native?]
+    (let [obj (if (= writer-pcf parsing-canonical-form)
                 (ocall avro-schema-obj "fromBuffer" (js/Buffer. ba))
-                (let [resolver (get-resolver avro-schema-obj writer-json-schema
+                (let [resolver (get-resolver avro-schema-obj writer-pcf
                                              resolver-cache)]
                   (ocall avro-schema-obj "fromBuffer"
                          (js/Buffer. ba) resolver)))]

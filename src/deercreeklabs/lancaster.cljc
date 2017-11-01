@@ -72,14 +72,14 @@
 
 (s/defn deserialize :- s/Any
   ([reader-schema-obj :- (s/protocol u/IAvroSchema)
-    writer-json-schema :- s/Str
+    writer-pcf :- s/Str
     ba :- ba/ByteArray]
-   (u/deserialize reader-schema-obj writer-json-schema ba false))
+   (u/deserialize reader-schema-obj writer-pcf ba false))
   ([reader-schema-obj :- (s/protocol u/IAvroSchema)
-    writer-json-schema :- s/Str
+    writer-pcf :- s/Str
     ba :- ba/ByteArray
     return-java? :- s/Bool]
-   (u/deserialize reader-schema-obj writer-json-schema ba return-java?)))
+   (u/deserialize reader-schema-obj writer-pcf ba return-java?)))
 
 (s/defn wrap :- u/WrappedData
   [schema :- (s/protocol u/IAvroSchema)
