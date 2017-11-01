@@ -21,7 +21,8 @@
   ([schema encoded]
    (deserialize-same schema encoded false))
   ([schema encoded return-java?]
-   (l/deserialize schema (l/get-json-schema schema) encoded return-java?)))
+   (l/deserialize schema (l/get-parsing-canonical-form schema)
+                  encoded return-java?)))
 
 (l/def-record-schema add-to-cart-req-schema
   [:sku :int]
@@ -648,7 +649,8 @@
         _ (is (ba/equivalent-byte-arrays? (ba/byte-array [-86 12 20])
                                           encoded-orig))
         decoded-new (l/deserialize add-to-cart-req-v2-schema
-                                   (l/get-json-schema add-to-cart-req-schema)
+                                   (l/get-parsing-canonical-form
+                                    add-to-cart-req-schema)
                                    encoded-orig)]
     (is (= (assoc data :username "") decoded-new))))
 
@@ -661,7 +663,7 @@
                                           encoded-orig))
         decoded-new (l/deserialize
                      add-to-cart-req-v3-schema
-                     (l/get-json-schema add-to-cart-req-v2-schema)
+                     (l/get-parsing-canonical-form add-to-cart-req-v2-schema)
                      encoded-orig)]
     (is (= (dissoc data :username) decoded-new))))
 
