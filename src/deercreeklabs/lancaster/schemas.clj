@@ -10,8 +10,7 @@
 (defn replace-nil-or-recur-schema [short-name args]
   (clojure.walk/postwalk
    (fn [form]
-     (if (and (symbol? form)
-              (= :__nil_or_recur_schema__ (eval form)))
+     (if (= :nil-or-recur form)
        (let [edn-schema [:null short-name]
              record-dispatch-name (str *ns* "." short-name)
              union-dispatch-name (str "union-of-null," record-dispatch-name)

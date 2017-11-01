@@ -95,8 +95,8 @@
 
 (l/def-record-schema tree-schema
   [:value :int]
-  [:right l/nil-or-recur-schema]
-  [:left l/nil-or-recur-schema])
+  [:right :nil-or-recur]
+  [:left :nil-or-recur])
 
 (deftest test-record-schema
   (let [expected-cpf (str "{\"name\":\"deercreeklabs.lancaster_test."
