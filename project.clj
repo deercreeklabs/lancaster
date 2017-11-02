@@ -60,7 +60,7 @@
     :plugins
     [[lein-ancient "0.6.14"]
      [lein-cljsbuild "1.1.7" :exclusions [org.clojure/clojure]]
-     [lein-cloverage "1.0.9" :exclusions [org.clojure/clojure]]
+     [lein-cloverage "1.0.10" :exclusions [org.clojure/clojure]]
      [lein-doo "0.1.8"]
      [lein-npm "0.6.2" :exclusions [com.fasterxml.jackson.core/jackson-core]]
      ;; Because of confusion with a defunct project also called
