@@ -46,12 +46,6 @@
      (schemas/schema-helper :primitive schema-name
                             (keyword (u/drop-schema-from-name schema-name)))))
 
-;;;;;;;;;;;;;;;;;;;; Recursion Schema ;;;;;;;;;;;;;;;;;;;;
-
-(def nil-or-recur-schema
-  "This is a special schema that can only be used inside record fields."
-  :__nil_or_recur_schema__)
-
 ;;;;;;;;;;;;;;;;;;;; Primitive Schemas ;;;;;;;;;;;;;;;;;;;;
 
 (def-primitive-schema null-schema)

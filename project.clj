@@ -48,6 +48,11 @@
    [org.clojure/clojure "1.8.0"]
    [org.clojure/clojurescript "1.9.946"]]
 
+  :test-selectors {:default (complement :perf)
+                   :perf :perf
+                   :the-one :the-one
+                   :all (constantly true)}
+
   :cljsbuild
   {:builds
    [{:id "node-test-none"

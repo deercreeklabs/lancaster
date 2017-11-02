@@ -260,3 +260,8 @@
           schema-name (last name-parts)]
       (str (namespace-munge schema-ns) "." (csk/->PascalCase schema-name)))
     (csk/->PascalCase s)))
+
+(s/defn get-current-time-ms :- s/Num
+  []
+  #?(:clj (System/currentTimeMillis)
+     :cljs (.getTime (js/Date.))))

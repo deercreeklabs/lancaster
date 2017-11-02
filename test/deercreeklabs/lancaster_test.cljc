@@ -724,3 +724,28 @@
                                67 105 110 100 121 88 0 4 121 111])
                encoded))
         _ (is (= data decoded))]))
+
+(defn get-ops-per-sec [f iters]
+  (let [start-ms (u/get-current-time-ms)
+        _ (dotimes [_ iters]
+          (f))
+        ms (- (u/get-current-time-ms) start-ms)]
+    (/ (* 1000 iters) ms)))
+
+(deftest test-serdes-speed
+  (let [data {:qty-requested 123
+              :req {:sku 123 :qty-requested 123}
+              :data (ba/byte-array [66 67])
+              :other-data (ba/byte-array [123 123])}
+        expected (assoc data
+                        :qty-added -1
+                        :current-qty -1
+                        :the-reason-why :stock)
+        enc-fn #(l/serialize add-to-cart-rsp-schema data)
+        enc-ops (get-ops-per-sec enc-fn 1e5)
+        encoded (enc-fn)
+        dec-fn #(deserialize-same add-to-cart-rsp-schema
+                                  encoded)
+        dec-ops (get-ops-per-sec dec-fn 1e5)]
+    (is (> #?(:cljs 20000 :clj 200000) enc-ops))
+    (is (> #?(:cljs 10000 :clj 250000) dec-ops))))
