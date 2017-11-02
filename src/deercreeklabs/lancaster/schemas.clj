@@ -10,7 +10,8 @@
 (defn replace-nil-or-recur-schema [short-name args]
   (clojure.walk/postwalk
    (fn [form]
-     (if (= :nil-or-recur form)
+     (if (not= :nil-or-recur form)
+       form
        (let [edn-schema [:null short-name]
              record-dispatch-name (str *ns* "." short-name)
              union-dispatch-name (str "union-of-null," record-dispatch-name)
@@ -26,8 +27,7 @@
          `(do
             ~constructor
             ~post-converter
-            ~edn-schema))
-       form))
+            ~edn-schema))))
    args))
 
 (defn schema-helper [schema-type clj-var-name args]

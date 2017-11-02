@@ -15,8 +15,6 @@
                        Encoder EncoderFactory ResolvingDecoder)
    (org.apache.avro.specific SpecificDatumReader SpecificDatumWriter)))
 
-(declare get-field-default)
-
 (def resolver-cache-size 50)
 
 (defmulti fix-default u/avro-type-dispatch)
@@ -142,40 +140,6 @@
   (get-fingerprint128 [this]
     fingerprint128))
 
-(defn make-default-record [record-edn-schema default-record]
-  (reduce (fn [acc field]
-            (let [{field-name :name
-                   field-type :type
-                   field-default :default} field
-                  field-schema (u/ensure-edn-schema field-type)
-                  v (get-field-default field-schema
-                                       (field-name default-record))]
-              (assoc acc field-name v)))
-          {} (:fields record-edn-schema)))
-
-(defn make-default-fixed-or-bytes [default]
-  (u/byte-array->byte-str (or default (ba/byte-array []))))
-
-(defn get-field-default [field-schema field-default]
-  (let [avro-type (u/get-avro-type field-schema)]
-    (case avro-type
-      :record (make-default-record field-schema field-default)
-      :union (get-field-default (first field-schema) field-default)
-      :fixed (make-default-fixed-or-bytes field-default)
-      :bytes (make-default-fixed-or-bytes field-default)
-      (or field-default
-          (case avro-type
-            :null nil
-            :boolean false
-            :int (int -1)
-            :long -1
-            :float (float -1.0)
-            :double (double -1.0)
-            :string ""
-            :enum (first (:symbols field-schema))
-            :array []
-            :map {})))))
-
 (defn get-name-or-schema [edn-schema *names]
   (let [schema-name (u/get-schema-name edn-schema)]
     (if (@*names schema-name)
@@ -202,55 +166,6 @@
                  (update edn-schema :fields #(mapv fix-field %))
                  name-or-schema))
      edn-schema)))
-
-(defmethod u/make-edn-schema :primitive
-  [schema-type schema-ns short-name primitive-type]
-  primitive-type)
-
-(defn make-field [[field-name field-type field-default]]
-  (let [field-schema (u/ensure-edn-schema field-type)]
-    {:name (keyword field-name)
-     :type field-schema
-     :default (get-field-default field-schema
-                                 field-default)}))
-
-(defmethod u/make-edn-schema :record
-  [schema-type schema-ns short-name args]
-  (let [base {:namespace schema-ns
-              :name (keyword short-name)
-              :type :record}]
-    (if (map? (first args))
-      (-> (merge base (first args))
-          (update :fields #(mapv make-field %)))
-      (assoc base :fields (mapv make-field args)))))
-
-(defmethod u/make-edn-schema :enum
-  [schema-type schema-ns short-name symbols]
-  {:namespace schema-ns
-   :name (keyword short-name)
-   :type :enum
-   :symbols symbols})
-
-(defmethod u/make-edn-schema :fixed
-  [schema-type schema-ns short-name size]
-  {:namespace schema-ns
-   :name (keyword short-name)
-   :type :fixed
-   :size size})
-
-(defmethod u/make-edn-schema :array
-  [schema-type schema-ns short-name items]
-  {:type :array
-   :items (u/ensure-edn-schema items)})
-
-(defmethod u/make-edn-schema :map
-  [schema-type schema-ns short-name values]
-  {:type :map
-   :values (u/ensure-edn-schema values)})
-
-(defmethod u/make-edn-schema :union
-  [schema-type _ _ member-schemas]
-  (mapv u/ensure-edn-schema member-schemas))
 
 (defmethod u/make-constructor :default
   [edn-schema full-java-name dispatch-name]
