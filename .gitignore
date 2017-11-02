@@ -12,6 +12,7 @@ pom.xml.asc
 
 # JS stuff
 /node_modules
+package.json
 
 # Emacs stuff
 *~
