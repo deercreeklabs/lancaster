@@ -44,6 +44,9 @@
 
 (l/def-fixed-schema a-fixed-schema 2)
 
+(l/def-record-schema rec-w-fixed-no-default-schema
+  [:data a-fixed-schema])
+
 (l/def-record-schema add-to-cart-rsp-schema
   [:qty-requested :int]
   [:qty-added :int]
@@ -725,10 +728,37 @@
                encoded))
         _ (is (= data decoded))]))
 
+(deftest test-rec-w-fixed-no-default
+  (is (= {:namespace "deercreeklabs.lancaster-test",
+          :name :rec-w-fixed-no-default,
+          :type :record,
+          :fields
+          [{:name :data,
+            :type
+            {:namespace "deercreeklabs.lancaster-test",
+             :name :a-fixed,
+             :type :fixed,
+             :size 2},
+            :default "\0\0"}]}
+         (l/get-edn-schema rec-w-fixed-no-default-schema)))
+  (is (= "F88jax5m7Vprj/6edLbZWw=="
+         (ba/byte-array->b64 (l/get-fingerprint128
+                              rec-w-fixed-no-default-schema)))))
+
+(deftest test-rec-w-fixed-no-default-serdes
+  (let [data {:data (ba/byte-array [1 2])}
+        encoded (l/serialize rec-w-fixed-no-default-schema data)
+        decoded (deserialize-same rec-w-fixed-no-default-schema encoded)
+        _ (is (ba/equivalent-byte-arrays?
+               (ba/byte-array [1 2])
+               encoded))
+        _ (is (ba/equivalent-byte-arrays?
+               (:data data) (:data decoded)))]))
+
 (defn get-ops-per-sec [f iters]
   (let [start-ms (u/get-current-time-ms)
         _ (dotimes [_ iters]
-          (f))
+            (f))
         ms (- (u/get-current-time-ms) start-ms)]
     (/ (* 1000 iters) ms)))
 
@@ -737,15 +767,18 @@
               :req {:sku 123 :qty-requested 123}
               :data (ba/byte-array [66 67])
               :other-data (ba/byte-array [123 123])}
+        num-ops #?(:cljs 1e4 :clj 1e5)
         expected (assoc data
                         :qty-added -1
                         :current-qty -1
                         :the-reason-why :stock)
         enc-fn #(l/serialize add-to-cart-rsp-schema data)
-        enc-ops (get-ops-per-sec enc-fn 1e5)
+        enc-ops (get-ops-per-sec enc-fn num-ops)
         encoded (enc-fn)
         dec-fn #(deserialize-same add-to-cart-rsp-schema
                                   encoded)
-        dec-ops (get-ops-per-sec dec-fn 1e5)]
-    (is (> #?(:cljs 20000 :clj 200000) enc-ops))
-    (is (> #?(:cljs 10000 :clj 250000) dec-ops))))
+        dec-ops (get-ops-per-sec dec-fn num-ops)]
+    (infof "Encoding ops per sec: %.0f" enc-ops)
+    (infof "Decoding ops per sec: %.0f" dec-ops)
+    (is (< #?(:cljs 10000 :clj 150000) enc-ops))
+    (is (< #?(:cljs 2000 :clj 250000) dec-ops))))

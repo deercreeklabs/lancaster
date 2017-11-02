@@ -13,7 +13,8 @@
 (def resolver-cache-size 50)
 
 (defn json-schema->avro-schema-obj [json-schema]
-  (ocall Type "forSchema" (js/JSON.parse json-schema)))
+  (let [js (ocall js/JSON "parse" json-schema)]
+    (ocall Type "forSchema" js)))
 
 (defn get-resolver [reader-schema-obj writer-pcf resolver-cache]
   (or (sr/get resolver-cache writer-pcf)

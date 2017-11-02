@@ -97,16 +97,17 @@
 (defn byte-array->byte-str [ba]
   (apply str (map char ba)))
 
-(defn make-default-fixed-or-bytes [default]
-  (byte-array->byte-str (or default (ba/byte-array []))))
+(defn make-default-fixed-or-bytes [num-bytes default]
+  (byte-array->byte-str (or default
+                            (ba/byte-array (take num-bytes (repeat 0))))))
 
 (defn get-field-default [field-schema field-default]
   (let [avro-type (get-avro-type field-schema)]
     (case avro-type
       :record (make-default-record field-schema field-default)
       :union (get-field-default (first field-schema) field-default)
-      :fixed (make-default-fixed-or-bytes field-default)
-      :bytes (make-default-fixed-or-bytes field-default)
+      :fixed (make-default-fixed-or-bytes (:size field-schema) field-default)
+      :bytes (make-default-fixed-or-bytes 0 field-default)
       (or field-default
           (case avro-type
             :null nil
