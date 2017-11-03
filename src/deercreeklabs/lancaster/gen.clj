@@ -16,15 +16,13 @@
 
 
 (defn make-temp-dir []
-  (let [dir-name (join "/"
-                       [(System/getProperty "java.io.tmpdir")
-                        "avro_schemas"
-                        (str (java.util.UUID/randomUUID))])
-        ^File dir (File. dir-name)]
+  (let [^File dir (io/file (System/getProperty "java.io.tmpdir")
+                          "avro_schemas"
+                          (str (java.util.UUID/randomUUID)))]
     (.mkdirs dir)
     dir))
 
-(defn write-classes [in-path out-path]
+(defn write-sources [in-path out-path]
   (let [tool (SpecificCompilerTool.)
         n (rand-int 1000)
         ;; TODO: Prevent output to console
@@ -49,8 +47,9 @@
         compiler (ToolProvider/getSystemJavaCompiler)
         ^StandardJavaFileManager file-mgr (.getStandardFileManager
                                            compiler nil nil nil)
-        _ (.setLocation file-mgr StandardLocation/CLASS_OUTPUT
-                        [(io/file "target/classes")])
+        ^File out-dir (io/file "target" "classes")
+        _ (.mkdirs out-dir)
+        _ (.setLocation file-mgr StandardLocation/CLASS_OUTPUT [out-dir])
         comp-units (.getJavaFileObjectsFromFiles file-mgr src-files)
         comp-task (.getTask compiler nil file-mgr nil nil nil comp-units)]
     (.call comp-task)
@@ -70,7 +69,7 @@
 (defn generate-classes [json-schema]
   (let [dir-path (write-avsc-file json-schema)]
     (try
-      (let [ret (write-classes dir-path dir-path)]
+      (let [ret (write-sources dir-path dir-path)]
         (when (not= 0 ret)
           (throw (ex-info "Writing classes failed."
                           {:type :execution-error
