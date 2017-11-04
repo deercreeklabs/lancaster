@@ -2,7 +2,6 @@
   (:require
    [camel-snake-kebab.core :as csk]
    [clojure.java.io :as io]
-   [clojure.java.shell :as shell]
    [clojure.string :refer [join split]]
    [deercreeklabs.log-utils :as lu]
    [me.raynes.fs :as fs]
@@ -56,7 +55,7 @@
     (.close file-mgr)))
 
 (defn remove-dir [^String dir-path]
-  (shell/sh "rm" "-rf" dir-path))
+  (fs/delete-dir dir-path))
 
 (defn write-avsc-file
   [schema]
