@@ -34,8 +34,8 @@
   (let [f (fn [fp j]
             (let [fp (u/long fp)
                   mask (u/long (negate (bit-and fp long-one)))]
-                (bit-xor (unsigned-bit-shift-right fp 1)
-                         (bit-and seed mask))))]
+              (bit-xor (unsigned-bit-shift-right fp 1)
+                       (bit-and seed mask))))]
     (reduce f (u/long i) (range 8))))
 
 (def fingerprint-table
@@ -49,9 +49,9 @@
         f (fn [acc b]
             (let [b (byte b)
                   acc (u/long acc)]
-                (bit-xor (unsigned-bit-shift-right acc 8)
-                         (fingerprint-table (int (bit-and (bit-xor acc b)
-                                                          0xff))))))
+              (bit-xor (unsigned-bit-shift-right acc 8)
+                       (fingerprint-table (int (bit-and (bit-xor acc b)
+                                                        0xff))))))
         num-bytes (count ba)]
     (loop [acc seed
            i 0]

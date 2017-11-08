@@ -228,8 +228,8 @@
          (keyword? (-> data first first))
          true)))
 
-(defn more-than-one? [set schemas]
-  (> (count (keep #(set (get-avro-type %)) schemas)) 1))
+(defn more-than-one? [schema-set schemas]
+  (> (count (keep #(schema-set (get-avro-type %)) schemas)) 1))
 
 (defn contains-union? [schemas]
   (some #(= :union (get-avro-type %)) schemas))

@@ -448,7 +448,7 @@
             {:name :other-data :type :bytes :default ""}]}}
          (l/get-edn-schema nested-map-schema)))
   (is (=  "9fa5480152c68cf9"
-         (u/long->hex-str (l/get-fingerprint64 nested-map-schema)))))
+          (u/long->hex-str (l/get-fingerprint64 nested-map-schema)))))
 
 (deftest test-nested-map-schema-serdes
   (let [data {"A" {:qty-requested 123
@@ -499,10 +499,10 @@
         _ (is (= data decoded))
         data 5
         encoded (l/serialize union-schema data)
-        decoded (deserialize-same union-schema encoded)
-        _ (is (ba/equivalent-byte-arrays? (ba/byte-array [0 10])
-                                          encoded))
-        _ (is (= data decoded))]))
+        decoded (deserialize-same union-schema encoded)]
+    (is (ba/equivalent-byte-arrays? (ba/byte-array [0 10])
+                                    encoded))
+    (is (= data decoded))))
 
 (deftest test-wrapped-union-schema
   (is (= [{:namespace :deercreeklabs.lancaster-test
@@ -531,11 +531,11 @@
         _ (is (= data decoded))
         data (l/wrap person-schema {:name "Bill" :age 50})
         encoded (l/serialize person-or-dog-schema data)
-        decoded (deserialize-same person-or-dog-schema encoded)
-        _ (is (ba/equivalent-byte-arrays?
-               (ba/byte-array [0 8 66 105 108 108 100])
-               encoded))
-        _ (is (= data decoded))]))
+        decoded (deserialize-same person-or-dog-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [0 8 66 105 108 108 100])
+         encoded))
+    (is (= data decoded))))
 
 (deftest test-map-or-array-schema
   (is (= [{:type :map :values :int}
@@ -555,12 +555,12 @@
         _ (is (= data decoded))
         data ["a thing" "another thing"]
         encoded (l/serialize map-or-array-schema data)
-        decoded (deserialize-same map-or-array-schema encoded)
-        _ (is (ba/equivalent-byte-arrays?
-               (ba/byte-array [2 4 14 97 32 116 104 105 110 103 26 97 110
-                               111 116 104 101 114 32 116 104 105 110 103 0])
-               encoded))
-        _ (is (= data decoded))]))
+        decoded (deserialize-same map-or-array-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [2 4 14 97 32 116 104 105 110 103 26 97 110
+                         111 116 104 101 114 32 116 104 105 110 103 0])
+         encoded))
+    (is (= data decoded))))
 
 (deftest test-mopodoa-schema
   (is (= [{:type :map :values :int}
@@ -590,12 +590,12 @@
         _ (is (= data decoded))
         data (l/wrap simple-array-schema ["a thing" "another thing"])
         encoded (l/serialize mopodoa-schema data)
-        decoded (deserialize-same mopodoa-schema encoded)
-        _ (is (ba/equivalent-byte-arrays?
-               (ba/byte-array [6 4 14 97 32 116 104 105 110 103 26 97 110
-                               111 116 104 101 114 32 116 104 105 110 103 0])
-               encoded))
-        _ (is (= data decoded))]))
+        decoded (deserialize-same mopodoa-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [6 4 14 97 32 116 104 105 110 103 26 97 110
+                         111 116 104 101 114 32 116 104 105 110 103 0])
+         encoded))
+    (is (= data decoded))))
 
 ;; (deftest test-recursive-schema
 ;;   (is (= {:namespace "deercreeklabs.lancaster-test"
@@ -683,12 +683,12 @@
   (let [data {:names ["Aria" "Beth" "Cindy"]
               :why :stock}
         encoded (l/serialize rec-w-array-and-enum-schema data)
-        decoded (deserialize-same rec-w-array-and-enum-schema encoded)
-        _ (is (ba/equivalent-byte-arrays?
-               (ba/byte-array [6 8 65 114 105 97 8 66 101 116 104 10 67 105
-                               110 100 121 0 2])
-               encoded))
-        _ (is (= data decoded))]))
+        decoded (deserialize-same rec-w-array-and-enum-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [6 8 65 114 105 97 8 66 101 116 104 10 67 105
+                         110 100 121 0 2])
+         encoded))
+    (is (= data decoded))))
 
 (deftest test-rec-w-map-schema
   (is (= {:namespace :deercreeklabs.lancaster-test
@@ -710,12 +710,12 @@
                             "Cindy" 44}
               :what "yo"}
         encoded (l/serialize rec-w-map-schema data)
-        decoded (deserialize-same rec-w-map-schema encoded)
-        _ (is (ba/equivalent-byte-arrays?
-               (ba/byte-array [6 8 65 114 105 97 44 8 66 101 116 104 66 10
-                               67 105 110 100 121 88 0 4 121 111])
-               encoded))
-        _ (is (= data decoded))]))
+        decoded (deserialize-same rec-w-map-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [6 8 65 114 105 97 44 8 66 101 116 104 66 10
+                         67 105 110 100 121 88 0 4 121 111])
+         encoded))
+    (is (= data decoded))))
 
 (deftest test-rec-w-fixed-no-default
   (is (= {:namespace :deercreeklabs.lancaster-test
@@ -737,12 +737,12 @@
 (deftest test-rec-w-fixed-no-default-serdes
   (let [data {:data (ba/byte-array [1 2])}
         encoded (l/serialize rec-w-fixed-no-default-schema data)
-        decoded (deserialize-same rec-w-fixed-no-default-schema encoded)
-        _ (is (ba/equivalent-byte-arrays?
-               (ba/byte-array [1 2])
-               encoded))
-        _ (is (ba/equivalent-byte-arrays?
-               (:data data) (:data decoded)))]))
+        decoded (deserialize-same rec-w-fixed-no-default-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [1 2])
+         encoded))
+    (is (ba/equivalent-byte-arrays?
+         (:data data) (:data decoded)))))
 
 (defn get-ops-per-sec [f iters]
   (let [start-ms (u/get-current-time-ms)

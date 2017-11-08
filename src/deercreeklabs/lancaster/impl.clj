@@ -16,8 +16,8 @@
   u/IOutputStream
   (write-long-varint-zz [this l]
     (let [l (if (instance? BigInteger l)
-            (.longValue ^BigInteger l)
-            l)
+              (.longValue ^BigInteger l)
+              l)
           zz-n (bit-xor (bit-shift-left l 1) (bit-shift-right l 63))]
       (loop [n zz-n]
         (if (zero? (bit-and n -128))
@@ -67,31 +67,31 @@
   u/IInputStream
   (read-long-varint-zz [this]
     (loop [i 0
-         out 0]
-    (let [b (.readByte ^LittleEndianDataInputStream ledis)]
-      (if (zero? (bit-and b 0x80))
-        (let [zz-n (-> (bit-shift-left b i)
-                       (bit-or out))
-              long-out (->> (bit-and zz-n 1)
-                            (- 0)
-                            (bit-xor (unsigned-bit-shift-right zz-n 1)))]
-          long-out)
-        (let [out (-> (bit-and b 0x7f)
-                      (bit-shift-left i)
-                      (bit-or out))
-              i (+ 7 i)]
-          (if (<= i 63)
-            (recur i out)
-            (throw (ex-info "Variable-length quantity is more than 64 bits"
-                            (u/sym-map i)))))))))
+           out 0]
+      (let [b (.readByte ^LittleEndianDataInputStream ledis)]
+        (if (zero? (bit-and b 0x80))
+          (let [zz-n (-> (bit-shift-left b i)
+                         (bit-or out))
+                long-out (->> (bit-and zz-n 1)
+                              (- 0)
+                              (bit-xor (unsigned-bit-shift-right zz-n 1)))]
+            long-out)
+          (let [out (-> (bit-and b 0x7f)
+                        (bit-shift-left i)
+                        (bit-or out))
+                i (+ 7 i)]
+            (if (<= i 63)
+              (recur i out)
+              (throw (ex-info "Variable-length quantity is more than 64 bits"
+                              (u/sym-map i)))))))))
 
   (read-byte [this]
     (.readByte ^LittleEndianDataInputStream ledis))
 
   (read-bytes [this num-bytes]
     (let [ba (byte-array num-bytes)]
-    (.readFully ^LittleEndianDataInputStream ledis #^bytes ba 0 num-bytes)
-    ba))
+      (.readFully ^LittleEndianDataInputStream ledis #^bytes ba 0 num-bytes)
+      ba))
 
   (read-len-prefixed-bytes [this]
     (let [num-bytes (u/read-long-varint-zz this)]

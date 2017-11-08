@@ -189,7 +189,7 @@
 
 (defn make-default-fixed-or-bytes [num-bytes default]
   (u/byte-array->byte-str (or default
-                            (ba/byte-array (take num-bytes (repeat 0))))))
+                              (ba/byte-array (take num-bytes (repeat 0))))))
 
 (defn get-field-default [field-schema field-default]
   (let [avro-type (u/get-avro-type field-schema)]

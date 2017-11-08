@@ -66,6 +66,7 @@
      [lein-release "1.0.9" :upgrade false :exclusions [org.clojure/clojure]]]
     :dependencies
     [[doo "0.1.8"]
+     [cloverage "1.0.10" :exclusions [org.clojure/tools.reader]]
      [org.clojure/tools.namespace "0.2.11"]]}}
 
   :npm {:devDependencies [[karma "1.7.1"]
