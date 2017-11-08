@@ -1,13 +1,11 @@
 (def externs ["lancaster_externs.js"])
 
 (def compiler-defaults
-  {:npm-deps {:avsc "5.0.5"}
-   :install-deps true
-   :parallel-build true
+  {:parallel-build true
    :static-fns true
-   ;;:pseudo-names true
-   ;;:pretty-print true
-   ;;:infer-externs true
+   ;; :pseudo-names true
+   ;; :pretty-print true
+   ;; :infer-externs true
    })
 
 (defn make-build-conf [id target-kw build-type-kw opt-level main]
@@ -44,7 +42,7 @@
 
 (defproject deercreeklabs/lancaster "0.1.8-SNAPSHOT"
   :description "Tools for working with Apache Avro"
-  :url "http://www.deercreeklabs.com"
+  :url "https://github.com/deercreeklabs/lancaster"
   :license {:name "Apache License, Version 2.0"
             :url "http://www.apache.org/licenses/LICENSE-2.0"}
   :lein-release {:scm :git
@@ -77,17 +75,15 @@
                           [source-map-support "0.4.17"]]}
 
   :dependencies
-  [[binaryage/oops "0.5.6"]
-   [camel-snake-kebab "0.4.0"]
+  [[camel-snake-kebab "0.4.0"]
    [cheshire "5.8.0"]
+   [cljsjs/bytebuffer "5.0.1-0"]
    [cljsjs/long "3.0.3-1"]
+   [com.google.guava/guava "23.0" :exclusions [com.google.code.findbugs/jsr305]]
    [com.taoensso/timbre "4.10.0"]
-   [deercreeklabs/baracus "0.1.0" :exclusions [prismatic/schema]]
+   [deercreeklabs/baracus "0.1.1" :exclusions [prismatic/schema]]
    [deercreeklabs/log-utils "0.1.1"]
    [deercreeklabs/stockroom "0.1.11"]
-   [me.raynes/fs "1.4.6" :exclusions [org.apache.commons/commons-compress]]
-   [org.apache.avro/avro "1.8.2" :exclusions [org.slf4j/slf4j-api]]
-   [org.apache.avro/avro-tools "1.8.2" :exclusions [commons-logging]]
    [org.clojure/clojure "1.9.0-beta4"]
    [org.clojure/clojurescript "1.9.946"]]
 

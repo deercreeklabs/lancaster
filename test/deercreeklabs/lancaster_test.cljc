@@ -6,7 +6,11 @@
    [deercreeklabs.lancaster :as l]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
+   [schema.core :as s :include-macros true]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+
+;; Use this instead of fixtures, which are hard to make work w/ async testing.
+(s/set-fn-validation! false)
 
 (u/configure-logging)
 
@@ -18,123 +22,114 @@
 
 (defn deserialize-same
   "Deserialize with the same reader and writer schemas. Use for testing only."
-  ([schema encoded]
-   (deserialize-same schema encoded false))
-  ([schema encoded return-java?]
-   (l/deserialize schema (l/get-parsing-canonical-form schema)
-                  encoded return-java?)))
+  [schema encoded]
+  (l/deserialize schema (l/get-parsing-canonical-form schema) encoded))
 
-(l/def-record-schema add-to-cart-req-schema
-  [:sku :int]
-  [:qty-requested :int 0])
+(def add-to-cart-req-schema
+  (l/make-record-schema ::add-to-cart-req
+                        [[:sku l/int-schema]
+                         [:qty-requested l/int-schema 0]]))
 
-(l/def-record-schema add-to-cart-req-v2-schema
-  {:aliases [:add-to-cart-req]
-   :fields [[:username :string]
-            [:sku :int]
-            [:qty-requested :int 0]]})
+(def why-schema (l/make-enum-schema ::why
+                                    [:all :stock :limit]))
 
-(l/def-record-schema add-to-cart-req-v3-schema
-  {:aliases [:add-to-cart-req-v2]
-   :fields [[:sku :int]
-            [:qty-requested :int 0]]})
+(def a-fixed-schema (l/make-fixed-schema ::a-fixed 2))
 
-(l/def-enum-schema why-schema
-  :all :stock :limit)
+(def rec-w-fixed-no-default-schema
+  (l/make-record-schema ::rec-w-fixed-no-default
+                        [[:data a-fixed-schema]]))
 
-(l/def-fixed-schema a-fixed-schema 2)
+(def add-to-cart-rsp-schema
+  (l/make-record-schema ::add-to-cart-rsp
+                        [[:qty-requested l/int-schema]
+                         [:qty-added l/int-schema]
+                         [:current-qty l/int-schema]
+                         [:req add-to-cart-req-schema
+                          {:sku 10 :qty-requested 1}]
+                         [:the-reason-why why-schema :stock]
+                         [:data a-fixed-schema (ba/byte-array [77 88])]
+                         [:other-data l/bytes-schema]]))
 
-(l/def-record-schema rec-w-fixed-no-default-schema
-  [:data a-fixed-schema])
+(def simple-array-schema (l/make-array-schema l/string-schema))
 
-(l/def-record-schema add-to-cart-rsp-schema
-  [:qty-requested :int]
-  [:qty-added :int]
-  [:current-qty :int]
-  [:req add-to-cart-req-schema {:sku 10 :qty-requested 1}]
-  [:the-reason-why why-schema :stock]
-  [:data a-fixed-schema (ba/byte-array [77 88])]
-  [:other-data :bytes])
+(def rsps-schema (l/make-array-schema add-to-cart-rsp-schema))
 
-(l/def-array-schema rsps-schema
-  add-to-cart-rsp-schema)
+(def rec-w-array-and-enum-schema
+  (l/make-record-schema ::rec-w-array-and-enum
+                        [[:names simple-array-schema]
+                         [:why why-schema]]))
 
-(l/def-array-schema simple-array-schema
-  :string)
+(def ages-schema (l/make-map-schema l/int-schema))
 
-(l/def-record-schema rec-w-array-and-enum-schema
-  [:names simple-array-schema]
-  [:why why-schema])
+(def rec-w-map-schema
+  (l/make-record-schema ::rec-w-map
+                        [[:name-to-age ages-schema]
+                         [:what l/string-schema]]))
 
-(l/def-map-schema ages-schema
-  :int)
+(def nested-map-schema (l/make-map-schema add-to-cart-rsp-schema))
 
-(l/def-record-schema rec-w-map-schema
-  [:name-to-age ages-schema]
-  [:what :string])
+(def union-schema
+  (l/make-union-schema [l/int-schema add-to-cart-req-schema a-fixed-schema]))
 
-(l/def-map-schema nested-map-schema
-  add-to-cart-rsp-schema)
+(def person-schema
+  (l/make-record-schema ::person
+                        [[:name l/string-schema "No name"]
+                         [:age l/int-schema 0]]))
 
-(l/def-union-schema union-schema
-  :int add-to-cart-req-schema a-fixed-schema)
+(def dog-schema
+  (l/make-record-schema ::dog
+                        [[:name l/string-schema "No name"]
+                         [:owner l/string-schema "No owner"]]))
 
-(l/def-record-schema person-schema
-  [:name :string "No name"]
-  [:age :int 0])
+(def person-or-dog-schema
+  (l/make-union-schema [person-schema dog-schema]))
 
-(l/def-record-schema dog-schema
-  [:name :string "No name"]
-  [:owner :string "No owner"])
+(def map-or-array-schema
+  (l/make-union-schema [ages-schema simple-array-schema]))
 
-(l/def-union-schema person-or-dog-schema
-  person-schema dog-schema)
+(def mopodoa-schema
+  (l/make-union-schema [ages-schema person-schema dog-schema
+                        simple-array-schema]))
 
-(l/def-union-schema map-or-array-schema
-  ages-schema simple-array-schema)
-
-(l/def-union-schema mopodoa-schema
-  ages-schema person-schema dog-schema simple-array-schema)
-
-(l/def-record-schema tree-schema
-  [:value :int]
-  [:right :nil-or-recur]
-  [:left :nil-or-recur])
+;; TODO: Enable recursive schemas
+#_
+(def tree-schema
+  (l/make-record-schema ::tree
+                        [[:value l/int-schema]
+                         [:right :nil-or-recur]
+                         [:left :nil-or-recur]]))
 
 (deftest test-record-schema
-  (let [expected-cpf (str "{\"name\":\"deercreeklabs.lancaster_test."
+  (let [expected-pcf (str "{\"name\":\"deercreeklabs.lancaster_test."
                           "AddToCartReq\",\"type\":\"record\",\"fields\":"
                           "[{\"name\":\"sku\",\"type\":\"int\"},{\"name\":"
                           "\"qtyRequested\",\"type\":\"int\"}]}")
-        expected-edn-schema {:namespace "deercreeklabs.lancaster-test"
+        expected-edn-schema {:namespace :deercreeklabs.lancaster-test
                              :name :add-to-cart-req
                              :type :record
                              :fields
-                             [{:name :sku :type :int :default -1}
-                              {:name :qty-requested :type :int :default 0}]}]
-    (is (= "u7RfQa4gIP8+iNcQxGO+Ng=="
-           (ba/byte-array->b64 (l/get-fingerprint128 add-to-cart-req-schema))))
+                             [{:name :sku
+                               :type :int
+                               :default -1}
+                              {:name :qty-requested
+                               :type :int
+                               :default 0}]}]
+    (is (= "45c60aabcfd650ea"
+           (u/long->hex-str (l/get-fingerprint64 add-to-cart-req-schema))))
     (is (= expected-edn-schema (l/get-edn-schema add-to-cart-req-schema)))
-    (is (= expected-cpf (l/get-parsing-canonical-form
+    (is (= expected-pcf (l/get-parsing-canonical-form
                          add-to-cart-req-schema)))))
+
 (deftest test-def-record-schema-serdes
   (let [data {:sku 123
               :qty-requested 5}
         encoded (l/serialize add-to-cart-req-schema data)
         decoded (deserialize-same add-to-cart-req-schema encoded)]
     (is (= "9gEK" (ba/byte-array->b64 encoded)))
-    (is (= data decoded))
-    #?(:clj
-       (let [decoded-native (deserialize-same
-                             add-to-cart-req-schema
-                             encoded true)
-             sku (.getSku ^AddToCartReq decoded-native)
-             qty (.getQtyRequested ^AddToCartReq decoded-native)]
-         (is (= 123 sku))
-         (is (= 5 qty))))))
+    (is (= data decoded))))
 
 (deftest test-def-enum-schema
-  (is (= {:namespace "deercreeklabs.lancaster-test"
+  (is (= {:namespace :deercreeklabs.lancaster-test
           :name :why
           :type :enum
           :symbols [:all :stock :limit]}
@@ -142,21 +137,18 @@
   (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.Why\",\"type\":"
               "\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}")
          (l/get-parsing-canonical-form why-schema)))
-  (is (= "PRicwxPrcK1IC1N+1axUGg=="
-         (ba/byte-array->b64 (l/get-fingerprint128 why-schema)))))
+  (is (= "6222a8eaeb7a985e"
+         (u/long->hex-str (l/get-fingerprint64 why-schema)))))
 
 (deftest test-def-enum-schema-serdes
   (let [data :stock
         encoded (l/serialize why-schema data)
         decoded (deserialize-same why-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [2]) encoded))
-    (is (= data decoded))
-    #?(:clj
-       (let [decoded-native (deserialize-same why-schema encoded true)]
-         (is (= Why/STOCK decoded-native))))))
+    (is (= data decoded))))
 
 (deftest test-def-fixed-schema
-  (is (= {:namespace "deercreeklabs.lancaster-test"
+  (is (= {:namespace :deercreeklabs.lancaster-test
           :name :a-fixed
           :type :fixed
           :size 2}
@@ -164,8 +156,8 @@
   (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.AFixed\",\"type\":"
               "\"fixed\",\"size\":2}")
          (l/get-parsing-canonical-form a-fixed-schema)))
-  (is (= "6rfEbxq6V1fSCxTa1lLKXg=="
-         (ba/byte-array->b64 (l/get-fingerprint128 a-fixed-schema)))))
+  (is (= "6ded13577f54ade7"
+         (u/long->hex-str (l/get-fingerprint64 a-fixed-schema)))))
 
 (deftest test-def-fixed-schema-serdes
   (let [data (ba/byte-array [12 24])
@@ -173,11 +165,7 @@
         decoded (deserialize-same a-fixed-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          data encoded))
-    (is (ba/equivalent-byte-arrays? data decoded))
-    #?(:clj
-       (let [decoded-native (deserialize-same a-fixed-schema
-                                              encoded true)]
-         (is (= (AFixed. data) decoded-native))))))
+    (is (ba/equivalent-byte-arrays? data decoded))))
 
 (defn xf-byte-arrays
   [edn-schema]
@@ -187,7 +175,7 @@
                  edn-schema))
 
 (deftest test-nested-record-schema
-  (let [expected {:namespace "deercreeklabs.lancaster-test"
+  (let [expected {:namespace :deercreeklabs.lancaster-test
                   :name :add-to-cart-rsp
                   :type :record
                   :fields
@@ -196,7 +184,7 @@
                    {:name :current-qty :type :int :default -1}
                    {:name :req
                     :type
-                    {:namespace "deercreeklabs.lancaster-test"
+                    {:namespace :deercreeklabs.lancaster-test
                      :name :add-to-cart-req
                      :type :record
                      :fields
@@ -205,14 +193,14 @@
                     :default {:sku 10 :qty-requested 1}}
                    {:name :the-reason-why
                     :type
-                    {:namespace "deercreeklabs.lancaster-test"
+                    {:namespace :deercreeklabs.lancaster-test
                      :name :why
                      :type :enum
                      :symbols [:all :stock :limit]}
                     :default :stock}
                    {:name :data
                     :type
-                    {:namespace "deercreeklabs.lancaster-test"
+                    {:namespace :deercreeklabs.lancaster-test
                      :name :a-fixed
                      :type :fixed
                      :size 2}
@@ -220,9 +208,23 @@
                    {:name :other-data
                     :type :bytes
                     :default ""}]}]
+    (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.AddToCartRsp\","
+                "\"type\":\"record\",\"fields\":[{\"name\":\"qtyRequested\","
+                "\"type\":\"int\"},{\"name\":\"qtyAdded\",\"type\":\"int\"},"
+                "{\"name\":\"currentQty\",\"type\":\"int\"},{\"name\":\"req\","
+                "\"type\":{\"name\":\"deercreeklabs.lancaster_test."
+                "AddToCartReq\",\"type\":\"record\",\"fields\":[{\"name\":"
+                "\"sku\",\"type\":\"int\"},{\"name\":\"qtyRequested\",\"type"
+                "\":\"int\"}]}},{\"name\":\"theReasonWhy\",\"type\":{\"name\":"
+                "\"deercreeklabs.lancaster_test.Why\",\"type\":\"enum\","
+                "\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}},{\"name\":"
+                "\"data\",\"type\":{\"name\":\"deercreeklabs.lancaster_test."
+                "AFixed\",\"type\":\"fixed\",\"size\":2}},{\"name\":"
+                "\"otherData\",\"type\":\"bytes\"}]}")
+           (l/get-parsing-canonical-form add-to-cart-rsp-schema)))
     (is (= expected (l/get-edn-schema add-to-cart-rsp-schema))))
-  (is (= "GdzZ8c+EGQ/cFI/XgtXXIA=="
-         (ba/byte-array->b64 (l/get-fingerprint128 add-to-cart-rsp-schema)))))
+  (is (= "b2872b2c6000c8e5"
+         (u/long->hex-str (l/get-fingerprint64 add-to-cart-rsp-schema)))))
 
 (deftest test-nested-record-serdes
   (let [data {:qty-requested 123
@@ -254,23 +256,21 @@
     (is (ba/equivalent-byte-arrays? (ba/byte-array [1]) encoded))
     (is (= data decoded))))
 
-(deftest test-int-schema
+(deftest test-int-schema-serdes
   (let [data 7890
         encoded (l/serialize l/int-schema data)
         decoded (deserialize-same l/int-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-92 123]) encoded))
     (is (= data decoded))))
 
-;; TODO: Fix longs for cljs
-#?(:clj
-   (deftest test-long-schema
-     (let [data 9223372036854775807
-           encoded (l/serialize l/long-schema data)
-           decoded (deserialize-same l/long-schema encoded)]
-       (is (ba/equivalent-byte-arrays?
-            (ba/byte-array [-2 -1 -1 -1 -1 -1 -1 -1 -1 1])
-            encoded))
-       (is (= data decoded)))))
+(deftest test-long-schema-serdes
+  (let [data (u/ints->long 2147483647 -1)
+        encoded (l/serialize l/long-schema data)
+        decoded (deserialize-same l/long-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [-2 -1 -1 -1 -1 -1 -1 -1 -1 1])
+         encoded))
+    (is (= data decoded))))
 
 (defn get-abs-err [expected actual]
   (let [err (- expected actual)]
@@ -317,8 +317,8 @@
          (l/get-edn-schema ages-schema)))
   (is (= "{\"type\":\"map\",\"values\":\"int\"}"
          (l/get-parsing-canonical-form ages-schema)))
-  (is (= "Ld3h1A8PSHaljEYqsZx5ag=="
-         (ba/byte-array->b64 (l/get-fingerprint128 ages-schema)))))
+  (is (= "db39e2c2534c8973"
+         (u/long->hex-str (l/get-fingerprint64 ages-schema)))))
 
 (deftest test-map-schema-serdes
   (let [data {"Alice" 50
@@ -330,20 +330,15 @@
          (ba/byte-array [6 10 65 108 105 99 101 100 6 66 111 98 110 8
                          67 104 97 100 -78 1 0])
          encoded))
-    (is (= data decoded))
-    #?(:clj
-       (let [decoded-native (deserialize-same ages-schema
-                                              encoded true)]
-         (is (= java.util.HashMap
-                (class decoded-native)))))))
+    (is (= data decoded))))
 
 (deftest test-def-array-schema
   (is (= {:type :array :items :string}
          (l/get-edn-schema simple-array-schema)))
   (is (= "{\"type\":\"array\",\"items\":\"string\"}"
          (l/get-parsing-canonical-form simple-array-schema)))
-  (is (= "ldhJq9T0nUDg7+XR3Z2rYw=="
-         (ba/byte-array->b64 (l/get-fingerprint128 simple-array-schema)))))
+  (is (= "ce5b3256262fd79f"
+         (u/long->hex-str (l/get-fingerprint64 simple-array-schema)))))
 
 (deftest test-array-schema-serdes
   (let [names ["Ferdinand" "Omar" "Lin"]
@@ -353,18 +348,12 @@
          (ba/byte-array [6 18 70 101 114 100 105 110 97 110 100 8 79
                          109 97 114 6 76 105 110 0])
          encoded))
-    (is (= names decoded))
-    #?(:clj
-       (let [decoded-native (deserialize-same
-                             simple-array-schema
-                             encoded true)]
-         (is (= org.apache.avro.generic.GenericData$Array
-                (class decoded-native)))))))
+    (is (= names decoded))))
 
 (deftest test-nested-array-schema
   (is (= {:type :array
           :items
-          {:namespace "deercreeklabs.lancaster-test"
+          {:namespace :deercreeklabs.lancaster-test
            :name :add-to-cart-rsp
            :type :record
            :fields
@@ -373,7 +362,7 @@
             {:name :current-qty :type :int :default -1}
             {:name :req
              :type
-             {:namespace "deercreeklabs.lancaster-test"
+             {:namespace :deercreeklabs.lancaster-test
               :name :add-to-cart-req
               :type :record
               :fields
@@ -382,22 +371,22 @@
              :default {:sku 10 :qty-requested 1}}
             {:name :the-reason-why
              :type
-             {:namespace "deercreeklabs.lancaster-test"
+             {:namespace :deercreeklabs.lancaster-test
               :name :why
               :type :enum
               :symbols [:all :stock :limit]}
              :default :stock}
             {:name :data
              :type
-             {:namespace "deercreeklabs.lancaster-test"
+             {:namespace :deercreeklabs.lancaster-test
               :name :a-fixed
               :type :fixed
               :size 2}
              :default "MX"}
             {:name :other-data :type :bytes :default ""}]}}
          (l/get-edn-schema rsps-schema)))
-  (is (= "+BBySe1XenuRgfqEKzDfXQ=="
-         (ba/byte-array->b64 (l/get-fingerprint128 rsps-schema)))))
+  (is (= "53e478ee274a9db7"
+         (u/long->hex-str (l/get-fingerprint64 rsps-schema)))))
 
 (deftest test-nested-array-schema-serdes
   (let [data [{:qty-requested 123
@@ -426,7 +415,7 @@
 (deftest test-nested-map-schema
   (is (= {:type :map
           :values
-          {:namespace "deercreeklabs.lancaster-test"
+          {:namespace :deercreeklabs.lancaster-test
            :name :add-to-cart-rsp
            :type :record
            :fields
@@ -435,7 +424,7 @@
             {:name :current-qty :type :int :default -1}
             {:name :req
              :type
-             {:namespace "deercreeklabs.lancaster-test"
+             {:namespace :deercreeklabs.lancaster-test
               :name :add-to-cart-req
               :type :record
               :fields
@@ -444,22 +433,22 @@
              :default {:sku 10 :qty-requested 1}}
             {:name :the-reason-why
              :type
-             {:namespace "deercreeklabs.lancaster-test"
+             {:namespace :deercreeklabs.lancaster-test
               :name :why
               :type :enum
               :symbols [:all :stock :limit]}
              :default :stock}
             {:name :data
              :type
-             {:namespace "deercreeklabs.lancaster-test"
+             {:namespace :deercreeklabs.lancaster-test
               :name :a-fixed
               :type :fixed
               :size 2}
              :default "MX"}
             {:name :other-data :type :bytes :default ""}]}}
          (l/get-edn-schema nested-map-schema)))
-  (is (= "WjAyzZpCvsP3vrmPavaK1w=="
-         (ba/byte-array->b64 (l/get-fingerprint128 nested-map-schema)))))
+  (is (=  "9fa5480152c68cf9"
+         (u/long->hex-str (l/get-fingerprint64 nested-map-schema)))))
 
 (deftest test-nested-map-schema-serdes
   (let [data {"A" {:qty-requested 123
@@ -487,19 +476,19 @@
 
 (deftest test-union-schema
   (is (= [:int
-          {:namespace "deercreeklabs.lancaster-test"
+          {:namespace :deercreeklabs.lancaster-test
            :name :add-to-cart-req
            :type :record
            :fields
            [{:name :sku :type :int :default -1}
             {:name :qty-requested :type :int :default 0}]}
-          {:namespace "deercreeklabs.lancaster-test"
+          {:namespace :deercreeklabs.lancaster-test
            :name :a-fixed
            :type :fixed
            :size 2}]
          (l/get-edn-schema union-schema)))
-  (is (= "eoZHecFG3sfECWnaKrqwtQ=="
-         (ba/byte-array->b64 (l/get-fingerprint128 union-schema)))))
+  (is (= "ef20e3c27ecf9914"
+         (u/long->hex-str (l/get-fingerprint64 union-schema)))))
 
 (deftest test-union-schema-serdes
   (let [data {:sku 123 :qty-requested 4}
@@ -516,21 +505,21 @@
         _ (is (= data decoded))]))
 
 (deftest test-wrapped-union-schema
-  (is (= [{:namespace "deercreeklabs.lancaster-test",
-           :name :person,
-           :type :record,
+  (is (= [{:namespace :deercreeklabs.lancaster-test
+           :name :person
+           :type :record
            :fields
-           [{:name :name, :type :string, :default "No name"}
-            {:name :age, :type :int, :default 0}]}
-          {:namespace "deercreeklabs.lancaster-test",
-           :name :dog,
-           :type :record,
+           [{:name :name :type :string :default "No name"}
+            {:name :age :type :int :default 0}]}
+          {:namespace :deercreeklabs.lancaster-test
+           :name :dog
+           :type :record
            :fields
-           [{:name :name, :type :string, :default "No name"}
-            {:name :owner, :type :string, :default "No owner"}]}]
+           [{:name :name :type :string :default "No name"}
+            {:name :owner :type :string :default "No owner"}]}]
          (l/get-edn-schema person-or-dog-schema)))
-  (is (= "cUmA98B3UOFIHp+P8o946A=="
-         (ba/byte-array->b64 (l/get-fingerprint128 person-or-dog-schema)))))
+  (is (= "723566f27583c594"
+         (u/long->hex-str (l/get-fingerprint64 person-or-dog-schema)))))
 
 (deftest test-wrapped-union-schema-serdes
   (let [data (l/wrap dog-schema {:name "Fido" :owner "Zach"})
@@ -549,11 +538,11 @@
         _ (is (= data decoded))]))
 
 (deftest test-map-or-array-schema
-  (is (= [{:type :map, :values :int}
-          {:type :array, :items :string}]
+  (is (= [{:type :map :values :int}
+          {:type :array :items :string}]
          (l/get-edn-schema map-or-array-schema)))
-  (is (= "Gj6+dqBKHCxgxVPqUCreJg=="
-         (ba/byte-array->b64 (l/get-fingerprint128 map-or-array-schema)))))
+  (is (= "3da32ade40155b97"
+         (u/long->hex-str (l/get-fingerprint64 map-or-array-schema)))))
 
 (deftest test-map-or-array-schema-serdes
   (let [data {"Zeke" 22 "Adeline" 88}
@@ -575,20 +564,20 @@
 
 (deftest test-mopodoa-schema
   (is (= [{:type :map :values :int}
-          {:namespace "deercreeklabs.lancaster-test"
+          {:namespace :deercreeklabs.lancaster-test
            :name :person
            :type :record
            :fields [{:name :name :type :string :default "No name"}
                     {:name :age :type :int :default 0}]}
-          {:namespace "deercreeklabs.lancaster-test"
+          {:namespace :deercreeklabs.lancaster-test
            :name :dog
            :type :record
            :fields [{:name :name :type :string :default "No name"}
                     {:name :owner :type :string :default "No owner"}]}
           {:type :array :items :string}]
          (l/get-edn-schema mopodoa-schema)))
-  (is (= "UWBve/QD0y8DzmITYnqbYA=="
-         (ba/byte-array->b64 (l/get-fingerprint128 mopodoa-schema)))))
+  (is (= "e206da39366e5f63"
+         (u/long->hex-str (l/get-fingerprint64 mopodoa-schema)))))
 
 (deftest test-mopodoa-schema-serdes
   (let [data (l/wrap ages-schema {"Zeke" 22 "Adeline" 88})
@@ -608,87 +597,87 @@
                encoded))
         _ (is (= data decoded))]))
 
-(deftest test-recursive-schema
-  (is (= {:namespace "deercreeklabs.lancaster-test"
-          :name :tree
-          :type :record
-          :fields
-          [{:name :value :type :int :default -1}
-           {:name :right
-            :type [:null "deercreeklabs.lancaster-test.tree"]
-            :default nil}
-           {:name :left
-            :type [:null "deercreeklabs.lancaster-test.tree"]
-            :default nil}]}
-         (l/get-edn-schema tree-schema)))
-  (is (= "7S/pDrRPpfq+cxuNpMNKlw=="
-         (ba/byte-array->b64 (l/get-fingerprint128 tree-schema)))))
+;; (deftest test-recursive-schema
+;;   (is (= {:namespace "deercreeklabs.lancaster-test"
+;;           :name :tree
+;;           :type :record
+;;           :fields
+;;           [{:name :value :type :int :default -1}
+;;            {:name :right
+;;             :type [:null "deercreeklabs.lancaster-test.tree"]
+;;             :default nil}
+;;            {:name :left
+;;             :type [:null "deercreeklabs.lancaster-test.tree"]
+;;             :default nil}]}
+;;          (l/get-edn-schema tree-schema)))
+;;   (is (= "7S/pDrRPpfq+cxuNpMNKlw=="
+;;          (u/long->hex-str (l/get-fingerprint64 tree-schema)))))
 
-(deftest test-recursive-schema-serdes
-  (let [data {:value 5
-              :right {:value -10
-                      :right {:value -20
-                              :right nil
-                              :left nil}
-                      :left nil}
-              :left {:value 10
-                     :right nil
-                     :left {:value 20
-                            :right nil
-                            :left {:value 40
-                                   :right nil
-                                   :left nil}}}}
-        encoded (l/serialize tree-schema data)
-        decoded (deserialize-same tree-schema encoded)
-        _ (is (ba/equivalent-byte-arrays?
-               (ba/byte-array [10 2 19 2 39 0 0 0 2 20 0 2 40 0 2 80 0 0])
-               encoded))
-        _ (is (= data decoded))]))
+;; (deftest test-recursive-schema-serdes
+;;   (let [data {:value 5
+;;               :right {:value -10
+;;                       :right {:value -20
+;;                               :right nil
+;;                               :left nil}
+;;                       :left nil}
+;;               :left {:value 10
+;;                      :right nil
+;;                      :left {:value 20
+;;                             :right nil
+;;                             :left {:value 40
+;;                                    :right nil
+;;                                    :left nil}}}}
+;;         encoded (l/serialize tree-schema data)
+;;         decoded (deserialize-same tree-schema encoded)
+;;         _ (is (ba/equivalent-byte-arrays?
+;;                (ba/byte-array [10 2 19 2 39 0 0 0 2 20 0 2 40 0 2 80 0 0])
+;;                encoded))
+;;         _ (is (= data decoded))]))
 
-(deftest test-schema-evolution-add-a-field
-  (let [data {:sku 789
-              :qty-requested 10}
-        encoded-orig (l/serialize add-to-cart-req-schema data)
-        _ (is (ba/equivalent-byte-arrays? (ba/byte-array [-86 12 20])
-                                          encoded-orig))
-        decoded-new (l/deserialize add-to-cart-req-v2-schema
-                                   (l/get-parsing-canonical-form
-                                    add-to-cart-req-schema)
-                                   encoded-orig)]
-    (is (= (assoc data :username "") decoded-new))))
+;; (deftest test-schema-evolution-add-a-field
+;;   (let [data {:sku 789
+;;               :qty-requested 10}
+;;         encoded-orig (l/serialize add-to-cart-req-schema data)
+;;         _ (is (ba/equivalent-byte-arrays? (ba/byte-array [-86 12 20])
+;;                                           encoded-orig))
+;;         decoded-new (l/deserialize add-to-cart-req-v2-schema
+;;                                    (l/get-parsing-canonical-form
+;;                                     add-to-cart-req-schema)
+;;                                    encoded-orig)]
+;;     (is (= (assoc data :username "") decoded-new))))
 
-(deftest test-schema-evolution-remove-a-field
-  (let [data {:username ""
-              :sku 789
-              :qty-requested 10}
-        encoded-orig (l/serialize add-to-cart-req-v2-schema data)
-        _ (is (ba/equivalent-byte-arrays? (ba/byte-array [0 -86 12 20])
-                                          encoded-orig))
-        decoded-new (l/deserialize
-                     add-to-cart-req-v3-schema
-                     (l/get-parsing-canonical-form add-to-cart-req-v2-schema)
-                     encoded-orig)]
-    (is (= (dissoc data :username) decoded-new))))
+;; (deftest test-schema-evolution-remove-a-field
+;;   (let [data {:username ""
+;;               :sku 789
+;;               :qty-requested 10}
+;;         encoded-orig (l/serialize add-to-cart-req-v2-schema data)
+;;         _ (is (ba/equivalent-byte-arrays? (ba/byte-array [0 -86 12 20])
+;;                                           encoded-orig))
+;;         decoded-new (l/deserialize
+;;                      add-to-cart-req-v3-schema
+;;                      (l/get-parsing-canonical-form add-to-cart-req-v2-schema)
+;;                      encoded-orig)]
+;;     (is (= (dissoc data :username) decoded-new))))
 
 (deftest test-rec-w-array-and-enum-schema
-  (is (= {:namespace "deercreeklabs.lancaster-test",
-          :name :rec-w-array-and-enum,
-          :type :record,
+  (is (= {:namespace :deercreeklabs.lancaster-test
+          :name :rec-w-array-and-enum
+          :type :record
           :fields
-          [{:name :names,
-            :type {:type :array, :items :string},
+          [{:name :names
+            :type {:type :array :items :string}
             :default []}
-           {:name :why,
+           {:name :why
             :type
-            {:namespace "deercreeklabs.lancaster-test",
-             :name :why,
-             :type :enum,
-             :symbols [:all :stock :limit]},
+            {:namespace :deercreeklabs.lancaster-test
+             :name :why
+             :type :enum
+             :symbols [:all :stock :limit]}
             :default :all}]}
          (l/get-edn-schema rec-w-array-and-enum-schema)))
-  (is (= "S4LnLBpK4ryY7W53bb+MeQ=="
-         (ba/byte-array->b64 (l/get-fingerprint128
-                              rec-w-array-and-enum-schema)))))
+  (is (= "91fa1c9b7aa30f5a"
+         (u/long->hex-str (l/get-fingerprint64
+                           rec-w-array-and-enum-schema)))))
 
 (deftest test-rec-w-array-and-enum-serdes
   (let [data {:names ["Aria" "Beth" "Cindy"]
@@ -702,18 +691,18 @@
         _ (is (= data decoded))]))
 
 (deftest test-rec-w-map-schema
-  (is (= {:namespace "deercreeklabs.lancaster-test",
-           :name :rec-w-map,
-           :type :record,
-           :fields
-           [{:name :name-to-age,
-             :type {:type :map, :values :int},
-             :default {}}
-            {:name :what, :type :string, :default ""}]}
+  (is (= {:namespace :deercreeklabs.lancaster-test
+          :name :rec-w-map
+          :type :record
+          :fields
+          [{:name :name-to-age
+            :type {:type :map :values :int}
+            :default {}}
+           {:name :what :type :string :default ""}]}
          (l/get-edn-schema rec-w-map-schema)))
-  (is (= "IygOJrA0iLdJTu8vBhtFOw=="
-         (ba/byte-array->b64 (l/get-fingerprint128
-                              rec-w-map-schema)))))
+  (is (= "a83fbba8cc587ad3"
+         (u/long->hex-str (l/get-fingerprint64
+                           rec-w-map-schema)))))
 
 (deftest test-rec-w-map-serdes
   (let [data {:name-to-age {"Aria" 22
@@ -729,21 +718,21 @@
         _ (is (= data decoded))]))
 
 (deftest test-rec-w-fixed-no-default
-  (is (= {:namespace "deercreeklabs.lancaster-test",
-          :name :rec-w-fixed-no-default,
-          :type :record,
+  (is (= {:namespace :deercreeklabs.lancaster-test
+          :name :rec-w-fixed-no-default
+          :type :record
           :fields
-          [{:name :data,
+          [{:name :data
             :type
-            {:namespace "deercreeklabs.lancaster-test",
-             :name :a-fixed,
-             :type :fixed,
-             :size 2},
+            {:namespace :deercreeklabs.lancaster-test
+             :name :a-fixed
+             :type :fixed
+             :size 2}
             :default "\0\0"}]}
          (l/get-edn-schema rec-w-fixed-no-default-schema)))
-  (is (= "F88jax5m7Vprj/6edLbZWw=="
-         (ba/byte-array->b64 (l/get-fingerprint128
-                              rec-w-fixed-no-default-schema)))))
+  (is (= "c257b331f3becb0c"
+         (u/long->hex-str (l/get-fingerprint64
+                           rec-w-fixed-no-default-schema)))))
 
 (deftest test-rec-w-fixed-no-default-serdes
   (let [data {:data (ba/byte-array [1 2])}
@@ -780,5 +769,5 @@
         dec-ops (get-ops-per-sec dec-fn num-ops)]
     (infof "Encoding ops per sec: %.0f" enc-ops)
     (infof "Decoding ops per sec: %.0f" dec-ops)
-    (is (< #?(:cljs 10000 :clj 150000) enc-ops))
-    (is (< #?(:cljs 2000 :clj 250000) dec-ops))))
+    (is (< #?(:cljs 10000 :clj 250000) enc-ops))
+    (is (< #?(:cljs 10000 :clj 250000) dec-ops))))
