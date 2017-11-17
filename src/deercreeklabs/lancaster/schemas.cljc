@@ -74,7 +74,6 @@
                       (name schema-type)
                       (edn-schema->avro-schema edn-schema))
         json-schema (u/edn->json-string avro-schema)
-        ;;parsing-canonical-form (impl/json-schema->pcf json-schema)
         parsing-canonical-form (pcf/avro-schema->pcf avro-schema)
         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
         serializer (u/make-serializer edn-schema)

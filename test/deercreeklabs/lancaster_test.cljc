@@ -751,7 +751,7 @@
         ms (- (u/get-current-time-ms) start-ms)]
     (/ (* 1000 iters) ms)))
 
-(deftest test-serdes-speed
+(deftest ^:perf test-serdes-speed
   (let [data {:qty-requested 123
               :req {:sku 123 :qty-requested 123}
               :data (ba/byte-array [66 67])
