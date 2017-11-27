@@ -1,12 +1,10 @@
-(def externs ["lancaster_externs.js"])
-
 (def compiler-defaults
   {:parallel-build true
    :static-fns true
    ;; :pseudo-names true
    ;; :pretty-print true
    ;; :infer-externs true
-   })
+   :externs ["lancaster_externs.js"]})
 
 (defn make-build-conf [id target-kw build-type-kw opt-level main]
   (let [build-type-str (name build-type-kw)
@@ -32,7 +30,6 @@
                                :output-dir output-dir
                                :source-map source-map)
                    main (assoc :main main)
-                   (= :advanced opt-level) (assoc :externs externs)
                    node? (assoc :target :nodejs))
         node-test? (and node? (= :test build-type-kw))]
     (cond-> {:id id
@@ -66,7 +63,6 @@
      [lein-release "1.0.9" :upgrade false :exclusions [org.clojure/clojure]]]
     :dependencies
     [[doo "0.1.8"]
-     [cloverage "1.0.10" :exclusions [org.clojure/tools.reader]]
      [org.clojure/tools.namespace "0.2.11"]]}}
 
   :npm {:devDependencies [[karma "1.7.1"]
@@ -83,8 +79,8 @@
    [com.google.guava/guava "23.0" :exclusions [com.google.code.findbugs/jsr305]]
    [com.taoensso/timbre "4.10.0"]
    [deercreeklabs/baracus "0.1.1" :exclusions [prismatic/schema]]
-   [deercreeklabs/log-utils "0.1.1"]
-   [deercreeklabs/stockroom "0.1.11"]
+   [deercreeklabs/log-utils "0.1.2"]
+   [deercreeklabs/stockroom "0.1.12"]
    [org.clojure/clojure "1.9.0-beta4"]
    [org.clojure/clojurescript "1.9.946"]]
 
