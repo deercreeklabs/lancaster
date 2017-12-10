@@ -81,7 +81,7 @@
    [deercreeklabs/baracus "0.1.1" :exclusions [prismatic/schema]]
    [deercreeklabs/log-utils "0.1.2"]
    [deercreeklabs/stockroom "0.1.12"]
-   [org.clojure/clojure "1.9.0-beta4"]
+   [org.clojure/clojure "1.9.0"]
    [org.clojure/clojurescript "1.9.946"]]
 
   :test-selectors {:default (complement :perf)

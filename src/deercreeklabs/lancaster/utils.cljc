@@ -398,10 +398,10 @@
         (throw
          (ex-info (str "Data (" (ba/byte-array->debug-str data)
                        ") is not the proper size (" size ". Path: " path)
-                        {:data data
-                         :data-size (count data)
-                         :schema-size size
-                         :path path})))
+                  {:data data
+                   :data-size (count data)
+                   :schema-size size
+                   :path path})))
       (write-bytes os data size))))
 
 (defmethod make-deserializer :fixed
