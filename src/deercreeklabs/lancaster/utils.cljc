@@ -254,10 +254,12 @@
 
 (defmethod make-serializer :null
   [edn-schema]
-  (fn serialize [os data]
+  (fn serialize [os data path]
     (when-not (nil? data)
-      (throw (ex-info "Data is not a valid :null. Must be nil."
-                      (sym-map data))))))
+      (throw
+       (ex-info (str "Data (" data ") is not a valid :null. Must be nil. Path: "
+                     path)
+                (sym-map data path edn-schema))))))
 
 (defmethod make-deserializer :null
   [edn-schema]
@@ -266,9 +268,11 @@
 
 (defmethod make-serializer :boolean
   [edn-schema]
-  (fn serialize [os data]
+  (fn serialize [os data path]
     (when-not (boolean? data)
-      (throw (ex-info "Data is not a valid :boolean." (sym-map data))))
+      (throw
+       (ex-info (str "Data (" data ") is not a valid :boolean. Path: " path)
+                (sym-map data path edn-schema))))
     (write-byte os (if data 1 0))))
 
 (defmethod make-deserializer :boolean
@@ -278,9 +282,11 @@
 
 (defmethod make-serializer :int
   [edn-schema]
-  (fn serialize [os data]
+  (fn serialize [os data path]
     (when-not (valid-int? data)
-      (throw (ex-info "Data is not a valid :int." (sym-map data))))
+      (throw
+       (ex-info (str "Data (" data ") is not a valid :int. Path: " path)
+                (sym-map data path edn-schema))))
     (write-long-varint-zz os data)))
 
 (defmethod make-deserializer :int
@@ -290,9 +296,11 @@
 
 (defmethod make-serializer :long
   [edn-schema]
-  (fn serialize [os data]
+  (fn serialize [os data path]
     (when-not (valid-long? data)
-      (throw (ex-info "Data is not a valid :long." (sym-map data))))
+      (throw
+       (ex-info (str "Data (" data ") is not a valid :long. Path: " path)
+                (sym-map data path edn-schema))))
     (write-long-varint-zz os data)))
 
 (defmethod make-deserializer :long
@@ -302,9 +310,11 @@
 
 (defmethod make-serializer :float
   [edn-schema]
-  (fn serialize [os data]
+  (fn serialize [os data path]
     (when-not (valid-float? data)
-      (throw (ex-info "Data is not a valid :float." (sym-map data))))
+      (throw
+       (ex-info (str "Data (" data ") is not a valid :float. Path: " path)
+                (sym-map data path edn-schema))))
     (write-float os data)))
 
 (defmethod make-deserializer :float
@@ -314,9 +324,11 @@
 
 (defmethod make-serializer :double
   [edn-schema]
-  (fn serialize [os data]
+  (fn serialize [os data path]
     (when-not (valid-double? data)
-      (throw (ex-info "Data is not a valid :double." (sym-map data))))
+      (throw
+       (ex-info (str "Data (" data ") is not a valid :double. Path: " path)
+                (sym-map data path edn-schema))))
     (write-double os data)))
 
 (defmethod make-deserializer :double
@@ -326,9 +338,11 @@
 
 (defmethod make-serializer :string
   [edn-schema]
-  (fn serialize [os data]
+  (fn serialize [os data path]
     (when-not (string? data)
-      (throw (ex-info "Data is not a valid :string." (sym-map data))))
+      (throw
+       (ex-info (str "Data (" data ") is not a valid :string. Path: " path)
+                (sym-map data path edn-schema))))
     (write-utf8-string os data)))
 
 (defmethod make-deserializer :string
@@ -338,9 +352,11 @@
 
 (defmethod make-serializer :bytes
   [edn-schema]
-  (fn serialize [os data]
+  (fn serialize [os data path]
     (when-not (ba/byte-array? data)
-      (throw (ex-info "Data is not a valid :bytes." (sym-map data))))
+      (throw
+       (ex-info (str "Data (" data ") is not a valid :bytes. Path: " path)
+                (sym-map data path edn-schema))))
     (write-bytes-w-len-prefix os data)))
 
 (defmethod make-deserializer :bytes
@@ -354,11 +370,13 @@
         symbol->index (apply hash-map
                              (apply concat (map-indexed
                                             #(vector %2 %1) symbols)))]
-    (fn serialize [os data]
+    (fn serialize [os data path]
       (if-let [i (symbol->index data)]
         (write-long-varint-zz os i)
-        (throw (ex-info "Data is not a one of the valid symbols."
-                        (sym-map symbols data)))))))
+        (throw
+         (ex-info (str "Data (" data
+                       ") is not one of the symbols of this enum. Path: " path)
+                  (sym-map data path symbols edn-schema)))))))
 
 (defmethod make-deserializer :enum
   [edn-schema]
@@ -371,14 +389,19 @@
 (defmethod make-serializer :fixed
   [edn-schema]
   (let [{:keys [size]} edn-schema]
-    (fn serialize [os data]
+    (fn serialize [os data path]
       (when-not (ba/byte-array? data)
-        (throw (ex-info "Data is not a valid :fixed." (sym-map data))))
+        (throw
+         (ex-info (str "Data (" data ") is not a valid :fixed. Path: " path)
+                  (sym-map data path edn-schema))))
       (when-not (= size (count data))
-        (throw (ex-info "Data is not the proper size."
+        (throw
+         (ex-info (str "Data (" (ba/byte-array->debug-str data)
+                       ") is not the proper size (" size ". Path: " path)
                         {:data data
                          :data-size (count data)
-                         :schema-size size})))
+                         :schema-size size
+                         :path path})))
       (write-bytes os data size))))
 
 (defmethod make-deserializer :fixed
@@ -391,13 +414,15 @@
   [edn-schema]
   (let [{:keys [values]} edn-schema
         serialize-value (make-serializer values)]
-    (fn serialize [os data]
+    (fn serialize [os data path]
       (when-not (map? data)
-        (throw (ex-info "Data is not a valid :map." (sym-map data))))
+        (throw
+         (ex-info (str "Data (" data ") is not a valid :map. Path: " path)
+                  (sym-map data path edn-schema))))
       (write-long-varint-zz os (count data))
       (doseq [[k v] data]
         (write-utf8-string os k)
-        (serialize-value os v))
+        (serialize-value os v (conj path k)))
       (write-byte os 0))))
 
 (defmethod make-deserializer :map
@@ -421,12 +446,16 @@
   [edn-schema]
   (let [{:keys [items]} edn-schema
         serialize-item (make-serializer items)]
-    (fn serialize [os data]
+    (fn serialize [os data path]
       (when-not (sequential? data)
-        (throw (ex-info "Data is not a valid :array." (sym-map data))))
+        (throw
+         (ex-info (str "Data (" data ") is not a valid :array. Path: " path)
+                  (sym-map data path edn-schema))))
       (write-long-varint-zz os (count data))
-      (doseq [item data]
-        (serialize-item os item))
+      (doall
+       (map-indexed (fn [i item]
+                      (serialize-item os item (conj path i)))
+                    data))
       (write-byte os 0))))
 
 (defmethod make-deserializer :array
@@ -463,13 +492,15 @@
 (defn make-data->branch [member-schemas]
   (let [num-schemas (count member-schemas)
         tests (mapv get-test member-schemas)]
-    (fn [data]
+    (fn [data path]
       (loop [i 0]
         (cond
           ((tests i) data) i
           (< i num-schemas) (recur (inc i))
-          :else (throw (ex-info "Data does not match union schema."
-                                (sym-map data))))))))
+          :else (throw
+                 (ex-info (str "Data (" data ") does not match union schema."
+                               " Path: " path)
+                          (sym-map data path member-schemas))))))))
 
 (defn make-schema-name->branch-info [edn-schema]
   (reduce (fn [acc i]
@@ -482,18 +513,18 @@
   [edn-schema]
   (if (wrapping-required? edn-schema)
     (let [schema-name->branch-info (make-schema-name->branch-info edn-schema)]
-      (fn serialize [os data]
+      (fn serialize [os data path]
         (let [[schema-name data] data
               [branch serializer] (schema-name->branch-info schema-name)]
           (write-long-varint-zz os branch)
-          (serializer os data))))
+          (serializer os data path))))
     (let [data->branch (make-data->branch edn-schema)
           branch->serializer (mapv make-serializer edn-schema)]
-      (fn serialize [os data]
-        (let [branch (data->branch data)
+      (fn serialize [os data path]
+        (let [branch (data->branch data path)
               serializer (branch->serializer branch)]
           (write-long-varint-zz os branch)
-          (serializer os data))))))
+          (serializer os data path))))))
 
 (defmethod make-deserializer :union
   [edn-schema]
@@ -520,9 +551,13 @@
 (defmethod make-serializer :record
   [edn-schema]
   (let [field-infos (mapv make-field-info (:fields edn-schema))]
-    (fn serialize [os data]
+    (fn serialize [os data path]
+      (when-not (map? data)
+        (throw
+         (ex-info (str "Data (" data ") is not a valid :record. Path: " path)
+                  (sym-map data path edn-schema))))
       (doseq [[k default serializer] field-infos]
-        (serializer os (get data k default))))))
+        (serializer os (get data k default) (conj path k))))))
 
 (defmethod make-deserializer :record
   [edn-schema]
@@ -550,11 +585,3 @@
   []
   #?(:clj (System/currentTimeMillis)
      :cljs (.getTime (js/Date.))))
-
-#_
-(defn drop-schema-from-name [s]
-  (if-not (clojure.string/ends-with? s "schema")
-    s
-    (-> (name s)
-        (clojure.string/split #"-schema")
-        (first))))

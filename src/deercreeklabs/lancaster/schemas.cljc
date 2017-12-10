@@ -34,7 +34,7 @@
                        resolving-deserializer]
   IAvroSchema
   (serialize [this os data]
-    (serializer os data))
+    (serializer os data []))
   (deserialize [this writer-pcf is]
     (if (= writer-pcf parsing-canonical-form)
       (deserializer is)
