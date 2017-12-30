@@ -430,17 +430,15 @@
   (let [{:keys [values]} edn-schema
         deserialize-value (make-deserializer values)]
     (fn deserialize [is]
-      (let [m (transient {})]
-        (loop []
-          (let [count (long->int (read-long-varint-zz is))]
-            (if (zero? count)
-              (persistent! m)
-              (do
-                (dotimes [i count]
-                  (let [k (read-utf8-string is)
-                        v (deserialize-value is)]
-                    (assoc! m k v)))
-                (recur)))))))))
+      (loop [m (transient {})]
+        (let [count (long->int (read-long-varint-zz is))]
+          (if (zero? count)
+            (persistent! m)
+            (recur (reduce (fn [acc i]
+                             (let [k (read-utf8-string is)
+                                 v (deserialize-value is)]
+                             (assoc! acc k v)))
+                         m (range count)))))))))
 
 (defmethod make-serializer :array
   [edn-schema]
@@ -463,15 +461,13 @@
   (let [{:keys [items]} edn-schema
         deserialize-item (make-deserializer items)]
     (fn deserialize [is]
-      (let [a (transient [])]
-        (loop []
-          (let [count (long->int (read-long-varint-zz is))]
-            (if (zero? count)
-              (persistent! a)
-              (do
-                (dotimes [i count]
-                  (conj! a (deserialize-item is)))
-                (recur)))))))))
+      (loop [a (transient [])]
+        (let [count (long->int (read-long-varint-zz is))]
+          (if (zero? count)
+            (persistent! a)
+            (recur (reduce (fn [acc i]
+                             (conj! acc (deserialize-item is)))
+                           a (range count)))))))))
 
 (defn get-test [edn-schema]
   (case (get-avro-type edn-schema)
@@ -567,10 +563,10 @@
                               [name deserializer]))
                           (:fields edn-schema))]
     (fn deserialize [is]
-      (let [m (transient {})]
-        (doseq [[k deserializer] field-infos]
-          (assoc! m k (deserializer is)))
-        (persistent! m)))))
+      (persistent!
+       (reduce (fn [acc [k deserializer]]
+                 (assoc! acc k (deserializer is)))
+               (transient {}) field-infos)))))
 
 (defn edn->json-string [edn]
   #?(:clj (json/generate-string edn {:pretty true})
