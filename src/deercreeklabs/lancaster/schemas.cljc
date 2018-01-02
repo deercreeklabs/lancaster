@@ -8,8 +8,11 @@
    [deercreeklabs.lancaster.pcf :as pcf]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
+   #?(:clj [primitive-math :as pm])
    [schema.core :as s :include-macros true]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+
+#?(:clj (pm/use-primitive-operators))
 
 (declare get-field-default)
 
