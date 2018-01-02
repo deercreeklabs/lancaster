@@ -7,6 +7,7 @@
    [#?(:clj clj-time.core :cljs cljs-time.core) :as t]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
+   #?(:clj [primitive-math :as pm])
    #?(:clj [puget.printer :refer [cprint]])
    [schema.core :as s]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
@@ -22,6 +23,8 @@
 
 #?(:cljs (def class type))
 #?(:cljs (def Long js/Long))
+
+#?(:clj (pm/use-primitive-operators))
 
 (defmacro sym-map
   "Builds a map from symbols.
@@ -107,12 +110,6 @@
   #?(:clj (= a b)
      :cljs (.equals a b)))
 
-(s/defn long :- Long
-  [x :- s/Any]
-  (when-not (nil? x)
-    #?(:clj (clojure.core/long x)
-       :cljs (Long.fromValue x))))
-
 #?(:cljs (extend-type Long
            IEquiv
            (-equiv [l other]
@@ -193,18 +190,16 @@
 
 (defn valid-int? [data]
   (and (integer? data)
-       (<= data 2147483647)
-       (>= data -2147483648)))
+       (<= (int data) 2147483647)
+       (>= (int data) -2147483648)))
 
 (defn valid-long? [data]
-  (and (long-or-int? data)
-       (<= data 9223372036854775807)
-       (>= data -9223372036854775808)))
+  (long-or-int? data))
 
 (defn valid-float? [data]
   (and (number? data)
-       (<= data 3.4028234E38)
-       (>= data -3.4028234E38)))
+       (<= (float data) (float 3.4028234E38))
+       (>= (float data) (float -3.4028234E38))))
 
 (defn valid-double? [data]
   (number? data))
@@ -431,7 +426,7 @@
         deserialize-value (make-deserializer values)]
     (fn deserialize [is]
       (loop [m (transient {})]
-        (let [count (long->int (read-long-varint-zz is))]
+        (let [count (int (long->int (read-long-varint-zz is)))]
           (if (zero? count)
             (persistent! m)
             (recur (reduce (fn [acc i]
@@ -462,7 +457,7 @@
         deserialize-item (make-deserializer items)]
     (fn deserialize [is]
       (loop [a (transient [])]
-        (let [count (long->int (read-long-varint-zz is))]
+        (let [count (int (long->int (read-long-varint-zz is)))]
           (if (zero? count)
             (persistent! a)
             (recur (reduce (fn [acc i]

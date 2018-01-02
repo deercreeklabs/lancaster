@@ -14,11 +14,13 @@
         node? (= :node target-kw)
         source-paths (case build-type-kw
                        :build ["src"]
-                       :test ["src" "test"])
+                       :test ["src" "test"]
+                       :perf ["src" "test"])
         build-name (str target-str "_" build-type-str "_" (name opt-level))
         output-name (case build-type-kw
                       :build "main.js"
-                      :test "test_main.js")
+                      :test "test_main.js"
+                      :perf "perf_main.js")
         output-dir (str "target/" build-type-str "/" build-name)
         output-to (str output-dir "/" output-name)
         source-map (if (= :none opt-level)
@@ -31,7 +33,8 @@
                                :source-map source-map)
                    main (assoc :main main)
                    node? (assoc :target :nodejs))
-        node-test? (and node? (= :test build-type-kw))]
+        node-test? (and node? (or (= :test build-type-kw)
+                                  (= :perf build-type-kw)))]
     (cond-> {:id id
              :source-paths source-paths
              :compiler compiler}
@@ -81,6 +84,7 @@
    [deercreeklabs/baracus "0.1.1" :exclusions [prismatic/schema]]
    [deercreeklabs/log-utils "0.1.2"]
    [deercreeklabs/stockroom "0.1.12"]
+   [primitive-math "0.1.6"]
    [org.clojure/clojure "1.9.0"]
    [org.clojure/clojurescript "1.9.946"]]
 
@@ -97,6 +101,8 @@
                       "deercreeklabs.node-test-runner")
     ~(make-build-conf "node-test-adv" :node :test :advanced
                       "deercreeklabs.node-test-runner")
+    ~(make-build-conf "node-test-perf" :node :perf :advanced
+                      "deercreeklabs.node-perf-runner")
     ~(make-build-conf "doo-test-none" :doo :test :none
                       "deercreeklabs.doo-test-runner")
     ~(make-build-conf "doo-test-simple" :doo :test :simple
@@ -115,6 +121,9 @@
    "auto-test-cljs-adv" ["do"
                          "clean,"
                          "cljsbuild" "auto" "node-test-adv"]
+   "auto-test-cljs-perf" ["do"
+                          "clean,"
+                          "cljsbuild" "auto" "node-test-perf"]
    "chrome-test" ["do"
                   "clean,"
                   "doo" "chrome" "doo-test-adv"]})

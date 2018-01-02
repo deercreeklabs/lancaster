@@ -10,11 +10,18 @@
 
 #?(:cljs (def Long js/Long))
 
+(s/defn long :- Long
+  [x :- s/Any]
+  (when-not (nil? x)
+    #?(:clj (clojure.core/long x)
+       :cljs (Long.fromValue x))))
+
+
 ;; Based on
 ;; http://avro.apache.org/docs/current/spec.html#Schema+Fingerprints
 
 (def seed (u/hex-str->long "c15d213aa4d7a795"))
-(def long-one (u/long 1))
+(def long-one (long 1))
 
 #?(:cljs (def class type))
 
@@ -32,11 +39,11 @@
 
 (defn calc-fp [i]
   (let [f (fn [fp j]
-            (let [fp (u/long fp)
-                  mask (u/long (negate (bit-and fp long-one)))]
+            (let [fp (long fp)
+                  mask (long (negate (bit-and fp long-one)))]
               (bit-xor (unsigned-bit-shift-right fp 1)
                        (bit-and seed mask))))]
-    (reduce f (u/long i) (range 8))))
+    (reduce f (long i) (range 8))))
 
 (def fingerprint-table
   (let [f (fn [fp-table i]
@@ -48,7 +55,7 @@
   (let [ba (ba/utf8->byte-array s)
         f (fn [acc b]
             (let [b (byte b)
-                  acc (u/long acc)]
+                  acc (long acc)]
               (bit-xor (unsigned-bit-shift-right acc 8)
                        (fingerprint-table (int (bit-and (bit-xor acc b)
                                                         0xff))))))
