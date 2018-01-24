@@ -37,7 +37,6 @@
   (zipmap (map keyword syms) syms))
 
 (defprotocol IOutputStream
-  (write-long-varint-zz [this l])
   (write-byte [this b])
   (write-bytes [this bs num-bytes])
   (write-bytes-w-len-prefix [this bs])
@@ -247,14 +246,66 @@
       (more-than-one? #{:int :long :float :double} schemas)
       (more-than-one? #{:bytes :fixed} schemas)))
 
+#?(:cljs
+   (defn write-long-varint-zz-long [output-stream ^js/Long l]
+     (let [zz-n (.xor (.shiftLeft l 1)
+                      (.shiftRight l 63))]
+       (loop [^js/Long n zz-n]
+         (if (.isZero (.and n -128))
+           (let [b (.and n 0x7f)]
+             (write-byte output-stream b))
+           (let [b (-> (.and n 0x7f)
+                       (.or 0x80))]
+             (write-byte output-stream b)
+             (recur (.shiftRightUnsigned n 7))))))))
+
+(defn write-long-varint-zz* [output-stream l]
+  (let [zz-n (bit-xor (bit-shift-left l 1) (bit-shift-right l 63))]
+    (loop [n zz-n]
+      (if (zero? (bit-and n -128))
+        (let [b (bit-and n 0x7f)]
+          (write-byte output-stream b))
+        (let [b (-> (bit-and n 0x7f)
+                    (bit-or 0x80))]
+          (write-byte output-stream b)
+          (recur (unsigned-bit-shift-right n 7)))))))
+
+(defn write-long-varint-zz [output-stream l]
+  #?(:clj
+     (let [l (if (instance? BigInteger l)
+               (.longValue ^BigInteger l)
+               l)]
+       (write-long-varint-zz* output-stream l))
+     :cljs
+     (let [l (if-not (long? l)
+               l
+               (if (and (.lte ^js/Long l 2147483647)
+                        (.gte ^js/Long l -2147483648))
+                 (.toInt ^js/Long l)
+                 l))]
+       (if (long? l)
+         (write-long-varint-zz-long output-stream l)
+         (write-long-varint-zz* output-stream l)))))
+
+(defn throw-invalid-data-error [edn-schema data path]
+  (let [expected (get-avro-type edn-schema)
+        display-data (if (nil? data)
+                       "nil"
+                       data)
+        type #?(:clj (if (nil? data)
+                       "nil"
+                       (.toString ^Class (class data)))
+                :cljs (goog/typeOf data))]
+    (throw
+     (ex-info (str "Data `" display-data "` (type: " type ") is not a valid "
+                   expected ". Path: " path)
+              (sym-map expected data type path edn-schema)))))
+
 (defmethod make-serializer :null
   [edn-schema]
   (fn serialize [os data path]
     (when-not (nil? data)
-      (throw
-       (ex-info (str "Data (" data ") is not a valid :null. Must be nil. Path: "
-                     path)
-                (sym-map data path edn-schema))))))
+      (throw-invalid-data-error edn-schema data path))))
 
 (defmethod make-deserializer :null
   [edn-schema]
@@ -266,8 +317,7 @@
   (fn serialize [os data path]
     (when-not (boolean? data)
       (throw
-       (ex-info (str "Data (" data ") is not a valid :boolean. Path: " path)
-                (sym-map data path edn-schema))))
+       (throw-invalid-data-error edn-schema data path)))
     (write-byte os (if data 1 0))))
 
 (defmethod make-deserializer :boolean
@@ -279,9 +329,7 @@
   [edn-schema]
   (fn serialize [os data path]
     (when-not (valid-int? data)
-      (throw
-       (ex-info (str "Data (" data ") is not a valid :int. Path: " path)
-                (sym-map data path edn-schema))))
+      (throw-invalid-data-error edn-schema data path))
     (write-long-varint-zz os data)))
 
 (defmethod make-deserializer :int
@@ -293,9 +341,7 @@
   [edn-schema]
   (fn serialize [os data path]
     (when-not (valid-long? data)
-      (throw
-       (ex-info (str "Data (" data ") is not a valid :long. Path: " path)
-                (sym-map data path edn-schema))))
+      (throw-invalid-data-error edn-schema data path))
     (write-long-varint-zz os data)))
 
 (defmethod make-deserializer :long
@@ -307,9 +353,7 @@
   [edn-schema]
   (fn serialize [os data path]
     (when-not (valid-float? data)
-      (throw
-       (ex-info (str "Data (" data ") is not a valid :float. Path: " path)
-                (sym-map data path edn-schema))))
+      (throw-invalid-data-error edn-schema data path))
     (write-float os data)))
 
 (defmethod make-deserializer :float
@@ -321,9 +365,7 @@
   [edn-schema]
   (fn serialize [os data path]
     (when-not (valid-double? data)
-      (throw
-       (ex-info (str "Data (" data ") is not a valid :double. Path: " path)
-                (sym-map data path edn-schema))))
+      (throw-invalid-data-error edn-schema data path))
     (write-double os data)))
 
 (defmethod make-deserializer :double
@@ -335,9 +377,7 @@
   [edn-schema]
   (fn serialize [os data path]
     (when-not (string? data)
-      (throw
-       (ex-info (str "Data (" data ") is not a valid :string. Path: " path)
-                (sym-map data path edn-schema))))
+      (throw-invalid-data-error edn-schema data path))
     (write-utf8-string os data)))
 
 (defmethod make-deserializer :string
@@ -349,9 +389,7 @@
   [edn-schema]
   (fn serialize [os data path]
     (when-not (ba/byte-array? data)
-      (throw
-       (ex-info (str "Data (" data ") is not a valid :bytes. Path: " path)
-                (sym-map data path edn-schema))))
+      (throw-invalid-data-error edn-schema data path))
     (write-bytes-w-len-prefix os data)))
 
 (defmethod make-deserializer :bytes
@@ -369,9 +407,13 @@
       (if-let [i (symbol->index data)]
         (write-long-varint-zz os i)
         (throw
-         (ex-info (str "Data (" data
-                       ") is not one of the symbols of this enum. Path: " path)
-                  (sym-map data path symbols edn-schema)))))))
+         (let [display-data (if (nil? data)
+                              "nil"
+                              data)]
+           (ex-info (str "Data (" display-data
+                         ") is not one of the symbols of this enum. Path: "
+                         path)
+                    (sym-map data path symbols edn-schema))))))))
 
 (defmethod make-deserializer :enum
   [edn-schema]
@@ -386,9 +428,7 @@
   (let [{:keys [size]} edn-schema]
     (fn serialize [os data path]
       (when-not (ba/byte-array? data)
-        (throw
-         (ex-info (str "Data (" data ") is not a valid :fixed. Path: " path)
-                  (sym-map data path edn-schema))))
+        (throw-invalid-data-error edn-schema data path))
       (when-not (= size (count data))
         (throw
          (ex-info (str "Data (" (ba/byte-array->debug-str data)
@@ -411,9 +451,7 @@
         serialize-value (make-serializer values)]
     (fn serialize [os data path]
       (when-not (map? data)
-        (throw
-         (ex-info (str "Data (" data ") is not a valid :map. Path: " path)
-                  (sym-map data path edn-schema))))
+        (throw-invalid-data-error edn-schema data path))
       (write-long-varint-zz os (count data))
       (doseq [[k v] data]
         (write-utf8-string os k)
@@ -431,9 +469,9 @@
             (persistent! m)
             (recur (reduce (fn [acc i]
                              (let [k (read-utf8-string is)
-                                 v (deserialize-value is)]
-                             (assoc! acc k v)))
-                         m (range count)))))))))
+                                   v (deserialize-value is)]
+                               (assoc! acc k v)))
+                           m (range count)))))))))
 
 (defmethod make-serializer :array
   [edn-schema]
@@ -441,9 +479,7 @@
         serialize-item (make-serializer items)]
     (fn serialize [os data path]
       (when-not (sequential? data)
-        (throw
-         (ex-info (str "Data (" data ") is not a valid :array. Path: " path)
-                  (sym-map data path edn-schema))))
+        (throw-invalid-data-error edn-schema data path))
       (write-long-varint-zz os (count data))
       (doall
        (map-indexed (fn [i item]
@@ -544,9 +580,7 @@
   (let [field-infos (mapv make-field-info (:fields edn-schema))]
     (fn serialize [os data path]
       (when-not (map? data)
-        (throw
-         (ex-info (str "Data (" data ") is not a valid :record. Path: " path)
-                  (sym-map data path edn-schema))))
+        (throw-invalid-data-error edn-schema data path))
       (doseq [[k default serializer] field-infos]
         (serializer os (get data k default) (conj path k))))))
 

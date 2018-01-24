@@ -1,6 +1,7 @@
 (def compiler-defaults
   {:parallel-build true
    :static-fns true
+   :npm-deps {:text-encoding "0.6.4"}
    ;; :pseudo-names true
    ;; :pretty-print true
    ;; :infer-externs true

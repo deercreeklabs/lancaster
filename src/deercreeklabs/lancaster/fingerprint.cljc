@@ -1,6 +1,6 @@
 (ns deercreeklabs.lancaster.fingerprint
   #?(:cljs
-     (:refer-clojure :exclude [bit-and bit-xor unsigned-bit-shift-right]))
+     (:refer-clojure :exclude [bit-and bit-xor long unsigned-bit-shift-right]))
   (:require
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.utils :as u]

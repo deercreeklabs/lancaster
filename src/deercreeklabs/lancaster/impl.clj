@@ -15,20 +15,6 @@
 
 (defrecord OutputStream [baos ledos]
   u/IOutputStream
-  (write-long-varint-zz [this l]
-    (let [l (if (instance? BigInteger l)
-              (.longValue ^BigInteger l)
-              l)
-          zz-n (bit-xor (bit-shift-left l 1) (bit-shift-right l 63))]
-      (loop [n zz-n]
-        (if (zero? (bit-and n -128))
-          (let [b (bit-and n 0x7f)]
-            (.writeByte ^LittleEndianDataOutputStream ledos b))
-          (let [b (-> (bit-and n 0x7f)
-                      (bit-or 0x80))]
-            (.writeByte ^LittleEndianDataOutputStream ledos b)
-            (recur (unsigned-bit-shift-right n 7)))))))
-
   (write-byte [this b]
     (.writeByte ^LittleEndianDataOutputStream ledos b))
 

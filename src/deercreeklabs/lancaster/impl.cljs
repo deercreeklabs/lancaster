@@ -5,47 +5,74 @@
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+   [taoensso.timbre :as timbre :refer [debugf errorf infof]]
+   [text-encoding :as text]))
 
 (set! *warn-on-infer* true)
 
 (def ByteBuffer js/ByteBuffer)
 
-(defrecord OutputStream [buf]
+(def encoder (text/TextEncoder.))
+(def decoder (text/TextDecoder. "utf-8"))
+
+(defprotocol IResize
+  (embiggen [this min-added-bytes]))
+
+(deftype OutputStream [^:mutable ba ^:mutable buflen ^:mutable pos]
   u/IOutputStream
-  (write-long-varint-zz [this l]
-    (.writeVarint64ZigZag buf l))
-
   (write-byte [this b]
-    (.writeInt8 buf b))
+    (let [new-pos (inc pos)]
+      (when (= new-pos buflen)
+        (embiggen this 1))
+      (aset ba pos b)
+      (set! pos new-pos)))
 
-  (write-bytes [this ba num-bytes]
-    (.append buf (.-buffer ^js/Int8Array ba)))
+  (write-bytes [this source-ba num-bytes]
+    (let [new-pos (+ pos num-bytes)]
+      (when (>= new-pos buflen)
+        (embiggen this num-bytes))
+      (.set ba source-ba pos)
+      (set! pos new-pos)))
 
-  (write-bytes-w-len-prefix [this ba]
-    (let [num-bytes (count ba)]
+  (write-bytes-w-len-prefix [this source-ba]
+    (let [num-bytes (count source-ba)]
       (u/write-long-varint-zz this num-bytes)
-      (u/write-bytes this ba num-bytes)))
+      (u/write-bytes this source-ba num-bytes)))
 
   (write-utf8-string [this s]
-    (let [num-bytes (.calculateUTF8Bytes ByteBuffer s)]
-      (u/write-long-varint-zz this num-bytes)
-      (.writeUTF8String buf s)))
+    (u/write-bytes-w-len-prefix this (js/Int8Array. (.encode encoder s))))
 
   (write-float [this f]
-    (.writeFloat32 buf f))
+    (let [new-pos (+ pos 4)
+          dataview (js/DataView. (goog.object/get ba "buffer"))]
+      (when (= new-pos buflen)
+        (embiggen this 4))
+      (.setFloat32 dataview pos f true)
+      (set! pos new-pos)))
 
   (write-double [this d]
-    (.writeFloat64 buf d))
+    (let [new-pos (+ pos 8)
+          dataview (js/DataView. (goog.object/get ba "buffer"))]
+      (when (= new-pos buflen)
+        (embiggen this 8))
+      (.setFloat64 dataview pos d true)
+      (set! pos new-pos)))
 
   (to-byte-array [this]
-    (.flip buf)
-    (-> (.toArrayBuffer buf)
-        (js/Int8Array.))))
+    (.slice ba 0 pos))
+
+  IResize
+  (embiggen [this min-added-bytes]
+    (let [num-new-bytes (if (> min-added-bytes buflen)
+                          min-added-bytes
+                          buflen)
+          new-buf (ba/byte-array (+ buflen num-new-bytes))]
+      (.set new-buf ba)
+      (set! ba new-buf))))
 
 (defn make-output-stream
   [initial-size]
-  (->OutputStream (ByteBuffer. initial-size true)))
+  (->OutputStream (ba/byte-array initial-size) initial-size 0))
 
 (defrecord InputStream [buf]
   u/IInputStream
