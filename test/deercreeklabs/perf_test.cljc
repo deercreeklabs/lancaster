@@ -63,4 +63,4 @@
     (infof "Encoding ops per sec: %.0f" enc-ops)
     (infof "Decoding ops per sec: %.0f" dec-ops)
     (is (< #?(:cljs 20000 :clj 220000) enc-ops))
-    (is (< #?(:cljs 20000 :clj 400000) dec-ops))))
+    (is (< #?(:cljs 40000 :clj 400000) dec-ops))))

@@ -50,7 +50,7 @@
   [schema-obj :- (s/protocol schemas/IAvroSchema)
    data :- s/Any]
   ;; TODO: Figure out how to set initial size better
-  (let [os (impl/make-output-stream 16)]
+  (let [os (impl/make-output-stream 100)]
     (schemas/serialize schema-obj os data)
     (u/to-byte-array os)))
 
