@@ -1,12 +1,17 @@
 (ns deercreeklabs.lancaster
   (:require
+   [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.impl :as impl]
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+   [taoensso.timbre :as timbre :refer [debugf errorf infof]])
+  #?(:cljs
+     (:require-macros deercreeklabs.lancaster)))
+
+(declare make-name*)
 
 #?(:cljs (def Long js/Long))
 
@@ -81,3 +86,17 @@
 (s/defn get-fingerprint64 :- Long
   [schema :- (s/protocol schemas/IAvroSchema)]
   (schemas/get-fingerprint64 schema))
+
+;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
+
+(defmacro def-record-schema
+  [clj-name & fields]
+  (let [name (u/make-schema-name clj-name)]
+    `(def ~clj-name
+       (schemas/make-schema :record *ns* ~name (vector ~@fields)))))
+
+(defmacro def-enum-schema
+  [clj-name & fields]
+  (let [name (u/make-schema-name clj-name)]
+    `(def ~clj-name
+       (schemas/make-schema :record *ns* ~name (vector ~@fields)))))

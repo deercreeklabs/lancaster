@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [namespace-munge])
   (:require
    [camel-snake-kebab.core :as csk]
+   [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.fingerprint :as fingerprint]
    [deercreeklabs.lancaster.impl :as impl]
@@ -61,32 +62,36 @@
 
 ;;;;;;;;;;;;;;;;;;;; Utility Fns ;;;;;;;;;;;;;;;;;;;;
 
-(defn make-schema [schema-type name-kw args]
-  (when (and (u/avro-named-types schema-type)
-             (not (keyword? name-kw)))
-    (let [fn-name (str "make-" (name schema-type) "-schema")]
-      (throw (ex-info (str "First arg to " fn-name " must be a name keyword."
-                           "The keyword can be namespaced or not.")
-                      {:given-name-kw name-kw}))))
-  (when-not (u/avro-primitive-types schema-type)
-    (validate-schema-args schema-type args))
-  (let [edn-schema (if (u/avro-primitive-types schema-type)
-                     schema-type
-                     (make-edn-schema schema-type name-kw args))
-        avro-schema (if (u/avro-primitive-types schema-type)
-                      (name schema-type)
-                      (edn-schema->avro-schema edn-schema))
-        json-schema (u/edn->json-string avro-schema)
-        parsing-canonical-form (pcf/avro-schema->pcf avro-schema)
-        fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
-        serializer (u/make-serializer edn-schema)
-        deserializer (u/make-deserializer edn-schema)
-        ;; TODO: Implement resolution
-        resolving-deserializer (constantly nil)
-        schema-name (u/get-schema-name edn-schema)]
-    (->AvroSchema schema-name edn-schema json-schema parsing-canonical-form
-                  fingerprint64 serializer deserializer
-                  resolving-deserializer)))
+(defn make-schema
+  ([schema-type ns schema-name args]
+   (let [name-kw (keyword (str ns) schema-name)]
+     (make-schema schema-type name-kw args)))
+  ([schema-type name-kw args]
+   (when (and (u/avro-named-types schema-type)
+              (not (keyword? name-kw)))
+     (let [fn-name (str "make-" (name schema-type) "-schema")]
+       (throw (ex-info (str "First arg to " fn-name " must be a name keyword."
+                            "The keyword can be namespaced or not.")
+                       {:given-name-kw name-kw}))))
+   (when-not (u/avro-primitive-types schema-type)
+     (validate-schema-args schema-type args))
+   (let [edn-schema (if (u/avro-primitive-types schema-type)
+                      schema-type
+                      (make-edn-schema schema-type name-kw args))
+         avro-schema (if (u/avro-primitive-types schema-type)
+                       (name schema-type)
+                       (edn-schema->avro-schema edn-schema))
+         json-schema (u/edn->json-string avro-schema)
+         parsing-canonical-form (pcf/avro-schema->pcf avro-schema)
+         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
+         serializer (u/make-serializer edn-schema)
+         deserializer (u/make-deserializer edn-schema)
+         ;; TODO: Implement resolution
+         resolving-deserializer (constantly nil)
+         schema-name (u/get-schema-name edn-schema)]
+     (->AvroSchema schema-name edn-schema json-schema parsing-canonical-form
+                   fingerprint64 serializer deserializer
+                   resolving-deserializer))))
 
 (defn make-primitive-schema [schema-kw]
   (make-schema schema-kw nil nil))

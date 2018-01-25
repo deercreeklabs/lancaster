@@ -1,5 +1,6 @@
 (ns deercreeklabs.perf-test
   (:require
+   #?(:clj [cheshire.core :as json])
    [clojure.test :refer [deftest is use-fixtures]]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
@@ -55,12 +56,25 @@
                         :current-qty -1
                         :the-reason-why :stock)
         enc-fn #(l/serialize add-to-cart-rsp-schema data)
+        json-enc-fn (fn []
+                      #?(:clj (json/generate-string data)
+                         :cljs (js/JSON.stringify (clj->js data))))
         enc-ops (get-ops-per-sec enc-fn num-ops)
+        json-enc-ops (get-ops-per-sec json-enc-fn num-ops)
         encoded (enc-fn)
+        json-encoded (json-enc-fn)
         dec-fn #(deserialize-same add-to-cart-rsp-schema
                                   encoded)
-        dec-ops (get-ops-per-sec dec-fn num-ops)]
+        json-dec-fn (fn []
+                      #?(:clj (json/parse-string json-encoded true)
+                         :cljs (js->clj (js/JSON.parse json-encoded))))
+        dec-ops (get-ops-per-sec dec-fn num-ops)
+        json-dec-ops (get-ops-per-sec json-dec-fn num-ops)]
     (infof "Encoding ops per sec: %.0f" enc-ops)
     (infof "Decoding ops per sec: %.0f" dec-ops)
+    (infof "JSON Enc ops per sec: %.0f" json-enc-ops)
+    (infof "JSON Dec ops per sec: %.0f" json-dec-ops)
+    (infof "Encoded size: %d" (count encoded))
+    (infof "JSON Enc size: %d" (count json-encoded))
     (is (< #?(:cljs 20000 :clj 220000) enc-ops))
     (is (< #?(:cljs 40000 :clj 400000) dec-ops))))

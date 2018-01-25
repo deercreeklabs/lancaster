@@ -25,61 +25,54 @@
   [schema encoded]
   (l/deserialize schema (l/get-parsing-canonical-form schema) encoded))
 
-(def add-to-cart-req-schema
-  (l/make-record-schema ::add-to-cart-req
-                        [[:sku l/int-schema]
-                         [:qty-requested l/int-schema 0]]))
+(l/def-record-schema add-to-cart-req-schema
+  [:sku l/int-schema]
+  [:qty-requested l/int-schema 0])
 
 (def why-schema (l/make-enum-schema ::why
                                     [:all :stock :limit]))
 
 (def a-fixed-schema (l/make-fixed-schema ::a-fixed 2))
 
-(def rec-w-fixed-no-default-schema
-  (l/make-record-schema ::rec-w-fixed-no-default
-                        [[:data a-fixed-schema]]))
+(l/def-record-schema rec-w-fixed-no-default-schema
+  [:data a-fixed-schema])
 
-(def add-to-cart-rsp-schema
-  (l/make-record-schema ::add-to-cart-rsp
-                        [[:qty-requested l/int-schema]
-                         [:qty-added l/int-schema]
-                         [:current-qty l/int-schema]
-                         [:req add-to-cart-req-schema
-                          {:sku 10 :qty-requested 1}]
-                         [:the-reason-why why-schema :stock]
-                         [:data a-fixed-schema (ba/byte-array [77 88])]
-                         [:other-data l/bytes-schema]]))
+(l/def-record-schema add-to-cart-rsp-schema
+  [:qty-requested l/int-schema]
+  [:qty-added l/int-schema]
+  [:current-qty l/int-schema]
+  [:req add-to-cart-req-schema
+   {:sku 10 :qty-requested 1}]
+  [:the-reason-why why-schema :stock]
+  [:data a-fixed-schema (ba/byte-array [77 88])]
+  [:other-data l/bytes-schema])
 
 (def simple-array-schema (l/make-array-schema l/string-schema))
 
 (def rsps-schema (l/make-array-schema add-to-cart-rsp-schema))
 
-(def rec-w-array-and-enum-schema
-  (l/make-record-schema ::rec-w-array-and-enum
-                        [[:names simple-array-schema]
-                         [:why why-schema]]))
+(l/def-record-schema rec-w-array-and-enum-schema
+  [:names simple-array-schema]
+  [:why why-schema])
 
 (def ages-schema (l/make-map-schema l/int-schema))
 
-(def rec-w-map-schema
-  (l/make-record-schema ::rec-w-map
-                        [[:name-to-age ages-schema]
-                         [:what l/string-schema]]))
+(l/def-record-schema rec-w-map-schema
+  [:name-to-age ages-schema]
+  [:what l/string-schema])
 
 (def nested-map-schema (l/make-map-schema add-to-cart-rsp-schema))
 
 (def union-schema
   (l/make-union-schema [l/int-schema add-to-cart-req-schema a-fixed-schema]))
 
-(def person-schema
-  (l/make-record-schema ::person
-                        [[:name l/string-schema "No name"]
-                         [:age l/int-schema 0]]))
+(l/def-record-schema person-schema
+  [:name l/string-schema "No name"]
+  [:age l/int-schema 0])
 
-(def dog-schema
-  (l/make-record-schema ::dog
-                        [[:name l/string-schema "No name"]
-                         [:owner l/string-schema "No owner"]]))
+(l/def-record-schema dog-schema
+  [:name l/string-schema "No name"]
+  [:owner l/string-schema "No owner"])
 
 (def person-or-dog-schema
   (l/make-union-schema [person-schema dog-schema]))
@@ -93,11 +86,10 @@
 
 ;; TODO: Enable recursive schemas
 #_
-(def tree-schema
-  (l/make-record-schema ::tree
-                        [[:value l/int-schema]
-                         [:right :nil-or-recur]
-                         [:left :nil-or-recur]]))
+(l/def-record-schema tree-schema
+  [:value l/int-schema]
+  [:right :nil-or-recur]
+  [:left :nil-or-recur])
 
 (deftest test-record-schema
   (let [expected-pcf (str "{\"name\":\"deercreeklabs.lancaster_test."

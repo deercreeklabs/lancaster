@@ -665,3 +665,8 @@
   []
   #?(:clj (System/currentTimeMillis)
      :cljs (.getTime (js/Date.))))
+
+(defn make-schema-name [clj-name]
+  (-> (name clj-name)
+      (clojure.string/split #"-schema")
+      (first)))
