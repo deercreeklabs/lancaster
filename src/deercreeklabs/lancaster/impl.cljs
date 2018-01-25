@@ -1,19 +1,12 @@
 (ns deercreeklabs.lancaster.impl
   (:require
-   [cljsjs.bytebuffer]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]]
-   [text-encoding :as text]))
+   [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
 
 (set! *warn-on-infer* true)
-
-(def ByteBuffer js/ByteBuffer)
-
-(def encoder (text/TextEncoder.))
-(def decoder (text/TextDecoder. "utf-8"))
 
 (defprotocol IResize
   (embiggen [this min-added-bytes]))
@@ -40,7 +33,7 @@
       (u/write-bytes this source-ba num-bytes)))
 
   (write-utf8-string [this s]
-    (u/write-bytes-w-len-prefix this (js/Int8Array. (.encode encoder s))))
+    (u/write-bytes-w-len-prefix this (ba/utf8->byte-array s)))
 
   (write-float [this f]
     (let [new-pos (+ pos 4)
@@ -74,37 +67,43 @@
   [initial-size]
   (->OutputStream (ba/byte-array initial-size) initial-size 0))
 
-(defrecord InputStream [buf]
+(defrecord InputStream [ba ^:mutable pos ^:mutable mark-pos]
   u/IInputStream
-  (read-long-varint-zz [this]
-    (.readVarint64ZigZag buf))
+  (mark [this]
+    (set! mark-pos pos))
 
   (read-byte [this]
-    (.readInt8 buf))
+    (let [b (aget ba pos)]
+      (set! pos (inc pos))
+      b))
 
   (read-bytes [this num-bytes]
-    (let [start (.-offset ^js/ByteBuffer buf)
-          end (+ start num-bytes)
-          out (-> (.slice buf start end)
-                  (.toArrayBuffer)
-                  (js/Int8Array.))]
-      (.skip ^js/ByteBuffer buf num-bytes)
-      out))
+    (let [new-pos (+ pos num-bytes)
+          bs (ba/slice-byte-array ba pos new-pos)]
+      (set! pos new-pos)
+      bs))
 
   (read-len-prefixed-bytes [this]
-    (let [num-bytes (.toInt (u/read-long-varint-zz this))]
+    (let [num-bytes (u/read-long-varint-zz this)]
       (u/read-bytes this num-bytes)))
 
   (read-utf8-string [this]
-    (let [num-bytes (.toInt (u/read-long-varint-zz this))]
-      (.readUTF8String buf num-bytes (.-METRICS_BYTES ByteBuffer))))
+    (let [num-bytes (u/read-long-varint-zz this)
+          bytes (u/read-bytes this num-bytes)]
+      (ba/byte-array->utf8 bytes)))
 
   (read-float [this]
-    (.readFloat32 buf))
+    (let [bs (u/read-bytes this 4)
+          dataview (js/DataView. (goog.object/get bs "buffer"))]
+      (.getFloat32 dataview 0 true)))
 
   (read-double [this]
-    (.readFloat64 buf)))
+    (let [bs (u/read-bytes this 8)
+          dataview (js/DataView. (goog.object/get bs "buffer"))]
+      (.getFloat64 dataview 0 true)))
+
+  (reset-to-mark! [this]
+    (set! pos mark-pos)))
 
 (defn make-input-stream [ba]
-  (->InputStream (.wrap ByteBuffer (.-buffer ^js/Int8Array ba)
-                        "binary" true true)))
+  (->InputStream ba 0 0))

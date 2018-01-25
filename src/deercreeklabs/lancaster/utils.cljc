@@ -13,7 +13,7 @@
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
-      deercreeklabs.lancaster.utils)
+      [deercreeklabs.lancaster.utils :refer [sym-map]])
      :clj
      (:import
       (com.google.common.primitives UnsignedLong))))
@@ -46,13 +46,14 @@
   (to-byte-array [this]))
 
 (defprotocol IInputStream
-  (read-long-varint-zz [this])
+  (mark [this])
   (read-byte [this])
   (read-bytes [this num-bytes])
   (read-len-prefixed-bytes [this])
   (read-utf8-string [this])
   (read-float [this])
-  (read-double [this]))
+  (read-double [this])
+  (reset-to-mark! [this]))
 
 (def avro-primitive-types #{:null :boolean :int :long :float :double
                             :bytes :string})
@@ -102,12 +103,61 @@
 (defmulti make-serializer avro-type-dispatch)
 (defmulti make-deserializer avro-type-dispatch)
 
-;; TODO: Fix this in cljs to handle a is number and b is a long
+(s/defn long? :- s/Bool
+  [x :- s/Any]
+  (if x
+    (boolean (= Long (class x)))
+    false))
+
+(s/defn long-or-int? :- s/Bool
+  "Is the argument a long or an integer?"
+  [x :- s/Any]
+  (or (long? x)
+      (integer? x)))
+
+(defn valid-int? [data]
+  (and (integer? data)
+       (<= (int data) 2147483647)
+       (>= (int data) -2147483648)))
+
+(defn valid-long? [data]
+  (long-or-int? data))
+
+(defn valid-float? [data]
+  (and (number? data)
+       (<= (float data) (float 3.4028234E38))
+       (>= (float data) (float -3.4028234E38))))
+
+(defn valid-double? [data]
+  (number? data))
+
+(defn valid-bytes-or-string? [data]
+  (or (string? data)
+      (ba/byte-array? data)))
+
+(defn valid-array? [data]
+  (sequential? data))
+
+(defn valid-map? [data]
+  (and (map? data)
+       (if (pos? (count data))
+         (string? (-> data first first))
+         true)))
+
+(defn valid-record? [data]
+  (and (map? data)
+       (if (pos? (count data))
+         (keyword? (-> data first first))
+         true)))
+
 (s/defn long= :- s/Bool
   [a :- s/Any
    b :- s/Any]
   #?(:clj (= a b)
-     :cljs (.equals a b)))
+     :cljs (cond
+             (long? a) (.equals a b)
+             (long? b) (.equals b a)
+             :else (= a b))))
 
 #?(:cljs (extend-type Long
            IEquiv
@@ -171,56 +221,11 @@
   #?(:clj (if (and (<= l 2147483647) (>= l -2147483648))
             (.intValue l)
             (throw-long->int-err l))
-     :cljs (if (and (.lte l 2147483647) (.gte l -2147483648))
-             (.toInt l)
-             (throw-long->int-err l))))
-
-(s/defn long? :- s/Bool
-  [x :- s/Any]
-  (if x
-    (boolean (= Long (class x)))
-    false))
-
-(s/defn long-or-int? :- s/Bool
-  "Is the argument a long or an integer?"
-  [x :- s/Any]
-  (or (long? x)
-      (integer? x)))
-
-(defn valid-int? [data]
-  (and (integer? data)
-       (<= (int data) 2147483647)
-       (>= (int data) -2147483648)))
-
-(defn valid-long? [data]
-  (long-or-int? data))
-
-(defn valid-float? [data]
-  (and (number? data)
-       (<= (float data) (float 3.4028234E38))
-       (>= (float data) (float -3.4028234E38))))
-
-(defn valid-double? [data]
-  (number? data))
-
-(defn valid-bytes-or-string? [data]
-  (or (string? data)
-      (ba/byte-array? data)))
-
-(defn valid-array? [data]
-  (sequential? data))
-
-(defn valid-map? [data]
-  (and (map? data)
-       (if (pos? (count data))
-         (string? (-> data first first))
-         true)))
-
-(defn valid-record? [data]
-  (and (map? data)
-       (if (pos? (count data))
-         (keyword? (-> data first first))
-         true)))
+     :cljs (if-not (long? l)
+             l
+             (if (and (.lte l 2147483647) (.gte l -2147483648))
+               (.toInt l)
+               (throw-long->int-err l)))))
 
 (defn more-than-one? [schema-set schemas]
   (> (count (keep #(schema-set (get-avro-type %)) schemas)) 1))
@@ -286,6 +291,55 @@
        (if (long? l)
          (write-long-varint-zz-long output-stream l)
          (write-long-varint-zz* output-stream l)))))
+
+#?(:cljs
+   (defn read-long-varint-zz-long [input-stream]
+     (loop [i 0
+            out js/Long.ZERO]
+       (let [b (js/Long.fromValue (read-byte input-stream))]
+         (if (.equals js/Long.ZERO (.and b 0x80))
+           (let [zz-n (-> (.shiftLeft b i)
+                          (.or out))
+                 long-out (->> (.and zz-n 1)
+                               (.subtract js/Long.ZERO)
+                               (.xor (.shiftRightUnsigned zz-n 1)))]
+             long-out)
+           (let [out (-> (.and b 0x7f)
+                         (.shiftLeft i)
+                         (.or out))
+                 i (+ i 7)]
+             (if (<= i 63)
+               (recur i out)
+               (throw (ex-info "Variable-length quantity is more than 64 bits"
+                               (sym-map i))))))))))
+
+(defn read-long-varint-zz [input-stream]
+  (mark input-stream)
+  (loop [i 0
+         out 0]
+    (let [b (read-byte input-stream)]
+      (if (zero? (bit-and b 0x80))
+        (let [zz-n (-> (bit-shift-left b i)
+                       (bit-or out))
+              long-out (->> (bit-and zz-n 1)
+                            (- 0)
+                            (bit-xor (unsigned-bit-shift-right zz-n 1)))]
+          long-out)
+        (let [out (-> (bit-and b 0x7f)
+                      (bit-shift-left i)
+                      (bit-or out))
+              i (+ 7 i)]
+          #?(:cljs
+             (if (<= i 31)
+               (recur i out)
+               (do
+                 (reset-to-mark! input-stream)
+                 (read-long-varint-zz-long input-stream)))
+             :clj
+             (if (<= i 63)
+               (recur i out)
+               (throw (ex-info "Variable-length quantity is more than 64 bits"
+                               (sym-map i))))))))))
 
 (defn throw-invalid-data-error [edn-schema data path]
   (let [expected (get-avro-type edn-schema)
@@ -464,7 +518,8 @@
         deserialize-value (make-deserializer values)]
     (fn deserialize [is]
       (loop [m (transient {})]
-        (let [count (int (long->int (read-long-varint-zz is)))]
+        (let [long-count (read-long-varint-zz is)
+              count (int (long->int long-count))]
           (if (zero? count)
             (persistent! m)
             (recur (reduce (fn [acc i]

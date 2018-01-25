@@ -263,7 +263,7 @@
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-92 123]) encoded))
     (is (= data decoded))))
 
-(deftest test-long-schema-serdes
+(deftest ^:the-one test-long-schema-serdes
   (let [data (u/ints->long 2147483647 -1)
         encoded (l/serialize l/long-schema data)
         decoded (deserialize-same l/long-schema encoded)]

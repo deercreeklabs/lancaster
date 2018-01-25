@@ -50,34 +50,18 @@
 (defn output-stream->byte-array [^ByteArrayOutputStream os]
   (.toByteArray os))
 
-(defrecord InputStream [bais ledis]
+(defrecord InputStream [^ByteArrayInputStream bais
+                        ^LittleEndianDataInputStream ledis]
   u/IInputStream
-  (read-long-varint-zz [this]
-    (loop [i 0
-           out 0]
-      (let [b (.readByte ^LittleEndianDataInputStream ledis)]
-        (if (zero? (bit-and b 0x80))
-          (let [zz-n (-> (bit-shift-left b i)
-                         (bit-or out))
-                long-out (->> (bit-and zz-n 1)
-                              (- 0)
-                              (bit-xor (unsigned-bit-shift-right zz-n 1)))]
-            long-out)
-          (let [out (-> (bit-and b 0x7f)
-                        (bit-shift-left i)
-                        (bit-or out))
-                i (+ 7 i)]
-            (if (<= i 63)
-              (recur i out)
-              (throw (ex-info "Variable-length quantity is more than 64 bits"
-                              (u/sym-map i)))))))))
+  (mark [this]
+    (.mark ledis (.available ledis)))
 
   (read-byte [this]
-    (.readByte ^LittleEndianDataInputStream ledis))
+    (.readByte ledis))
 
   (read-bytes [this num-bytes]
     (let [ba (byte-array num-bytes)]
-      (.readFully ^LittleEndianDataInputStream ledis #^bytes ba 0 num-bytes)
+      (.readFully ledis #^bytes ba 0 num-bytes)
       ba))
 
   (read-len-prefixed-bytes [this]
@@ -88,10 +72,13 @@
     (String. #^bytes (u/read-len-prefixed-bytes this) "UTF-8"))
 
   (read-float [this]
-    (.readFloat ^LittleEndianDataInputStream ledis))
+    (.readFloat ledis))
 
   (read-double [this]
-    (.readDouble ^LittleEndianDataInputStream ledis)))
+    (.readDouble ledis))
+
+  (reset-to-mark! [this]
+    (.reset ledis)))
 
 (defn make-input-stream [ba]
   (let [bais (ByteArrayInputStream. ba)

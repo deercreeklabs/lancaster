@@ -1,7 +1,6 @@
 (def compiler-defaults
   {:parallel-build true
    :static-fns true
-   :npm-deps {:text-encoding "0.6.4"}
    ;; :pseudo-names true
    ;; :pretty-print true
    ;; :infer-externs true
@@ -78,7 +77,6 @@
   :dependencies
   [[camel-snake-kebab "0.4.0"]
    [cheshire "5.8.0"]
-   [cljsjs/bytebuffer "5.0.1-0"]
    [cljsjs/long "3.0.3-1"]
    [com.google.guava/guava "23.0" :exclusions [com.google.code.findbugs/jsr305]]
    [com.taoensso/timbre "4.10.0"]
