@@ -690,8 +690,9 @@
         reader-schema l/double-schema
         encoded-orig (l/serialize writer-schema data)
         writer-pcf (l/get-parsing-canonical-form writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded-orig)]
-    (is (= (double data) decoded))))
+        decoded (l/deserialize reader-schema writer-pcf encoded-orig)
+        rel-err (get-rel-err data decoded)]
+    (is (> 0.0000001 rel-err))))
 
 ;; (deftest test-record-schema-evolution-add-a-field
 ;;   (let [data {:sku 789
