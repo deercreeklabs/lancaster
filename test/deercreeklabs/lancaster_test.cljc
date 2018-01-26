@@ -256,7 +256,7 @@
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-92 123]) encoded))
     (is (= data decoded))))
 
-(deftest ^:the-one test-long-schema-serdes
+(deftest test-long-schema-serdes
   (let [data (u/ints->long 2147483647 -1)
         encoded (l/serialize l/long-schema data)
         decoded (deserialize-same l/long-schema encoded)]
@@ -265,11 +265,19 @@
          encoded))
     (is (= data decoded))))
 
+(deftest test-int->long
+  (let [in (int -1)
+        l (u/int->long in)]
+    (is (= "ffffffffffffffff" (u/long->hex-str l)))))
+
 (defn get-abs-err [expected actual]
   (let [err (- expected actual)]
     (if (neg? err)
       (- err)
       err)))
+
+(defn get-rel-err [expected actual]
+  (/ (get-abs-err expected actual) expected))
 
 (deftest test-float-schema
   (let [data (float 3.14159)
@@ -627,6 +635,15 @@
 ;;                encoded))
 ;;         _ (is (= data decoded))]))
 
+(deftest test-schema-resolution-int-to-long
+  (let [data 10
+        writer-schema l/int-schema
+        reader-schema l/long-schema
+        encoded-orig (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
+    (is (= "000000000000000a" (u/long->hex-str decoded-new)))))
+
 (deftest test-schema-resolution-int-to-float
   (let [data 10
         writer-schema l/int-schema
@@ -634,9 +651,41 @@
         encoded-orig (l/serialize writer-schema data)
         writer-pcf (l/get-parsing-canonical-form writer-schema)
         decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
-    (is (= 10.0 decoded-new))))
+    (is (= (float data) decoded-new))))
 
-;; (deftest test-schema-evolution-add-a-field
+(deftest test-schema-resolution-int-to-double
+  (let [data 10
+        writer-schema l/int-schema
+        reader-schema l/float-schema
+        encoded-orig (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
+    (is (= (double data) decoded-new))))
+
+(deftest test-schema-resolution-long-to-float
+  (let [data (u/ints->long 12345 6789)
+        writer-schema l/long-schema
+        reader-schema l/float-schema
+        encoded-orig (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded (l/deserialize reader-schema writer-pcf encoded-orig)
+        expected 5.3021371E13
+        rel-err (get-rel-err expected decoded)]
+    (is (> 0.00000001 rel-err))))
+
+(deftest test-schema-resolution-long-to-double
+  (let [data (u/ints->long -12345 -6789)
+        writer-schema l/long-schema
+        reader-schema l/double-schema
+        encoded-orig (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded (l/deserialize reader-schema writer-pcf encoded-orig)
+        expected (double -53017076308613)
+        _ (is (= expected decoded))
+        rel-err (get-rel-err expected decoded)]
+    (is (> 0.00000001 rel-err))))
+
+;; (deftest test-record-schema-evolution-add-a-field
 ;;   (let [data {:sku 789
 ;;               :qty-requested 10}
 ;;         encoded-orig (l/serialize add-to-cart-req-schema data)

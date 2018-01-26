@@ -48,7 +48,7 @@
   :lein-release {:scm :git
                  :deploy-via :clojars}
 
-  ;;:pedantic? :abort
+  :pedantic? :abort
 
   :profiles
   {:dev

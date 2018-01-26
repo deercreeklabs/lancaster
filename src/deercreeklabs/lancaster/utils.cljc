@@ -236,6 +236,10 @@
                (.toInt l)
                (throw-long->int-err l)))))
 
+(defn int->long [int]
+  #?(:clj (clojure.core/long int)
+     :cljs (.fromValue Long int)))
+
 (defn more-than-one? [schema-set schemas]
   (> (count (keep #(schema-set (get-avro-type %)) schemas)) 1))
 
