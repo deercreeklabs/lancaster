@@ -694,6 +694,28 @@
         rel-err (get-rel-err data decoded)]
     (is (> 0.0000001 rel-err))))
 
+(deftest test-schema-resolution-string-to-bytes
+  (let [data "Hello, World!"
+        writer-schema l/string-schema
+        reader-schema l/bytes-schema
+        encoded (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded (l/deserialize reader-schema writer-pcf encoded)
+        expected (ba/byte-array [72 101 108 108 111 44
+                                 32 87 111 114 108 100 33])]
+    (is (ba/equivalent-byte-arrays? expected decoded))))
+
+(deftest test-schema-resolution-bytes-to-string
+  (let [data (ba/byte-array [72 101 108 108 111 44
+                             32 87 111 114 108 100 33])
+        writer-schema l/bytes-schema
+        reader-schema l/string-schema
+        encoded (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded (l/deserialize reader-schema writer-pcf encoded)
+        expected "Hello, World!"]
+    (is (= expected decoded))))
+
 ;; (deftest test-record-schema-evolution-add-a-field
 ;;   (let [data {:sku 789
 ;;               :qty-requested 10}

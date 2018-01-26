@@ -1,5 +1,6 @@
 (ns deercreeklabs.lancaster.resolution
   (:require
+   [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.pcf :as pcf]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
@@ -54,6 +55,20 @@
     (fn deserialize [is]
       (let [f (writer-deserializer is)]
         (double f)))))
+
+(defmethod make-rd* [:string :bytes]
+  [writer-edn-schema reader-edn-schema]
+  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
+    (fn deserialize [is]
+      (let [s (writer-deserializer is)]
+        (ba/utf8->byte-array s)))))
+
+(defmethod make-rd* [:bytes :string]
+  [writer-edn-schema reader-edn-schema]
+  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
+    (fn deserialize [is]
+      (let [ba (writer-deserializer is)]
+        (ba/byte-array->utf8 ba)))))
 
 (defn make-resolving-deserializer [writer-pcf reader-schema]
   (let [writer-avro-schema (pcf/pcf->avro-schema writer-pcf)
