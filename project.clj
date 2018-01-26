@@ -48,7 +48,7 @@
   :lein-release {:scm :git
                  :deploy-via :clojars}
 
-  :pedantic? :abort
+  ;;:pedantic? :abort
 
   :profiles
   {:dev
@@ -96,27 +96,22 @@
   {:builds
    [~(make-build-conf "node-test-none" :node :test :none
                       "deercreeklabs.node-test-runner")
-    ~(make-build-conf "node-test-simple" :node :test :simple
-                      "deercreeklabs.node-test-runner")
     ~(make-build-conf "node-test-adv" :node :test :advanced
                       "deercreeklabs.node-test-runner")
     ~(make-build-conf "node-test-perf" :node :perf :advanced
                       "deercreeklabs.node-perf-runner")
     ~(make-build-conf "doo-test-none" :doo :test :none
                       "deercreeklabs.doo-test-runner")
-    ~(make-build-conf "doo-test-simple" :doo :test :simple
-                      "deercreeklabs.doo-test-runner")
     ~(make-build-conf "doo-test-adv" :doo :test :advanced
                       "deercreeklabs.doo-test-runner")
+    ~(make-build-conf "doo-test-perf" :doo :perf :advanced
+                      "deercreeklabs.doo-perf-runner")
     ~(make-build-conf "build-adv" nil :build :advanced nil)]}
 
   :aliases
   {"auto-test-cljs" ["do"
                      "clean,"
                      "cljsbuild" "auto" "node-test-none"]
-   "auto-test-cljs-simple" ["do"
-                            "clean,"
-                            "cljsbuild" "auto" "node-test-simple"]
    "auto-test-cljs-adv" ["do"
                          "clean,"
                          "cljsbuild" "auto" "node-test-adv"]
@@ -125,4 +120,7 @@
                           "cljsbuild" "auto" "node-test-perf"]
    "chrome-test" ["do"
                   "clean,"
-                  "doo" "chrome" "doo-test-adv"]})
+                  "doo" "chrome" "doo-test-adv"]
+   "chrome-perf" ["do"
+                  "clean,"
+                  "doo" "chrome" "doo-test-perf"]})
