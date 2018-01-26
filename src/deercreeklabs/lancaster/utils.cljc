@@ -36,6 +36,15 @@
   [& syms]
   (zipmap (map keyword syms) syms))
 
+(defprotocol IAvroSchema
+  (serialize [this os data])
+  (deserialize [this writer-pcf is])
+  (wrap [this data])
+  (get-edn-schema [this])
+  (get-json-schema [this])
+  (get-parsing-canonical-form [this])
+  (get-fingerprint64 [this]))
+
 (defprotocol IOutputStream
   (write-byte [this b])
   (write-bytes [this bs num-bytes])

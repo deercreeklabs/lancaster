@@ -24,68 +24,68 @@
 (def bytes-schema (schemas/make-primitive-schema :bytes))
 (def string-schema (schemas/make-primitive-schema :string))
 
-(s/defn make-record-schema :- (s/protocol schemas/IAvroSchema)
+(s/defn make-record-schema :- (s/protocol u/IAvroSchema)
   [name-kw :- s/Keyword
    fields :- [schemas/RecordFieldDef]]
   (schemas/make-schema :record name-kw fields))
 
-(s/defn make-enum-schema :- (s/protocol schemas/IAvroSchema)
+(s/defn make-enum-schema :- (s/protocol u/IAvroSchema)
   [name-kw :- s/Keyword
    symbols :- [s/Keyword]]
   (schemas/make-schema :enum name-kw symbols))
 
-(s/defn make-fixed-schema :- (s/protocol schemas/IAvroSchema)
+(s/defn make-fixed-schema :- (s/protocol u/IAvroSchema)
   [name-kw :- s/Keyword
    size :- s/Int]
   (schemas/make-schema :fixed name-kw size))
 
-(s/defn make-array-schema :- (s/protocol schemas/IAvroSchema)
-  [items-schema :- (s/protocol schemas/IAvroSchema)]
+(s/defn make-array-schema :- (s/protocol u/IAvroSchema)
+  [items-schema :- (s/protocol u/IAvroSchema)]
   (schemas/make-schema :array nil items-schema))
 
-(s/defn make-map-schema :- (s/protocol schemas/IAvroSchema)
-  [values-schema :- (s/protocol schemas/IAvroSchema)]
+(s/defn make-map-schema :- (s/protocol u/IAvroSchema)
+  [values-schema :- (s/protocol u/IAvroSchema)]
   (schemas/make-schema :map nil values-schema))
 
-(s/defn make-union-schema :- (s/protocol schemas/IAvroSchema)
-  [members :- [(s/protocol schemas/IAvroSchema)]]
+(s/defn make-union-schema :- (s/protocol u/IAvroSchema)
+  [members :- [(s/protocol u/IAvroSchema)]]
   (schemas/make-schema :union nil members))
 
 (s/defn serialize :- ba/ByteArray
-  [schema-obj :- (s/protocol schemas/IAvroSchema)
+  [schema-obj :- (s/protocol u/IAvroSchema)
    data :- s/Any]
   ;; TODO: Figure out how to set initial size better
   (let [os (impl/make-output-stream 100)]
-    (schemas/serialize schema-obj os data)
+    (u/serialize schema-obj os data)
     (u/to-byte-array os)))
 
 (s/defn deserialize :- s/Any
-  [reader-schema-obj :- (s/protocol schemas/IAvroSchema)
+  [reader-schema-obj :- (s/protocol u/IAvroSchema)
    writer-pcf :- s/Str
    ba :- ba/ByteArray]
   (let [is (impl/make-input-stream ba)]
-    (schemas/deserialize reader-schema-obj writer-pcf is)))
+    (u/deserialize reader-schema-obj writer-pcf is)))
 
 (s/defn wrap :- schemas/WrappedData
-  [schema :- (s/protocol schemas/IAvroSchema)
+  [schema :- (s/protocol u/IAvroSchema)
    data :- s/Any]
-  (schemas/wrap schema data))
+  (u/wrap schema data))
 
 (s/defn get-edn-schema :- s/Any
-  [schema :- (s/protocol schemas/IAvroSchema)]
-  (schemas/get-edn-schema schema))
+  [schema :- (s/protocol u/IAvroSchema)]
+  (u/get-edn-schema schema))
 
 (s/defn get-json-schema :- s/Str
-  [schema :- (s/protocol schemas/IAvroSchema)]
-  (schemas/get-json-schema schema))
+  [schema :- (s/protocol u/IAvroSchema)]
+  (u/get-json-schema schema))
 
 (s/defn get-parsing-canonical-form :- s/Str
-  [schema :- (s/protocol schemas/IAvroSchema)]
-  (schemas/get-parsing-canonical-form schema))
+  [schema :- (s/protocol u/IAvroSchema)]
+  (u/get-parsing-canonical-form schema))
 
 (s/defn get-fingerprint64 :- Long
-  [schema :- (s/protocol schemas/IAvroSchema)]
-  (schemas/get-fingerprint64 schema))
+  [schema :- (s/protocol u/IAvroSchema)]
+  (u/get-fingerprint64 schema))
 
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 
