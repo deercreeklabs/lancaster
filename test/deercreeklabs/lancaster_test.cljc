@@ -14,12 +14,6 @@
 
 (u/configure-logging)
 
-;; Make cljs byte-arrays ISeqable
-#?(:cljs (extend-protocol ISeqable
-           js/Int8Array
-           (-seq [o]
-             (array-seq o))))
-
 (defn deserialize-same
   "Deserialize with the same reader and writer schemas. Use for testing only."
   [schema encoded]
@@ -29,10 +23,11 @@
   [:sku l/int-schema]
   [:qty-requested l/int-schema 0])
 
-(def why-schema (l/make-enum-schema ::why
-                                    [:all :stock :limit]))
+(l/def-enum-schema why-schema
+  :all :stock :limit)
 
-(def a-fixed-schema (l/make-fixed-schema ::a-fixed 2))
+(l/def-fixed-schema a-fixed-schema
+  2)
 
 (l/def-record-schema rec-w-fixed-no-default-schema
   [:data a-fixed-schema])

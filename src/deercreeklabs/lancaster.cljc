@@ -96,5 +96,22 @@
                       *ns*))             ;; clj
         schema-name (u/make-schema-name clj-name)]
     `(def ~clj-name
-       (schemas/make-schema :record ~ns-name
-                            ~schema-name (vector ~@fields)))))
+       (schemas/make-schema :record ~ns-name ~schema-name (vector ~@fields)))))
+
+(defmacro def-enum-schema
+  [clj-name & symbols]
+  (let [ns-name (str (or
+                      (:name (:ns &env)) ;; cljs
+                      *ns*))             ;; clj
+        schema-name (u/make-schema-name clj-name)]
+    `(def ~clj-name
+       (schemas/make-schema :enum ~ns-name ~schema-name (vector ~@symbols)))))
+
+(defmacro def-fixed-schema
+  [clj-name size]
+  (let [ns-name (str (or
+                      (:name (:ns &env)) ;; cljs
+                      *ns*))             ;; clj
+        schema-name (u/make-schema-name clj-name)]
+    `(def ~clj-name
+       (schemas/make-schema :fixed ~ns-name ~schema-name ~size))))
