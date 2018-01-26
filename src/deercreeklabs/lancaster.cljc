@@ -91,12 +91,10 @@
 
 (defmacro def-record-schema
   [clj-name & fields]
-  (let [name (u/make-schema-name clj-name)]
+  (let [ns-name (str (or
+                      (:name (:ns &env)) ;; cljs
+                      *ns*))             ;; clj
+        schema-name (u/make-schema-name clj-name)]
     `(def ~clj-name
-       (schemas/make-schema :record *ns* ~name (vector ~@fields)))))
-
-(defmacro def-enum-schema
-  [clj-name & fields]
-  (let [name (u/make-schema-name clj-name)]
-    `(def ~clj-name
-       (schemas/make-schema :record *ns* ~name (vector ~@fields)))))
+       (schemas/make-schema :record ~ns-name
+                            ~schema-name (vector ~@fields)))))

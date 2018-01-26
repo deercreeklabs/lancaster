@@ -63,8 +63,8 @@
 ;;;;;;;;;;;;;;;;;;;; Utility Fns ;;;;;;;;;;;;;;;;;;;;
 
 (defn make-schema
-  ([schema-type ns schema-name args]
-   (let [name-kw (keyword (str ns) schema-name)]
+  ([schema-type ns-name schema-name args]
+   (let [name-kw (keyword ns-name schema-name)]
      (make-schema schema-type name-kw args)))
   ([schema-type name-kw args]
    (when (and (u/avro-named-types schema-type)
