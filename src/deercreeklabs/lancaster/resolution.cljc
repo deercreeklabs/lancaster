@@ -48,6 +48,13 @@
         #?(:clj (double l)
            :cljs (.toNumber l))))))
 
+(defmethod make-rd* [:float :double]
+  [writer-edn-schema reader-edn-schema]
+  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
+    (fn deserialize [is]
+      (let [f (writer-deserializer is)]
+        (double f)))))
+
 (defn make-resolving-deserializer [writer-pcf reader-schema]
   (let [writer-avro-schema (pcf/pcf->avro-schema writer-pcf)
         reader-edn (u/get-edn-schema reader-schema)]

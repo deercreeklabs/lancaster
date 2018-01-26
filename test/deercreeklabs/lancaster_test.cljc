@@ -681,9 +681,17 @@
         writer-pcf (l/get-parsing-canonical-form writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded-orig)
         expected (double -53017076308613)
-        _ (is (= expected decoded))
         rel-err (get-rel-err expected decoded)]
     (is (> 0.00000001 rel-err))))
+
+(deftest test-schema-resolution-float-to-double
+  (let [data (float 1234.5789)
+        writer-schema l/float-schema
+        reader-schema l/double-schema
+        encoded-orig (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded (l/deserialize reader-schema writer-pcf encoded-orig)]
+    (is (= (double data) decoded))))
 
 ;; (deftest test-record-schema-evolution-add-a-field
 ;;   (let [data {:sku 789
