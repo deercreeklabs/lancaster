@@ -37,7 +37,7 @@
       (deserializer is)
       (if-let [rd (@*pcf->resolving-deserializer writer-pcf)]
         (rd is)
-        (let [rd (resolution/make-resolving-deserializer this writer-pcf)]
+        (let [rd (resolution/make-resolving-deserializer writer-pcf this)]
           (swap! *pcf->resolving-deserializer assoc writer-pcf rd)
           (rd is)))))
   (wrap [this data]

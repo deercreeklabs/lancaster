@@ -23,6 +23,12 @@
   [:sku l/int-schema]
   [:qty-requested l/int-schema 0])
 
+(def add-to-cart-req-v2-schema
+  (l/make-record-schema ::add-to-cart-req
+                        [[:sku l/int-schema]
+                         [:qty-requested l/int-schema 0]
+                         [:note l/string-schema "No note"]]))
+
 (l/def-enum-schema why-schema
   :all :stock :limit)
 
@@ -621,17 +627,26 @@
 ;;                encoded))
 ;;         _ (is (= data decoded))]))
 
+(deftest test-schema-resolution-int-to-float
+  (let [data 10
+        writer-schema l/int-schema
+        reader-schema l/float-schema
+        encoded-orig (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
+    (is (= 10.0 decoded-new))))
+
 ;; (deftest test-schema-evolution-add-a-field
 ;;   (let [data {:sku 789
 ;;               :qty-requested 10}
 ;;         encoded-orig (l/serialize add-to-cart-req-schema data)
+;;         writer-pcf (l/get-parsing-canonical-form add-to-cart-req-schema)
 ;;         _ (is (ba/equivalent-byte-arrays? (ba/byte-array [-86 12 20])
 ;;                                           encoded-orig))
 ;;         decoded-new (l/deserialize add-to-cart-req-v2-schema
-;;                                    (l/get-parsing-canonical-form
-;;                                     add-to-cart-req-schema)
+;;                                    writer-pcf
 ;;                                    encoded-orig)]
-;;     (is (= (assoc data :username "") decoded-new))))
+;;     (is (= (assoc data :note "No note") decoded-new))))
 
 ;; (deftest test-schema-evolution-remove-a-field
 ;;   (let [data {:username ""

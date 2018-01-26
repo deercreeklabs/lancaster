@@ -665,6 +665,10 @@
   #?(:clj (json/generate-string edn {:pretty true})
      :cljs (js/JSON.stringify (clj->js edn))))
 
+(defn json-string->edn [json-str]
+  #?(:clj (json/parse-string json-str true)
+     :cljs (js->clj (js/JSON.parse json-str))))
+
 (defn configure-logging []
   (timbre/merge-config!
    {:level :debug

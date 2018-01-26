@@ -162,3 +162,18 @@
         (xf-names)
         (filter-attrs)
         (emit))))
+
+(defn pcf->avro-complex [pcf]
+  :complex)
+
+(defn pcf->avro-schema [pcf]
+  (case pcf
+    "null" :null
+    "boolean" :boolean
+    "int" :int
+    "long" :long
+    "float" :float
+    "double" :double
+    "bytes" :bytes
+    "string" :string
+    (pcf->avro-complex [pcf])))
