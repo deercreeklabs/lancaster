@@ -11,9 +11,9 @@
 #?(:clj (pm/use-primitive-operators))
 
 (defmulti make-xf (fn [writer-edn-schema reader-edn-schema & args]
-                     (let [writer-type (u/get-avro-type writer-edn-schema)
-                           reader-type (u/get-avro-type reader-edn-schema)]
-                       [writer-type reader-type])))
+                    (let [writer-type (u/get-avro-type writer-edn-schema)
+                          reader-type (u/get-avro-type reader-edn-schema)]
+                      [writer-type reader-type])))
 
 (defmethod make-xf [:int :long]
   [writer-edn-schema reader-edn-schema]
@@ -63,6 +63,16 @@
                          (:items reader-edn-schema))]
     (fn xf [data]
       (map xf-item data))))
+
+(defmethod make-xf [:map :map]
+  [writer-edn-schema reader-edn-schema]
+  (let [xf-value (make-xf (:values writer-edn-schema)
+                          (:values reader-edn-schema))]
+    (fn xf [data]
+      (persistent!
+       (reduce-kv (fn [acc k v]
+                    (assoc! acc k (xf-value v)))
+                  (transient {}) data)))))
 
 (defn make-resolving-deserializer [writer-pcf reader-schema]
   (let [writer-edn-schema (pcf/pcf->edn-schema writer-pcf)

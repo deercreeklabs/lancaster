@@ -715,6 +715,16 @@
         expected [1.0 2.0 3.0]]
     (is (= expected decoded))))
 
+(deftest test-schema-resolution-int-map-to-float-map
+  (let [data {"one" 1 "two" 2}
+        writer-schema (l/make-map-schema l/int-schema)
+        reader-schema (l/make-map-schema l/float-schema)
+        encoded (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded (l/deserialize reader-schema writer-pcf encoded)
+        expected {"one" 1.0 "two" 2.0}]
+    (is (= expected decoded))))
+
 ;; (deftest test-record-schema-evolution-add-a-field
 ;;   (let [data {:sku 789
 ;;               :qty-requested 10}

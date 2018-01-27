@@ -184,6 +184,12 @@
       (update :type keyword)
       (update :items avro-types->edn-types)))
 
+(defmethod avro-types->edn-types :map
+  [avro-schema]
+  (-> avro-schema
+      (update :type keyword)
+      (update :values avro-types->edn-types)))
+
 (defn pcf->edn-schema [pcf]
   (case pcf
     "null" :null
