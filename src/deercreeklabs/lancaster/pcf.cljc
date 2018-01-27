@@ -163,10 +163,28 @@
         (filter-attrs)
         (emit))))
 
-(defn pcf->avro-complex [pcf]
-  :complex)
+(defmulti avro-types->edn-types
+  (fn [avro-schema]
+    (cond
+      (map? avro-schema) (let [{:keys [type]} avro-schema
+                               type-kw (keyword type)]
+                           (if (u/avro-primitive-types type-kw)
+                             :primitive
+                             type-kw))
+      (string? avro-schema) :primitive
+      (sequential? avro-schema) :union)))
 
-(defn pcf->avro-schema [pcf]
+(defmethod avro-types->edn-types :primitive
+  [avro-schema]
+  (keyword avro-schema))
+
+(defmethod avro-types->edn-types :array
+  [avro-schema]
+  (-> avro-schema
+      (update :type keyword)
+      (update :items avro-types->edn-types)))
+
+(defn pcf->edn-schema [pcf]
   (case pcf
     "null" :null
     "boolean" :boolean
@@ -176,4 +194,5 @@
     "double" :double
     "bytes" :bytes
     "string" :string
-    (pcf->avro-complex [pcf])))
+    (-> (u/json-string->edn pcf)
+        (avro-types->edn-types))))

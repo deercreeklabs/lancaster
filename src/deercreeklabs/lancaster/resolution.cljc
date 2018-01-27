@@ -10,67 +10,64 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-(defmulti make-rd* (fn [writer-edn-schema reader-edn-schema & args]
+(defmulti make-xf (fn [writer-edn-schema reader-edn-schema & args]
                      (let [writer-type (u/get-avro-type writer-edn-schema)
                            reader-type (u/get-avro-type reader-edn-schema)]
                        [writer-type reader-type])))
 
-(defmethod make-rd* [:int :long]
+(defmethod make-xf [:int :long]
   [writer-edn-schema reader-edn-schema]
-  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
-    (fn deserialize [is]
-      (u/int->long (writer-deserializer is)))))
+  (fn xf [data]
+    (u/int->long data)))
 
-(defmethod make-rd* [:int :float]
+(defmethod make-xf [:int :float]
   [writer-edn-schema reader-edn-schema]
-  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
-    (fn deserialize [is]
-      (float (writer-deserializer is)))))
+  (fn xf [data]
+    (float data)))
 
-(defmethod make-rd* [:int :double]
+(defmethod make-xf [:int :double]
   [writer-edn-schema reader-edn-schema]
-  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
-    (fn deserialize [is]
-      (double (writer-deserializer is)))))
+  (fn xf [data]
+    (double data)))
 
-(defmethod make-rd* [:long :float]
+(defmethod make-xf [:long :float]
   [writer-edn-schema reader-edn-schema]
-  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
-    (fn deserialize [is]
-      (let [l (writer-deserializer is)]
-        #?(:clj (float l)
-           :cljs (.toNumber l))))))
+  (fn xf [data]
+    #?(:clj (float data)
+       :cljs (.toNumber data))))
 
-(defmethod make-rd* [:long :double]
+(defmethod make-xf [:long :double]
   [writer-edn-schema reader-edn-schema]
-  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
-    (fn deserialize [is]
-      (let [l (writer-deserializer is)]
-        #?(:clj (double l)
-           :cljs (.toNumber l))))))
+  (fn xf [data]
+    #?(:clj (double data)
+       :cljs (.toNumber data))))
 
-(defmethod make-rd* [:float :double]
+(defmethod make-xf [:float :double]
   [writer-edn-schema reader-edn-schema]
-  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
-    (fn deserialize [is]
-      (let [f (writer-deserializer is)]
-        (double f)))))
+  (fn xf [data]
+    (double data)))
 
-(defmethod make-rd* [:string :bytes]
+(defmethod make-xf [:string :bytes]
   [writer-edn-schema reader-edn-schema]
-  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
-    (fn deserialize [is]
-      (let [s (writer-deserializer is)]
-        (ba/utf8->byte-array s)))))
+  (fn xf [data]
+    (ba/utf8->byte-array data)))
 
-(defmethod make-rd* [:bytes :string]
+(defmethod make-xf [:bytes :string]
   [writer-edn-schema reader-edn-schema]
-  (let [writer-deserializer (u/make-deserializer writer-edn-schema)]
-    (fn deserialize [is]
-      (let [ba (writer-deserializer is)]
-        (ba/byte-array->utf8 ba)))))
+  (fn xf [data]
+    (ba/byte-array->utf8 data)))
+
+(defmethod make-xf [:array :array]
+  [writer-edn-schema reader-edn-schema]
+  (let [xf-item (make-xf (:items writer-edn-schema)
+                         (:items reader-edn-schema))]
+    (fn xf [data]
+      (map xf-item data))))
 
 (defn make-resolving-deserializer [writer-pcf reader-schema]
-  (let [writer-avro-schema (pcf/pcf->avro-schema writer-pcf)
-        reader-edn (u/get-edn-schema reader-schema)]
-    (make-rd* writer-avro-schema reader-edn)))
+  (let [writer-edn-schema (pcf/pcf->edn-schema writer-pcf)
+        reader-edn (u/get-edn-schema reader-schema)
+        writer-deserializer (u/make-deserializer writer-edn-schema)
+        xf (make-xf writer-edn-schema reader-edn)]
+    (fn deserialize [is]
+      (xf (writer-deserializer is)))))
