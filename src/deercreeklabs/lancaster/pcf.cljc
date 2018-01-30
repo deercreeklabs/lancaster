@@ -1,5 +1,6 @@
 (ns deercreeklabs.lancaster.pcf
   (:require
+   [camel-snake-kebab.core :as csk]
    #?(:clj [cheshire.core :as json])
    [deercreeklabs.lancaster.impl :as impl]
    [deercreeklabs.lancaster.utils :as u]
@@ -13,20 +14,11 @@
 
 (def ^:dynamic **enclosing-namespace** nil)
 
-(defn fullname? [s]
-  (clojure.string/includes? s "."))
-
-(defn fullname->ns [fullname]
-  (if-not (fullname? fullname)
-    nil ;; no namespace
-    (let [parts (clojure.string/split fullname #"\.")]
-      (clojure.string/join "." (butlast parts)))))
-
 (defn xf-name [sch]
   (let [sch-ns (or (:namespace sch) **enclosing-namespace**)
         sch-name (:name sch)
         fullname (cond
-                   (fullname? sch-name) sch-name
+                   (u/fullname? sch-name) sch-name
                    (and sch-ns sch-name) (str sch-ns "." sch-name)
                    :else sch-name)]
     (-> sch
@@ -56,7 +48,7 @@
   [sch]
 
   (let [new-sch (xf-name sch)
-        new-ns (fullname->ns (:name new-sch))]
+        new-ns (u/fullname->ns (:name new-sch))]
     (binding [**enclosing-namespace** new-ns]
       (update new-sch :fields #(mapv xf-field-names %)))))
 
@@ -163,32 +155,81 @@
         (filter-attrs)
         (emit))))
 
-(defmulti avro-types->edn-types
-  (fn [avro-schema]
-    (cond
-      (map? avro-schema) (let [{:keys [type]} avro-schema
-                               type-kw (keyword type)]
-                           (if (u/avro-primitive-types type-kw)
-                             :primitive
-                             type-kw))
-      (string? avro-schema) :primitive
-      (sequential? avro-schema) :union)))
+(defn pcf-type-dispatch [avro-schema]
+  (cond
+    (map? avro-schema) (let [{:keys [type]} avro-schema
+                             type-kw (keyword type)]
+                         (if (u/avro-primitive-types type-kw)
+                           :primitive
+                           type-kw))
+    (string? avro-schema) :primitive
+    (sequential? avro-schema) :union))
+#_
+(defn xf-name [sch]
+  (let [sch-ns (or (:namespace sch) **enclosing-namespace**)
+        sch-name (:name sch)
+        fullname (cond
+                   (u/fullname? sch-name) sch-name
+                   (and sch-ns sch-name) (str sch-ns "." sch-name)
+                   :else sch-name)]
+    (-> sch
+        (dissoc :namespace)
+        (assoc :name fullname))))
 
-(defmethod avro-types->edn-types :primitive
+(defn avro-name->edn-name [schema]
+  (let [schema-name-str (:name schema)]
+    (if-not (u/fullname? schema-name-str)
+      (assoc schema :name (keyword schema-name-str))
+      (let [schema-ns (-> (u/fullname->ns schema-name-str)
+                          (u/java-namespace->clj-namespace)
+                          (keyword))
+            schema-name (-> (u/fullname->name schema-name-str)
+                            (csk/->kebab-case-keyword))]
+        (assoc schema :namespace schema-ns :name schema-name)))))
+
+(defmulti avro-schema->edn-schema pcf-type-dispatch)
+
+(defmethod avro-schema->edn-schema :primitive
   [avro-schema]
   (keyword avro-schema))
 
-(defmethod avro-types->edn-types :array
+(defmethod avro-schema->edn-schema :array
   [avro-schema]
   (-> avro-schema
       (update :type keyword)
-      (update :items avro-types->edn-types)))
+      (update :items avro-schema->edn-schema)))
 
-(defmethod avro-types->edn-types :map
+(defmethod avro-schema->edn-schema :map
   [avro-schema]
   (-> avro-schema
       (update :type keyword)
-      (update :values avro-types->edn-types)))
+      (update :values avro-schema->edn-schema)))
+
+(defmethod avro-schema->edn-schema :enum
+  [avro-schema]
+  (-> (avro-name->edn-name avro-schema)
+      (update :type keyword)
+      (update :symbols #(mapv csk/->kebab-case-keyword %))))
+
+(defmethod avro-schema->edn-schema :fixed
+  [avro-schema]
+  (-> (avro-name->edn-name avro-schema)
+      (update :type keyword)))
+
+(defn avro-field->edn-field [field]
+  (-> field
+      (update :type avro-schema->edn-schema)
+      (update :name csk/->kebab-case-keyword)))
+
+(defmethod avro-schema->edn-schema :record
+  [avro-schema]
+  (-> (avro-name->edn-name avro-schema)
+      (update :type keyword)
+      (update :fields #(mapv avro-field->edn-field %))))
+
+(defmethod avro-schema->edn-schema :union
+  [avro-union-schema]
+  (mapv avro-schema->edn-schema avro-union-schema))
 
 (defn pcf->edn-schema [pcf]
   (case pcf
@@ -200,5 +241,5 @@
     "double" :double
     "bytes" :bytes
     "string" :string
-    (-> (u/json-string->edn pcf)
-        (avro-types->edn-types))))
+    (let [json (u/json-string->edn pcf)]
+      (avro-schema->edn-schema json))))

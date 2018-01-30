@@ -1,5 +1,4 @@
 (ns deercreeklabs.lancaster.schemas
-  (:refer-clojure :exclude [namespace-munge])
   (:require
    [camel-snake-kebab.core :as csk]
    [clojure.string :as str]
@@ -152,17 +151,6 @@
   (when (u/illegal-union? member-schemas)
     (throw (ex-info "Illegal union schema." {:schema member-schemas}))))
 
-(defn namespace-munge [ns]
-  (clojure.string/replace (str ns) #"-" "_"))
-
-(defn edn-name->avro-name [s]
-  (if (clojure.string/includes? s ".")
-    (let [name-parts (clojure.string/split s #"\.")
-          schema-ns (clojure.string/join "." (butlast name-parts))
-          schema-name (last name-parts)]
-      (str (namespace-munge schema-ns) "." (csk/->PascalCase schema-name)))
-    (csk/->PascalCase s)))
-
 (defn ensure-edn-schema [schema]
   (cond
     (satisfies? u/IAvroSchema schema)
@@ -260,11 +248,14 @@
 
 (defn fix-name [edn-schema]
   (cond-> edn-schema
-    (:namespace edn-schema) (update :namespace #(namespace-munge (name %)))
-    true (update :name #(csk/->PascalCase (name %)))))
+    (:namespace edn-schema)
+    (update :namespace #(u/clj-namespace->java-namespace (name %)))
+
+    true
+    (update :name #(csk/->PascalCase (name %)))))
 
 (defn fix-alias [alias-kw]
-  (-> alias-kw name edn-name->avro-name))
+  (-> alias-kw name u/edn-name->avro-name))
 
 (defn fix-aliases [edn-schema]
   (if (contains? edn-schema :aliases)
@@ -401,7 +392,7 @@
 
 (defmethod edn-schema->avro-schema :string-reference
   [edn-schema]
-  (edn-name->avro-name edn-schema))
+  (u/edn-name->avro-name edn-schema))
 
 (defmethod edn-schema->avro-schema :default
   [edn-schema]

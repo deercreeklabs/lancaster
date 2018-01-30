@@ -1,5 +1,5 @@
 (ns deercreeklabs.lancaster.utils
-  (:refer-clojure :exclude [long namespace-munge])
+  (:refer-clojure :exclude [long])
   (:require
    [camel-snake-kebab.core :as csk]
    #?(:clj [cheshire.core :as json])
@@ -69,6 +69,41 @@
 (def avro-named-types #{:record :fixed :enum})
 (def avro-complex-types #{:record :fixed :enum :array :map :union})
 
+(defn make-schema-name [clj-name]
+  (-> (name clj-name)
+      (clojure.string/split #"-schema")
+      (first)))
+
+(defn fullname? [s]
+  (clojure.string/includes? s "."))
+
+(defn fullname->ns [fullname]
+  (if-not (fullname? fullname)
+    nil ;; no namespace
+    (let [parts (clojure.string/split fullname #"\.")]
+      (clojure.string/join "." (butlast parts)))))
+
+(defn fullname->name [fullname]
+  (if-not (fullname? fullname)
+    nil ;; no namespace
+    (let [parts (clojure.string/split fullname #"\.")]
+      (last parts))))
+
+(defn clj-namespace->java-namespace [ns]
+  (clojure.string/replace (str ns) #"-" "_"))
+
+(defn java-namespace->clj-namespace [ns]
+  (clojure.string/replace (str ns) #"_" "-"))
+
+(defn edn-name->avro-name [s]
+  (if (fullname? s)
+    (let [name-parts (clojure.string/split s #"\.")
+          schema-ns (clojure.string/join "." (butlast name-parts))
+          schema-name (last name-parts)]
+      (str (clj-namespace->java-namespace schema-ns) "."
+           (csk/->PascalCase schema-name)))
+    (csk/->PascalCase s)))
+
 (defn get-avro-type [edn-schema]
   (cond
     (sequential? edn-schema) :union
@@ -83,7 +118,9 @@
 (defn get-schema-name [edn-schema]
   (cond
     (avro-named-types (:type edn-schema))
-    (keyword (name (:namespace edn-schema)) (name (:name edn-schema)))
+    (if-let [schema-ns (:namespace edn-schema)]
+      (keyword (name schema-ns) (name (:name edn-schema)))
+      (:name edn-schema))
 
     (map? edn-schema)
     (:type edn-schema)
@@ -623,20 +660,16 @@
 
 (defmethod make-deserializer :union
   [edn-schema]
-  (if (wrapping-required? edn-schema)
-    (let [branch->deserializer (mapv make-deserializer edn-schema)
-          branch->schema-name (mapv get-schema-name edn-schema)]
-      (fn deserialize [is]
-        (let [branch (read-long-varint-zz is)
-              deserializer (branch->deserializer branch)
-              schema-name (branch->schema-name branch)]
-          [schema-name (deserializer is)])))
-    (let [branch->deserializer (mapv make-deserializer edn-schema)
-          branch->schema-name (mapv get-schema-name edn-schema)]
-      (fn deserialize [is]
-        (let [branch (read-long-varint-zz is)
-              deserializer (branch->deserializer branch)]
-          (deserializer is))))))
+  (let [branch->deserializer (mapv make-deserializer edn-schema)
+        branch->schema-name (mapv get-schema-name edn-schema)]
+    (fn deserialize [is]
+      (let [branch (read-long-varint-zz is)
+            deserializer (branch->deserializer branch)
+            data (deserializer is)]
+        (if-not (wrapping-required? edn-schema)
+          data
+          (let [schema-name (branch->schema-name branch)]
+            [schema-name data]))))))
 
 (defn make-field-info [field-schema]
   (let [{:keys [name type default]} field-schema
@@ -671,7 +704,7 @@
 
 (defn json-string->edn [json-str]
   #?(:clj (json/parse-string json-str true)
-     :cljs (js->clj (js/JSON.parse json-str))))
+     :cljs (js->clj (js/JSON.parse json-str) :keywordize-keys true)))
 
 (defn configure-logging []
   (timbre/merge-config!
@@ -682,8 +715,3 @@
   []
   #?(:clj (System/currentTimeMillis)
      :cljs (.getTime (js/Date.))))
-
-(defn make-schema-name [clj-name]
-  (-> (name clj-name)
-      (clojure.string/split #"-schema")
-      (first)))
