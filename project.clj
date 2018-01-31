@@ -4,7 +4,8 @@
    ;; :pseudo-names true
    ;; :pretty-print true
    ;; :infer-externs true
-   :externs ["lancaster_externs.js"]})
+   :externs ["lancaster_externs.js"]
+   })
 
 (defn make-build-conf [id target-kw build-type-kw opt-level main]
   (let [build-type-str (name build-type-kw)
@@ -56,7 +57,7 @@
     :source-paths ["dev" "src"]
     :repl-options {:init-ns user}
     :plugins
-    [[lein-ancient "0.6.14"]
+    [[lein-ancient "0.6.15"]
      [lein-cljsbuild "1.1.7" :exclusions [org.clojure/clojure]]
      [lein-cloverage "1.0.10" :exclusions [org.clojure/clojure]]
      [lein-doo "0.1.8"]
@@ -77,11 +78,9 @@
   :dependencies
   [[camel-snake-kebab "0.4.0"]
    [cheshire "5.8.0"]
-   [cljsjs/long "3.0.3-1"]
-   [com.google.guava/guava "23.0" :exclusions [com.google.code.findbugs/jsr305]]
    [com.taoensso/timbre "4.10.0"]
-   [deercreeklabs/baracus "0.1.1" :exclusions [prismatic/schema]]
-   [deercreeklabs/log-utils "0.1.2"]
+   [deercreeklabs/baracus "0.1.3" :exclusions [prismatic/schema]]
+   [deercreeklabs/log-utils "0.1.3"]
    [deercreeklabs/stockroom "0.1.12"]
    [org.clojure/clojure "1.9.0"]
    [org.clojure/clojurescript "1.9.946"]

@@ -7,22 +7,23 @@
    [#?(:clj clj-time.core :cljs cljs-time.core) :as t]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
+   #?(:cljs [goog.math :as gm])
    #?(:clj [primitive-math :as pm])
    #?(:clj [puget.printer :refer [cprint]])
    [schema.core :as s]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
-      [deercreeklabs.lancaster.utils :refer [sym-map]])
-     :clj
-     (:import
-      (com.google.common.primitives UnsignedLong))))
+      [deercreeklabs.lancaster.utils :refer [sym-map]])))
 
 #?(:cljs
    (set! *warn-on-infer* true))
 
 #?(:cljs (def class type))
-#?(:cljs (def Long js/Long))
+#?(:cljs (def Long gm/Long))
+
+#?(:cljs (def max-int (.fromInt Long 2147483647)))
+#?(:cljs (def min-int (.fromInt Long -2147483648)))
 
 #?(:clj (pm/use-primitive-operators))
 
@@ -236,26 +237,14 @@
                     :cljs (.getLowBits l)))]
     [high low]))
 
-(s/defn hex-str->long :- Long
-  [hex-str :- s/Str]
-  #?(:clj
-     (.longValue (UnsignedLong/valueOf hex-str 16))
-     :cljs
-     (.fromString Long hex-str 16)))
+(s/defn str->long :- Long
+  [s :- s/Str]
+  #?(:clj (Long/parseLong s)
+      :cljs (.fromString Long s)))
 
-(s/defn long->hex-str :- s/Str
+(s/defn long->str :- s/Str
   [l :- Long]
-  (let [pad (fn [s len]
-              (loop [out s]
-                (if (= len (count out))
-                  out
-                  (recur (str "0" out)))))
-        s #?(:clj
-             (Long/toHexString l)
-             :cljs
-             (-> (.toUnsigned l)
-                 (.toString 16)))]
-    (pad s 16)))
+  (.toString l))
 
 (defn- throw-long->int-err [l]
   (throw (ex-info (str "Cannot convert long `" l "` to int.")
@@ -269,13 +258,14 @@
             (throw-long->int-err l))
      :cljs (if-not (long? l)
              l
-             (if (and (.lte l 2147483647) (.gte l -2147483648))
+             (if (and (.lessThanOrEqual l 2147483647)
+                      (.greaterThanOrEqual l -2147483648))
                (.toInt l)
                (throw-long->int-err l)))))
 
 (defn int->long [int]
   #?(:clj (clojure.core/long int)
-     :cljs (.fromValue Long int)))
+     :cljs (.fromInt Long int)))
 
 (defn more-than-one? [schema-set schemas]
   (> (count (keep #(schema-set (get-avro-type %)) schemas)) 1))
@@ -302,15 +292,15 @@
       (more-than-one? #{:bytes :fixed} schemas)))
 
 #?(:cljs
-   (defn write-long-varint-zz-long [output-stream ^js/Long l]
+   (defn write-long-varint-zz-long [output-stream ^Long l]
      (let [zz-n (.xor (.shiftLeft l 1)
                       (.shiftRight l 63))]
-       (loop [^js/Long n zz-n]
-         (if (.isZero (.and n -128))
-           (let [b (.and n 0x7f)]
+       (loop [^Long n zz-n]
+         (if (.isZero (.and n (Long.fromInt -128)))
+           (let [b (.and n (Long.fromInt 127))]
              (write-byte output-stream b))
-           (let [b (-> (.and n 0x7f)
-                       (.or 0x80))]
+           (let [b (-> (.and n (Long.fromInt 127))
+                       (.or (Long.fromInt 128)))]
              (write-byte output-stream b)
              (recur (.shiftRightUnsigned n 7))))))))
 
@@ -318,10 +308,10 @@
   (let [zz-n (bit-xor (bit-shift-left l 1) (bit-shift-right l 63))]
     (loop [n zz-n]
       (if (zero? (bit-and n -128))
-        (let [b (bit-and n 0x7f)]
+        (let [b (bit-and n 127)]
           (write-byte output-stream b))
-        (let [b (-> (bit-and n 0x7f)
-                    (bit-or 0x80))]
+        (let [b (-> (bit-and n 127)
+                    (bit-or 128))]
           (write-byte output-stream b)
           (recur (unsigned-bit-shift-right n 7)))))))
 
@@ -332,29 +322,30 @@
                l)]
        (write-long-varint-zz* output-stream l))
      :cljs
-     (let [l (if-not (long? l)
-               l
-               (if (and (.lte ^js/Long l 2147483647)
-                        (.gte ^js/Long l -2147483648))
-                 (.toInt ^js/Long l)
-                 l))]
-       (if (long? l)
-         (write-long-varint-zz-long output-stream l)
-         (write-long-varint-zz* output-stream l)))))
+     (do
+       (let [l (if-not (long? l)
+                 l
+                 (if (and (.lessThanOrEqual ^Long l max-int)
+                          (.greaterThanOrEqual ^Long l min-int))
+                   (.toInt ^Long l)
+                   l))]
+         (if (long? l)
+           (write-long-varint-zz-long output-stream l)
+           (write-long-varint-zz* output-stream l))))))
 
 #?(:cljs
    (defn read-long-varint-zz-long [input-stream]
      (loop [i 0
-            out js/Long.ZERO]
-       (let [b (js/Long.fromValue (read-byte input-stream))]
-         (if (.equals js/Long.ZERO (.and b 0x80))
+            out (.getZero Long)]
+       (let [b (.fromNumber Long (read-byte input-stream))]
+         (if (.isZero (.and b (.fromInt Long 128)))
            (let [zz-n (-> (.shiftLeft b i)
                           (.or out))
-                 long-out (->> (.and zz-n 1)
-                               (.subtract js/Long.ZERO)
+                 long-out (->> (.and zz-n (.getOne Long))
+                               (.subtract (.getZero Long))
                                (.xor (.shiftRightUnsigned zz-n 1)))]
              long-out)
-           (let [out (-> (.and b 0x7f)
+           (let [out (-> (.and b (.fromInt Long 127))
                          (.shiftLeft i)
                          (.or out))
                  i (+ i 7)]
@@ -368,14 +359,14 @@
   (loop [i 0
          out 0]
     (let [b (read-byte input-stream)]
-      (if (zero? (bit-and b 0x80))
+      (if (zero? (bit-and b 128))
         (let [zz-n (-> (bit-shift-left b i)
                        (bit-or out))
               long-out (->> (bit-and zz-n 1)
                             (- 0)
                             (bit-xor (unsigned-bit-shift-right zz-n 1)))]
           long-out)
-        (let [out (-> (bit-and b 0x7f)
+        (let [out (-> (bit-and b 127)
                       (bit-shift-left i)
                       (bit-or out))
               i (+ 7 i)]

@@ -20,6 +20,15 @@
   [schema encoded]
   (l/deserialize schema (l/get-parsing-canonical-form schema) encoded))
 
+(defn get-abs-err [expected actual]
+  (let [err (- expected actual)]
+    (if (neg? err)
+      (- err)
+      err)))
+
+(defn get-rel-err [expected actual]
+  (/ (get-abs-err expected actual) expected))
+
 (l/def-record-schema add-to-cart-req-schema
   [:sku l/int-schema]
   [:qty-requested l/int-schema 0])
@@ -127,8 +136,8 @@
                               {:name :qty-requested
                                :type :int
                                :default 0}]}]
-    (is (= "45c60aabcfd650ea"
-           (u/long->hex-str (l/get-fingerprint64 add-to-cart-req-schema))))
+    (is (= "5027717767048351978"
+           (u/long->str (l/get-fingerprint64 add-to-cart-req-schema))))
     (is (= expected-edn-schema (l/get-edn-schema add-to-cart-req-schema)))
     (is (= expected-pcf (l/get-parsing-canonical-form
                          add-to-cart-req-schema)))))
@@ -150,8 +159,8 @@
   (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.Why\",\"type\":"
               "\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}")
          (l/get-parsing-canonical-form why-schema)))
-  (is (= "6222a8eaeb7a985e"
-         (u/long->hex-str (l/get-fingerprint64 why-schema)))))
+  (is (= "7071400091851593822"
+         (u/long->str (l/get-fingerprint64 why-schema)))))
 
 (deftest test-def-enum-schema-serdes
   (let [data :stock
@@ -169,8 +178,8 @@
   (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.AFixed\",\"type\":"
               "\"fixed\",\"size\":2}")
          (l/get-parsing-canonical-form a-fixed-schema)))
-  (is (= "6ded13577f54ade7"
-         (u/long->hex-str (l/get-fingerprint64 a-fixed-schema)))))
+  (is (= "7921008586133908967"
+         (u/long->str (l/get-fingerprint64 a-fixed-schema)))))
 
 (deftest test-def-fixed-schema-serdes
   (let [data (ba/byte-array [12 24])
@@ -236,8 +245,8 @@
                 "\"otherData\",\"type\":\"bytes\"}]}")
            (l/get-parsing-canonical-form add-to-cart-rsp-schema)))
     (is (= expected (l/get-edn-schema add-to-cart-rsp-schema))))
-  (is (= "b2872b2c6000c8e5"
-         (u/long->hex-str (l/get-fingerprint64 add-to-cart-rsp-schema)))))
+  (is (= "-5582445743513220891"
+         (u/long->str (l/get-fingerprint64 add-to-cart-rsp-schema)))))
 
 (deftest test-nested-record-serdes
   (let [data {:qty-requested 123
@@ -288,16 +297,7 @@
 (deftest test-int->long
   (let [in (int -1)
         l (u/int->long in)]
-    (is (= "ffffffffffffffff" (u/long->hex-str l)))))
-
-(defn get-abs-err [expected actual]
-  (let [err (- expected actual)]
-    (if (neg? err)
-      (- err)
-      err)))
-
-(defn get-rel-err [expected actual]
-  (/ (get-abs-err expected actual) expected))
+    (is (= "-1" (u/long->str l)))))
 
 (deftest test-float-schema
   (let [data (float 3.14159)
@@ -338,8 +338,8 @@
          (l/get-edn-schema ages-schema)))
   (is (= "{\"type\":\"map\",\"values\":\"int\"}"
          (l/get-parsing-canonical-form ages-schema)))
-  (is (= "db39e2c2534c8973"
-         (u/long->hex-str (l/get-fingerprint64 ages-schema)))))
+  (is (= "-2649837581481768589"
+         (u/long->str (l/get-fingerprint64 ages-schema)))))
 
 (deftest test-map-schema-serdes
   (let [data {"Alice" 50
@@ -358,8 +358,8 @@
          (l/get-edn-schema simple-array-schema)))
   (is (= "{\"type\":\"array\",\"items\":\"string\"}"
          (l/get-parsing-canonical-form simple-array-schema)))
-  (is (= "ce5b3256262fd79f"
-         (u/long->hex-str (l/get-fingerprint64 simple-array-schema)))))
+  (is (= "-3577210133426481249"
+         (u/long->str (l/get-fingerprint64 simple-array-schema)))))
 
 (deftest test-array-schema-serdes
   (let [names ["Ferdinand" "Omar" "Lin"]
@@ -406,8 +406,8 @@
              :default "MX"}
             {:name :other-data :type :bytes :default ""}]}}
          (l/get-edn-schema rsps-schema)))
-  (is (= "53e478ee274a9db7"
-         (u/long->hex-str (l/get-fingerprint64 rsps-schema)))))
+  (is (= "6045089564094799287"
+         (u/long->str (l/get-fingerprint64 rsps-schema)))))
 
 (deftest test-nested-array-schema-serdes
   (let [data [{:qty-requested 123
@@ -468,8 +468,8 @@
              :default "MX"}
             {:name :other-data :type :bytes :default ""}]}}
          (l/get-edn-schema nested-map-schema)))
-  (is (=  "9fa5480152c68cf9"
-          (u/long->hex-str (l/get-fingerprint64 nested-map-schema)))))
+  (is (= "-6943064080000840455"
+          (u/long->str (l/get-fingerprint64 nested-map-schema)))))
 
 (deftest test-nested-map-schema-serdes
   (let [data {"A" {:qty-requested 123
@@ -508,8 +508,8 @@
            :type :fixed
            :size 2}]
          (l/get-edn-schema union-schema)))
-  (is (= "ef20e3c27ecf9914"
-         (u/long->hex-str (l/get-fingerprint64 union-schema)))))
+  (is (= "-1215721474899338988"
+         (u/long->str (l/get-fingerprint64 union-schema)))))
 
 (deftest test-union-schema-serdes
   (let [data {:sku 123 :qty-requested 4}
@@ -539,8 +539,8 @@
            [{:name :name :type :string :default "No name"}
             {:name :owner :type :string :default "No owner"}]}]
          (l/get-edn-schema person-or-dog-schema)))
-  (is (= "723566f27583c594"
-         (u/long->hex-str (l/get-fingerprint64 person-or-dog-schema)))))
+  (is (= "8229597085629138324"
+         (u/long->str (l/get-fingerprint64 person-or-dog-schema)))))
 
 (deftest test-wrapped-union-schema-serdes
   (let [data (l/wrap dog-schema {:name "Fido" :owner "Zach"})
@@ -562,8 +562,8 @@
   (is (= [{:type :map :values :int}
           {:type :array :items :string}]
          (l/get-edn-schema map-or-array-schema)))
-  (is (= "3da32ade40155b97"
-         (u/long->hex-str (l/get-fingerprint64 map-or-array-schema)))))
+  (is (= "4441440791563688855"
+         (u/long->str (l/get-fingerprint64 map-or-array-schema)))))
 
 (deftest test-map-or-array-schema-serdes
   (let [data {"Zeke" 22 "Adeline" 88}
@@ -597,8 +597,8 @@
                     {:name :owner :type :string :default "No owner"}]}
           {:type :array :items :string}]
          (l/get-edn-schema mopodoa-schema)))
-  (is (= "e206da39366e5f63"
-         (u/long->hex-str (l/get-fingerprint64 mopodoa-schema)))))
+  (is (= "-2159799032016380061"
+         (u/long->str (l/get-fingerprint64 mopodoa-schema)))))
 
 (deftest test-mopodoa-schema-serdes
   (let [data (l/wrap ages-schema {"Zeke" 22 "Adeline" 88})
@@ -632,7 +632,7 @@
 ;;             :default nil}]}
 ;;          (l/get-edn-schema tree-schema)))
 ;;   (is (= "7S/pDrRPpfq+cxuNpMNKlw=="
-;;          (u/long->hex-str (l/get-fingerprint64 tree-schema)))))
+;;          (u/long->str (l/get-fingerprint64 tree-schema)))))
 
 ;; (deftest test-recursive-schema-serdes
 ;;   (let [data {:value 5
@@ -662,7 +662,7 @@
         encoded-orig (l/serialize writer-schema data)
         writer-pcf (l/get-parsing-canonical-form writer-schema)
         decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
-    (is (= "000000000000000a" (u/long->hex-str decoded-new)))))
+    (is (= "10" (u/long->str decoded-new)))))
 
 (deftest test-schema-resolution-int-to-float
   (let [data 10
@@ -885,8 +885,8 @@
              :symbols [:all :stock :limit]}
             :default :all}]}
          (l/get-edn-schema rec-w-array-and-enum-schema)))
-  (is (= "91fa1c9b7aa30f5a"
-         (u/long->hex-str (l/get-fingerprint64
+  (is (= "-7927992739929321638"
+         (u/long->str (l/get-fingerprint64
                            rec-w-array-and-enum-schema)))))
 
 (deftest test-rec-w-array-and-enum-serdes
@@ -910,8 +910,8 @@
             :default {}}
            {:name :what :type :string :default ""}]}
          (l/get-edn-schema rec-w-map-schema)))
-  (is (= "a83fbba8cc587ad3"
-         (u/long->hex-str (l/get-fingerprint64
+  (is (= "-6323129018147636525"
+         (u/long->str (l/get-fingerprint64
                            rec-w-map-schema)))))
 
 (deftest test-rec-w-map-serdes
@@ -940,8 +940,8 @@
              :size 2}
             :default "\0\0"}]}
          (l/get-edn-schema rec-w-fixed-no-default-schema)))
-  (is (= "c257b331f3becb0c"
-         (u/long->hex-str (l/get-fingerprint64
+  (is (= "-4442885480253568244"
+         (u/long->str (l/get-fingerprint64
                            rec-w-fixed-no-default-schema)))))
 
 (deftest test-rec-w-fixed-no-default-serdes

@@ -6,6 +6,7 @@
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
+   #?(:cljs [goog.math :as gm])
    [schema.core :as s :include-macros true]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
@@ -13,7 +14,7 @@
 
 (declare make-name*)
 
-#?(:cljs (def Long js/Long))
+#?(:cljs (def Long gm/Long))
 
 (def int-schema (schemas/make-primitive-schema :int))
 (def null-schema (schemas/make-primitive-schema :null))

@@ -57,7 +57,8 @@
   [writer-edn-schema reader-edn-schema]
   (fn xf [data]
     #?(:clj (float data)
-       :cljs (.toNumber data))))
+       :cljs
+       (.toNumber data))))
 
 (defmethod make-xf [:long :double]
   [writer-edn-schema reader-edn-schema]
