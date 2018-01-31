@@ -41,7 +41,7 @@
              :compiler compiler}
       node-test? (assoc :notify-command ["node" output-to]))))
 
-(defproject deercreeklabs/lancaster "0.1.11-SNAPSHOT"
+(defproject deercreeklabs/lancaster "0.1.11"
   :description "Tools for working with Apache Avro"
   :url "https://github.com/deercreeklabs/lancaster"
   :license {:name "Apache License, Version 2.0"
