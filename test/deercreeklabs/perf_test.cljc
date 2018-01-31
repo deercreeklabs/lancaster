@@ -76,5 +76,5 @@
     (infof "JSON Dec ops per sec: %.0f" json-dec-ops)
     (infof "Encoded size: %d" (count encoded))
     (infof "JSON Enc size: %d" (count json-encoded))
-    (is (< #?(:cljs 20000 :clj 220000) enc-ops))
-    (is (< #?(:cljs 40000 :clj 400000) dec-ops))))
+    (is (< #?(:cljs 20000 :clj 200000) enc-ops))
+    (is (< #?(:cljs 40000 :clj 300000) dec-ops))))
