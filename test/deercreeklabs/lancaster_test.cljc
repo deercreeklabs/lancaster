@@ -558,6 +558,15 @@
          encoded))
     (is (= data decoded))))
 
+(deftest test-wrapped-union-schema-serdes
+  (try
+    (l/serialize person-or-dog-schema [:non-existent-schema-name {}])
+    (is (= :did-not-throw :but-should-have))
+    (catch #?(:clj Exception :cljs js/Error) e
+      (let [msg (lu/get-exception-msg e)]
+        (is (str/includes?
+             msg "`:non-existent-schema-name` is not in the union schema"))))))
+
 (deftest test-map-or-array-schema
   (is (= [{:type :map :values :int}
           {:type :array :items :string}]
