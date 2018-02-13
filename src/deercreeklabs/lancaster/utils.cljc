@@ -640,10 +640,10 @@
         (let [[schema-name data] data
               [branch serializer] (schema-name->branch-info schema-name)]
           (when-not branch
-            (throw (ex-info (str "Schema name `" schema-name "` is not in "
-                                 "the union schema.")
-                            (sym-map schema-name data
-                                     schema-name->branch-info))))
+            (let [schema-names (keys schema-name->branch-info)]
+              (throw (ex-info (str "Schema name `" schema-name "` is not in "
+                                   "the union schema.")
+                              (sym-map schema-name schema-names data)))))
           (write-long-varint-zz os branch)
           (serializer os data path))))
     (let [data->branch (make-data->branch edn-schema)
