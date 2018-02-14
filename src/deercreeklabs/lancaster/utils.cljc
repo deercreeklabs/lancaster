@@ -255,12 +255,12 @@
 
 (s/defn long->int :- s/Int
   [l :- LongOrInt]
-  #?(:clj (if (and (<= l 2147483647) (>= l -2147483648))
-            (.intValue l)
-            (throw-long->int-err l))
-     :cljs (if-not (long? l)
-             l
-             (if (and (.lessThanOrEqual l 2147483647)
+  (if-not (long? l)
+    l
+    #?(:clj (if (and (<= ^Long l 2147483647) (>= ^Long l -2147483648))
+              (.intValue ^Long l)
+              (throw-long->int-err l))
+       :cljs (if (and (.lessThanOrEqual l 2147483647)
                       (.greaterThanOrEqual l -2147483648))
                (.toInt l)
                (throw-long->int-err l)))))
