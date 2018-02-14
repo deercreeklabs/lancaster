@@ -558,7 +558,7 @@
          encoded))
     (is (= data decoded))))
 
-(deftest test-wrapped-union-schema-serdes
+(deftest test-wrapped-union-schema-serdes-non-existent
   (try
     (l/serialize person-or-dog-schema [:non-existent-schema-name {}])
     (is (= :did-not-throw :but-should-have))
