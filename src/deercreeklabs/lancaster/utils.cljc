@@ -162,6 +162,8 @@
   (or (long? x)
       (integer? x)))
 
+(def LongOrInt (s/pred long-or-int?))
+
 (defn valid-int? [data]
   (and (integer? data)
        (<= (int data) 2147483647)
@@ -252,7 +254,7 @@
                    :class-of-input (class l)})))
 
 (s/defn long->int :- s/Int
-  [l :- Long]
+  [l :- LongOrInt]
   #?(:clj (if (and (<= l 2147483647) (>= l -2147483648))
             (.intValue l)
             (throw-long->int-err l))
