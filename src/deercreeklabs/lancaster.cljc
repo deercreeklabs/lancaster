@@ -52,6 +52,10 @@
   [members :- [(s/protocol u/IAvroSchema)]]
   (schemas/make-schema :union nil members))
 
+(s/defn make-maybe-schema :- (s/protocol u/IAvroSchema)
+  [schema :- (s/protocol u/IAvroSchema)]
+  (make-union-schema [null-schema schema]))
+
 (s/defn serialize :- ba/ByteArray
   [schema-obj :- (s/protocol u/IAvroSchema)
    data :- s/Any]
@@ -79,6 +83,10 @@
 (s/defn get-json-schema :- s/Str
   [schema :- (s/protocol u/IAvroSchema)]
   (u/get-json-schema schema))
+
+(s/defn get-plumatic-schema :- s/Any
+  [schema :- (s/protocol u/IAvroSchema)]
+  (u/get-plumatic-schema schema))
 
 (s/defn get-parsing-canonical-form :- s/Str
   [schema :- (s/protocol u/IAvroSchema)]

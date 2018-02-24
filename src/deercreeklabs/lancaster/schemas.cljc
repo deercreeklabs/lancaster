@@ -26,7 +26,7 @@
                      (s/optional s/Any "field-default")])
 
 (defrecord AvroSchema [schema-name edn-schema json-schema parsing-canonical-form
-                       fingerprint64 serializer deserializer
+                       fingerprint64 plumatic-schema serializer deserializer
                        *pcf->resolving-deserializer]
   u/IAvroSchema
   (serialize [this os data]
@@ -48,7 +48,9 @@
   (get-parsing-canonical-form [this]
     parsing-canonical-form)
   (get-fingerprint64 [this]
-    fingerprint64))
+    fingerprint64)
+  (get-plumatic-schema [this]
+    plumatic-schema))
 
 ;;;;;;;;;;;;;;;;;;;; Multimethods ;;;;;;;;;;;;;;;;;;;;
 
@@ -80,12 +82,13 @@
          json-schema (u/edn->json-string avro-schema)
          parsing-canonical-form (pcf/avro-schema->pcf avro-schema)
          fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
+         plumatic-schema (u/edn-schema->plumatic-schema edn-schema)
          serializer (u/make-serializer edn-schema)
          deserializer (u/make-deserializer edn-schema)
          *pcf->resolving-deserializer (atom {})
          schema-name (u/get-schema-name edn-schema)]
      (->AvroSchema schema-name edn-schema json-schema parsing-canonical-form
-                   fingerprint64 serializer deserializer
+                   fingerprint64 plumatic-schema serializer deserializer
                    *pcf->resolving-deserializer))))
 
 (defn make-primitive-schema [schema-kw]

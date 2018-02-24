@@ -44,7 +44,8 @@
   (get-edn-schema [this])
   (get-json-schema [this])
   (get-parsing-canonical-form [this])
-  (get-fingerprint64 [this]))
+  (get-fingerprint64 [this])
+  (get-plumatic-schema [this]))
 
 (defprotocol IOutputStream
   (write-byte [this b])
@@ -69,6 +70,8 @@
                             :bytes :string})
 (def avro-named-types #{:record :fixed :enum})
 (def avro-complex-types #{:record :fixed :enum :array :map :union})
+
+(def Nil (s/eq nil))
 
 (defn make-schema-name [clj-name]
   (-> (name clj-name)
@@ -149,6 +152,7 @@
 
 (defmulti make-serializer avro-type-dispatch)
 (defmulti make-deserializer avro-type-dispatch)
+(defmulti edn-schema->plumatic-schema avro-type-dispatch)
 
 (s/defn long? :- s/Bool
   [x :- s/Any]
@@ -183,6 +187,8 @@
 (defn valid-bytes-or-string? [data]
   (or (string? data)
       (ba/byte-array? data)))
+
+(def StringOrBytes (s/pred valid-bytes-or-string?))
 
 (defn valid-array? [data]
   (sequential? data))
@@ -242,7 +248,7 @@
 (s/defn str->long :- Long
   [s :- s/Str]
   #?(:clj (Long/parseLong s)
-      :cljs (.fromString Long s)))
+     :cljs (.fromString Long s)))
 
 (s/defn long->str :- s/Str
   [l :- Long]
@@ -681,7 +687,7 @@
       (when-not (map? data)
         (throw-invalid-data-error edn-schema data path))
       (doseq [[k default serializer] field-infos]
-        (serializer os (get data k default) (conj path k))))))
+        (serializer os (data k) (conj path k))))))
 
 (defmethod make-deserializer :record
   [edn-schema]
@@ -713,3 +719,93 @@
   []
   #?(:clj (System/currentTimeMillis)
      :cljs (.getTime (js/Date.))))
+
+(defmethod edn-schema->plumatic-schema :null
+  [edn-schema]
+  Nil)
+
+(defmethod edn-schema->plumatic-schema :boolean
+  [edn-schema]
+  s/Bool)
+
+(defmethod edn-schema->plumatic-schema :int
+  [edn-schema]
+  s/Int)
+
+(defmethod edn-schema->plumatic-schema :long
+  [edn-schema]
+  LongOrInt)
+
+(defmethod edn-schema->plumatic-schema :float
+  [edn-schema]
+  s/Num)
+
+(defmethod edn-schema->plumatic-schema :double
+  [edn-schema]
+  s/Num)
+
+(defmethod edn-schema->plumatic-schema :bytes
+  [edn-schema]
+  StringOrBytes)
+
+(defmethod edn-schema->plumatic-schema :string
+  [edn-schema]
+  StringOrBytes)
+
+(defmethod edn-schema->plumatic-schema :enum
+  [edn-schema]
+  (apply s/enum (:symbols edn-schema)))
+
+(defmethod edn-schema->plumatic-schema :fixed
+  [edn-schema]
+  StringOrBytes)
+
+(defmethod edn-schema->plumatic-schema :array
+  [edn-schema]
+  [(edn-schema->plumatic-schema (:items edn-schema))])
+
+(defmethod edn-schema->plumatic-schema :map
+  [edn-schema]
+  {s/Str (edn-schema->plumatic-schema (:values edn-schema))})
+
+(defmethod edn-schema->plumatic-schema :record
+  [edn-schema]
+  (reduce (fn [acc {:keys [name type]}]
+            (assoc acc (s/required-key name)
+                   (edn-schema->plumatic-schema type)))
+          {s/Any s/Any} (:fields edn-schema)))
+
+(defn make-wrapped-union-pred [edn-schema]
+  (let [schema-name (get-schema-name edn-schema)]
+    (fn [[data-name data]]
+      (= schema-name data-name))))
+
+(defn edn-schema->pred-and-plumatic-schema [wrap? edn-schema]
+  (let [pred (if wrap?
+               (make-wrapped-union-pred edn-schema)
+               (case (get-avro-type edn-schema)
+                 :null nil?
+                 :boolean boolean?
+                 :int int?
+                 :long long-or-int?
+                 :float number?
+                 :double number?
+                 :bytes valid-bytes-or-string?
+                 :string valid-bytes-or-string?
+                 :enum keyword?
+                 :fixed valid-bytes-or-string?
+                 :array sequential?
+                 :map map?
+                 :record map?))
+        schema (edn-schema->plumatic-schema edn-schema)
+        schema (if wrap?
+                 [(s/one s/Keyword :schema-name) (s/one schema :schema)]
+                 schema)]
+    [pred schema]))
+
+(defmethod edn-schema->plumatic-schema :union
+  [edn-schema]
+  (apply s/conditional (mapcat
+                        (partial edn-schema->pred-and-plumatic-schema
+                                 (wrapping-required? edn-schema))
+                        edn-schema)))

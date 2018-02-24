@@ -54,12 +54,15 @@
 (l/def-record-schema rec-w-fixed-no-default-schema
   [:data a-fixed-schema])
 
+(l/def-record-schema rec-w-maybe-field
+  [:name l/string-schema]
+  [:age (l/make-maybe-schema l/int-schema)])
+
 (l/def-record-schema add-to-cart-rsp-schema
   [:qty-requested l/int-schema]
   [:qty-added l/int-schema]
   [:current-qty l/int-schema]
-  [:req add-to-cart-req-schema
-   {:sku 10 :qty-requested 1}]
+  [:req add-to-cart-req-schema {:sku 10 :qty-requested 1}]
   [:the-reason-why why-schema :stock]
   [:data a-fixed-schema (ba/byte-array [77 88])]
   [:other-data l/bytes-schema])
@@ -250,18 +253,17 @@
 
 (deftest test-nested-record-serdes
   (let [data {:qty-requested 123
+              :qty-added 10
+              :current-qty 10
               :req {:sku 123 :qty-requested 123}
+              :the-reason-why :limit
               :data (ba/byte-array [66 67])
               :other-data (ba/byte-array [123 123])}
-        expected (assoc data
-                        :qty-added -1
-                        :current-qty -1
-                        :the-reason-why :stock)
         encoded (l/serialize add-to-cart-rsp-schema data)
         decoded (deserialize-same add-to-cart-rsp-schema
                                   encoded)]
-    (is (= "9gEBAfYB9gECQkMEe3s=" (ba/byte-array->b64 encoded)))
-    (is (= (xf-byte-arrays expected)
+    (is (= "9gEUFPYB9gEEQkMEe3s=" (ba/byte-array->b64 encoded)))
+    (is (= (xf-byte-arrays data)
            (xf-byte-arrays decoded)))))
 
 (deftest test-null-schema
@@ -841,14 +843,16 @@
     (is (= expected decoded))))
 
 (deftest test-schema-evolution-union-remove-member-success
-  (let [data {:name "Runner" :owner "Tommy"}
+  (let [data {:name "Runner" :owner "Tommy" :tag-number 134}
         wrapped-data (l/wrap dog-schema data)
         writer-schema fish-or-person-or-dog-v2-schema
         reader-schema person-or-dog-schema
         encoded (l/serialize writer-schema wrapped-data)
         writer-pcf (l/get-parsing-canonical-form writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)]
-    (is (= wrapped-data decoded))))
+        decoded (l/deserialize reader-schema writer-pcf encoded)
+        [schema-name decoded-data] decoded
+        expected (dissoc data :tag-number)]
+    (is (= expected decoded-data))))
 
 (deftest test-schema-evolution-union-remove-member-failure
   (let [data {:name "Swimmy" :tank-num 24}
@@ -962,3 +966,57 @@
          encoded))
     (is (ba/equivalent-byte-arrays?
          (:data data) (:data decoded)))))
+
+(deftest test-record-serdes-missing-field
+  (let [data {:sku 100}]
+    (try
+      (l/serialize add-to-cart-req-schema data)
+      (is (= :did-not-throw :but-should-have))
+      (catch #?(:cljs js/Error :clj Exception) e
+        (is (str/includes?
+             (lu/get-exception-msg e)
+             (str "Data `nil` (type: nil) is not a valid :int. "
+                  "Path: [:qty-requested]")))))))
+
+(deftest test-record-serdes-missing-maybe-field
+  (let [data {:name "Sharon"}
+        encoded (l/serialize rec-w-maybe-field data)
+        decoded (deserialize-same rec-w-maybe-field encoded)]
+    (is (= (assoc data :age nil) decoded))))
+
+(deftest test-plumatic-primitives
+  (is (= u/Nil (l/get-plumatic-schema l/null-schema)))
+  (is (= s/Bool (l/get-plumatic-schema l/boolean-schema)))
+  (is (= s/Int (l/get-plumatic-schema l/int-schema)))
+  (is (= u/LongOrInt (l/get-plumatic-schema l/long-schema)))
+  (is (= s/Num (l/get-plumatic-schema l/float-schema)))
+  (is (= s/Num (l/get-plumatic-schema l/double-schema)))
+  (is (= u/StringOrBytes (l/get-plumatic-schema l/string-schema)))
+  (is (= u/StringOrBytes (l/get-plumatic-schema l/bytes-schema))))
+
+(deftest test-plumatic-records
+  (let [expected {s/Any s/Any
+                  (s/required-key :sku) s/Int
+                  (s/required-key :qty-requested) s/Int}
+        _ (is (= expected (l/get-plumatic-schema add-to-cart-req-schema)))
+        expected {s/Any s/Any
+                  :names [u/StringOrBytes]
+                  :why (s/enum :all :stock :limit)}
+        _ (is (= expected
+                 (l/get-plumatic-schema rec-w-array-and-enum-schema)))]))
+
+(deftest test-plumatic-union-unwrapped
+  (let [expected (s/conditional
+                  int? s/Int
+                  map? (l/get-plumatic-schema add-to-cart-req-schema)
+                  u/valid-bytes-or-string? u/StringOrBytes)]
+    (is (= expected (l/get-plumatic-schema union-schema)))))
+
+(deftest test-plumatic-union-wrapped
+  (let [pl-sch (l/get-plumatic-schema person-or-dog-schema)
+        wrapped-data (l/wrap person-schema {:name "Apollo"
+                                            :age 30})
+        bad-wrapped-data (l/wrap person-schema {:name "Apollo"
+                                                :age "thirty"})]
+    (is (= nil (s/check pl-sch wrapped-data)))
+    (is (not= nil (s/check pl-sch bad-wrapped-data)))))
