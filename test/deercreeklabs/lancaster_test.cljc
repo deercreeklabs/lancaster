@@ -54,7 +54,7 @@
 (l/def-record-schema rec-w-fixed-no-default-schema
   [:data a-fixed-schema])
 
-(l/def-record-schema rec-w-maybe-field
+(l/def-record-schema rec-w-maybe-field-schema
   [:name l/string-schema]
   [:age (l/make-maybe-schema l/int-schema)])
 
@@ -967,6 +967,17 @@
     (is (ba/equivalent-byte-arrays?
          (:data data) (:data decoded)))))
 
+(deftest test-rec-w-maybe-field
+  (is (= {:name :rec-w-maybe-field,
+           :namespace :deercreeklabs.lancaster-test,
+           :type :record,
+           :fields
+           [{:name :name, :type :string, :default ""}
+            {:name :age, :type [:null :int], :default nil}]}
+         (l/get-edn-schema rec-w-maybe-field-schema)))
+  (is (= "7746454544656991807"
+         (u/long->str (l/get-fingerprint64 rec-w-maybe-field-schema)))))
+
 (deftest test-record-serdes-missing-field
   (let [data {:sku 100}]
     (try
@@ -980,8 +991,8 @@
 
 (deftest test-record-serdes-missing-maybe-field
   (let [data {:name "Sharon"}
-        encoded (l/serialize rec-w-maybe-field data)
-        decoded (deserialize-same rec-w-maybe-field encoded)]
+        encoded (l/serialize rec-w-maybe-field-schema data)
+        decoded (deserialize-same rec-w-maybe-field-schema encoded)]
     (is (= (assoc data :age nil) decoded))))
 
 (deftest test-plumatic-primitives
