@@ -47,14 +47,13 @@
 
 (deftest ^:perf test-serdes-speed
   (let [data {:qty-requested 123
+              :qty-added 10
+              :current-qty 10
               :req {:sku 123 :qty-requested 123}
+              :the-reason-why :limit
               :data (ba/byte-array [66 67])
               :other-data (ba/byte-array [123 123])}
         num-ops #?(:cljs 1e4 :clj 1e5)
-        expected (assoc data
-                        :qty-added -1
-                        :current-qty -1
-                        :the-reason-why :stock)
         enc-fn #(l/serialize add-to-cart-rsp-schema data)
         json-enc-fn (fn []
                       #?(:clj (json/generate-string data)
