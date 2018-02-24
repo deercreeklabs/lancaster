@@ -986,8 +986,7 @@
       (catch #?(:cljs js/Error :clj Exception) e
         (is (str/includes?
              (lu/get-exception-msg e)
-             (str "Data `nil` (type: nil) is not a valid :int. "
-                  "Path: [:qty-requested]")))))))
+             (str "is not a valid :int. Path: [:qty-requested]")))))))
 
 (deftest test-record-serdes-missing-maybe-field
   (let [data {:name "Sharon"}
