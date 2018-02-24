@@ -471,7 +471,7 @@
             {:name :other-data :type :bytes :default ""}]}}
          (l/get-edn-schema nested-map-schema)))
   (is (= "-6943064080000840455"
-          (u/long->str (l/get-fingerprint64 nested-map-schema)))))
+         (u/long->str (l/get-fingerprint64 nested-map-schema)))))
 
 (deftest test-nested-map-schema-serdes
   (let [data {"A" {:qty-requested 123
@@ -900,7 +900,7 @@
          (l/get-edn-schema rec-w-array-and-enum-schema)))
   (is (= "-7927992739929321638"
          (u/long->str (l/get-fingerprint64
-                           rec-w-array-and-enum-schema)))))
+                       rec-w-array-and-enum-schema)))))
 
 (deftest test-rec-w-array-and-enum-serdes
   (let [data {:names ["Aria" "Beth" "Cindy"]
@@ -925,7 +925,7 @@
          (l/get-edn-schema rec-w-map-schema)))
   (is (= "-6323129018147636525"
          (u/long->str (l/get-fingerprint64
-                           rec-w-map-schema)))))
+                       rec-w-map-schema)))))
 
 (deftest test-rec-w-map-serdes
   (let [data {:name-to-age {"Aria" 22
@@ -955,7 +955,7 @@
          (l/get-edn-schema rec-w-fixed-no-default-schema)))
   (is (= "-4442885480253568244"
          (u/long->str (l/get-fingerprint64
-                           rec-w-fixed-no-default-schema)))))
+                       rec-w-fixed-no-default-schema)))))
 
 (deftest test-rec-w-fixed-no-default-serdes
   (let [data {:data (ba/byte-array [1 2])}
@@ -969,11 +969,11 @@
 
 (deftest test-rec-w-maybe-field
   (is (= {:name :rec-w-maybe-field,
-           :namespace :deercreeklabs.lancaster-test,
-           :type :record,
-           :fields
-           [{:name :name, :type :string, :default ""}
-            {:name :age, :type [:null :int], :default nil}]}
+          :namespace :deercreeklabs.lancaster-test,
+          :type :record,
+          :fields
+          [{:name :name, :type :string, :default ""}
+           {:name :age, :type [:null :int], :default nil}]}
          (l/get-edn-schema rec-w-maybe-field-schema)))
   (is (= "7746454544656991807"
          (u/long->str (l/get-fingerprint64 rec-w-maybe-field-schema)))))
