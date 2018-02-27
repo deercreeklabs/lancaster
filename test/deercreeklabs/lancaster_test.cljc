@@ -56,7 +56,7 @@
 
 (l/def-record-schema rec-w-maybe-field-schema
   [:name l/string-schema]
-  [:age (l/make-maybe-schema l/int-schema)])
+  [:age (l/maybe l/int-schema)])
 
 (l/def-record-schema add-to-cart-rsp-schema
   [:qty-requested l/int-schema]
@@ -116,6 +116,19 @@
 (def mopodoa-schema
   (l/make-union-schema [ages-schema person-schema dog-schema
                         simple-array-schema]))
+
+(l/def-record-schema date-schema
+  [:year l/int-schema]
+  [:month l/int-schema]
+  [:day l/int-schema])
+
+(l/def-record-schema time-schema
+  [:hour l/int-schema]
+  [:minute l/int-schema]
+  [:second l/int-schema])
+
+(def date-time-schema
+  (l/merge-record-schemas ::date-time [date-schema time-schema]))
 
 ;; TODO: Enable recursive schemas
 #_
@@ -1030,3 +1043,15 @@
                                                 :age "thirty"})]
     (is (= nil (s/check pl-sch wrapped-data)))
     (is (not= nil (s/check pl-sch bad-wrapped-data)))))
+
+(deftest test-merge-record-schemas
+  (let [expected {:name :deercreeklabs.lancaster-test/date-time,
+                  :type :record,
+                  :fields
+                  [{:name :year, :type :int, :default -1}
+                   {:name :month, :type :int, :default -1}
+                   {:name :day, :type :int, :default -1}
+                   {:name :hour, :type :int, :default -1}
+                   {:name :minute, :type :int, :default -1}
+                   {:name :second, :type :int, :default -1}]}]
+    (is (= expected (l/get-edn-schema date-time-schema)))))

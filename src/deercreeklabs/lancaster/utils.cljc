@@ -37,7 +37,7 @@
   [& syms]
   (zipmap (map keyword syms) syms))
 
-(defprotocol IAvroSchema
+(defprotocol ILancasterSchema
   (serialize [this os data])
   (deserialize [this writer-pcf is])
   (wrap [this data])

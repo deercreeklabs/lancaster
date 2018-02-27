@@ -22,13 +22,14 @@
                   (s/one s/Any "data")])
 
 (def RecordFieldDef [(s/one s/Keyword "field-name")
-                     (s/one (s/protocol u/IAvroSchema) "field-schema")
+                     (s/one (s/protocol u/ILancasterSchema) "field-schema")
                      (s/optional s/Any "field-default")])
 
-(defrecord AvroSchema [schema-name edn-schema json-schema parsing-canonical-form
-                       fingerprint64 plumatic-schema serializer deserializer
-                       *pcf->resolving-deserializer]
-  u/IAvroSchema
+(defrecord LancasterSchema
+    [schema-name edn-schema json-schema parsing-canonical-form
+     fingerprint64 plumatic-schema serializer deserializer
+     *pcf->resolving-deserializer]
+  u/ILancasterSchema
   (serialize [this os data]
     (serializer os data []))
   (deserialize [this writer-pcf is]
@@ -52,13 +53,26 @@
   (get-plumatic-schema [this]
     plumatic-schema))
 
-;;;;;;;;;;;;;;;;;;;; Multimethods ;;;;;;;;;;;;;;;;;;;;
-
 (defmulti make-edn-schema u/first-arg-dispatch)
 (defmulti edn-schema->avro-schema u/avro-type-dispatch)
 (defmulti validate-schema-args u/first-arg-dispatch)
 
-;;;;;;;;;;;;;;;;;;;; Utility Fns ;;;;;;;;;;;;;;;;;;;;
+(defn edn-schema->lancaster-schema [schema-type edn-schema]
+  (let [avro-schema (if (u/avro-primitive-types schema-type)
+                      (name schema-type)
+                      (edn-schema->avro-schema edn-schema))
+        json-schema (u/edn->json-string avro-schema)
+        parsing-canonical-form (pcf/avro-schema->pcf avro-schema)
+        fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
+        plumatic-schema (u/edn-schema->plumatic-schema edn-schema)
+        serializer (u/make-serializer edn-schema)
+        deserializer (u/make-deserializer edn-schema)
+        *pcf->resolving-deserializer (atom {})
+        schema-name (u/get-schema-name edn-schema)]
+    (->LancasterSchema
+     schema-name edn-schema json-schema parsing-canonical-form
+     fingerprint64 plumatic-schema serializer deserializer
+     *pcf->resolving-deserializer)))
 
 (defn make-schema
   ([schema-type ns-name schema-name args]
@@ -75,21 +89,18 @@
      (validate-schema-args schema-type args))
    (let [edn-schema (if (u/avro-primitive-types schema-type)
                       schema-type
-                      (make-edn-schema schema-type name-kw args))
-         avro-schema (if (u/avro-primitive-types schema-type)
-                       (name schema-type)
-                       (edn-schema->avro-schema edn-schema))
-         json-schema (u/edn->json-string avro-schema)
-         parsing-canonical-form (pcf/avro-schema->pcf avro-schema)
-         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
-         plumatic-schema (u/edn-schema->plumatic-schema edn-schema)
-         serializer (u/make-serializer edn-schema)
-         deserializer (u/make-deserializer edn-schema)
-         *pcf->resolving-deserializer (atom {})
-         schema-name (u/get-schema-name edn-schema)]
-     (->AvroSchema schema-name edn-schema json-schema parsing-canonical-form
-                   fingerprint64 plumatic-schema serializer deserializer
-                   *pcf->resolving-deserializer))))
+                      (make-edn-schema schema-type name-kw args))]
+     (edn-schema->lancaster-schema schema-type edn-schema))))
+
+(defn merge-record-schemas [name-kw schemas]
+  (when-not (keyword? name-kw)
+    (throw (ex-info (str "First arg to merge-record-schemas must be a name "
+                         "keyword. The keyword can be namespaced or not.")
+                    {:given-name-kw name-kw})))
+  (let [new-schema {:name name-kw
+                    :type :record
+                    :fields (mapcat #(:fields (u/get-edn-schema %)) schemas)}]
+    (edn-schema->lancaster-schema :record new-schema)))
 
 (defn make-primitive-schema [schema-kw]
   (make-schema schema-kw nil nil))
@@ -105,7 +116,7 @@
       (when-not (keyword? name-kw)
         (throw (ex-info "First arg in field definition must be a name keyword."
                         {:given-name-kw name-kw})))
-      (when-not (satisfies? u/IAvroSchema field-schema)
+      (when-not (satisfies? u/ILancasterSchema field-schema)
         (throw (ex-info "Second arg in field definition must be schema object."
                         {:given-field-schema field-schema})))
       ;; TODO: Add validation for default
@@ -131,13 +142,13 @@
 
 (defmethod validate-schema-args :array
   [schema-type items-schema]
-  (when-not (satisfies? u/IAvroSchema items-schema)
+  (when-not (satisfies? u/ILancasterSchema items-schema)
     (throw (ex-info "Second arg to make-array-schema must be schema object."
                     {:given-items-schema items-schema}))))
 
 (defmethod validate-schema-args :map
   [schema-type values-schema]
-  (when-not (satisfies? u/IAvroSchema values-schema)
+  (when-not (satisfies? u/ILancasterSchema values-schema)
     (throw (ex-info "Second arg to make-map-schema must be schema object."
                     {:given-values-schema values-schema}))))
 
@@ -148,7 +159,7 @@
                          "of member schema objects.")
                     {:given-member-schemas member-schemas})))
   (doseq [member-schema member-schemas]
-    (when-not (satisfies? u/IAvroSchema member-schema)
+    (when-not (satisfies? u/ILancasterSchema member-schema)
       (throw (ex-info "All member schemas in a union must be schema objects."
                       {:bad-member-schema member-schema}))))
   (when (u/illegal-union? member-schemas)
@@ -156,7 +167,7 @@
 
 (defn ensure-edn-schema [schema]
   (cond
-    (satisfies? u/IAvroSchema schema)
+    (satisfies? u/ILancasterSchema schema)
     (u/get-edn-schema schema)
 
     (string? schema)
