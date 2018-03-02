@@ -1055,3 +1055,14 @@
                    {:name :minute, :type :int, :default -1}
                    {:name :second, :type :int, :default -1}]}]
     (is (= expected (l/get-edn-schema date-time-schema)))))
+
+(deftest test-plumatic-maybe-missing-key
+  (let [ps (l/get-plumatic-schema rec-w-maybe-field-schema)
+        data {:name "Boomer"}]
+    (is (= nil (s/check ps data)))))
+
+(deftest test-plumatic-maybe-nil-value
+  (let [ps (l/get-plumatic-schema rec-w-maybe-field-schema)
+        data {:name "Boomer"
+              :age nil}]
+    (is (= nil (s/check ps data)))))

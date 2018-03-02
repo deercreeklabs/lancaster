@@ -771,8 +771,12 @@
 (defmethod edn-schema->plumatic-schema :record
   [edn-schema]
   (reduce (fn [acc {:keys [name type]}]
-            (assoc acc (s/required-key name)
-                   (edn-schema->plumatic-schema type)))
+            (let [key-fn (if (and (= :union (get-avro-type type))
+                              (= :null (first type)))
+                       s/optional-key
+                       s/required-key)]
+              (assoc acc (key-fn name)
+                     (edn-schema->plumatic-schema type))))
           {s/Any s/Any} (:fields edn-schema)))
 
 (defn make-wrapped-union-pred [edn-schema]
