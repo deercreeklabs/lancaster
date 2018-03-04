@@ -5,6 +5,7 @@
    #?(:clj [cheshire.core :as json])
    [#?(:clj clj-time.format :cljs cljs-time.format) :as f]
    [#?(:clj clj-time.core :cljs cljs-time.core) :as t]
+   [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    #?(:cljs [goog.math :as gm])
@@ -645,15 +646,24 @@
   (if (wrapping-required? edn-schema)
     (let [schema-name->branch-info (make-schema-name->branch-info edn-schema)]
       (fn serialize [os data path]
-        (let [[schema-name data] data
-              [branch serializer] (schema-name->branch-info schema-name)]
-          (when-not branch
-            (let [schema-names (keys schema-name->branch-info)]
-              (throw (ex-info (str "Schema name `" schema-name "` is not in "
-                                   "the union schema.")
-                              (sym-map schema-name schema-names data)))))
-          (write-long-varint-zz os branch)
-          (serializer os data path))))
+        (try
+          (let [[schema-name data] data
+                [branch serializer] (schema-name->branch-info schema-name)]
+            (when-not branch
+              (let [schema-names (keys schema-name->branch-info)]
+                (throw (ex-info (str "Schema name `" schema-name "` is not in "
+                                     "the union schema.")
+                                (sym-map schema-name schema-names data path
+                                         edn-schema)))))
+            (write-long-varint-zz os branch)
+            (serializer os data path))
+          (catch #?(:clj UnsupportedOperationException :cljs js/Error) e
+            (throw
+             (if-not (str/includes? (lu/get-exception-msg e)
+                                    "nth not supported")
+               e
+               (ex-info "Union requires wrapping, but data is not wrapped."
+                        (sym-map data path edn-schema))))))))
     (let [data->branch (make-data->branch edn-schema)
           branch->serializer (mapv make-serializer edn-schema)]
       (fn serialize [os data path]

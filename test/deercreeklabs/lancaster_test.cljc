@@ -1066,3 +1066,13 @@
         data {:name "Boomer"
               :age nil}]
     (is (= nil (s/check ps data)))))
+
+(deftest test-forgot-wrapping
+  (let [data {:name "Cally"
+              :age 24}]
+    (try
+      (l/serialize person-or-dog-schema data)
+      (is (= :should-have-thrown :but-didnt))
+      (catch #?(:clj Exception :cljs js/Error) e
+        (is (str/includes? (lu/get-exception-msg e)
+                           "Union requires wrapping"))))))
