@@ -1076,3 +1076,7 @@
       (catch #?(:clj Exception :cljs js/Error) e
         (is (str/includes? (lu/get-exception-msg e)
                            "Union requires wrapping"))))))
+
+(deftest test-schema?
+  (is (l/schema? person-or-dog-schema))
+  (is (not (l/schema? :foo))))

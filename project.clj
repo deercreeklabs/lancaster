@@ -81,10 +81,10 @@
    [com.taoensso/timbre "4.10.0"]
    [deercreeklabs/baracus "0.1.3" :exclusions [prismatic/schema]]
    [deercreeklabs/log-utils "0.1.3"]
-   [deercreeklabs/stockroom "0.1.12"]
    [org.clojure/clojure "1.9.0"]
    [org.clojure/clojurescript "1.9.946"]
-   [primitive-math "0.1.6"]]
+   [primitive-math "0.1.6"]
+   [prismatic/schema "1.1.7"]]
 
   :test-selectors {:default (complement :perf)
                    :perf :perf

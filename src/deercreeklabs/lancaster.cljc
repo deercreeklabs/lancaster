@@ -101,6 +101,10 @@
   [schema :- (s/protocol u/ILancasterSchema)]
   (u/get-fingerprint64 schema))
 
+(s/defn schema? :- s/Bool
+  [arg :- s/Any]
+  (satisfies? u/ILancasterSchema arg))
+
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 
 (defmacro def-record-schema
