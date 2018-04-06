@@ -6,8 +6,7 @@
    ;; :pseudo-names true
    ;; :pretty-print true
    ;; :infer-externs true
-   :externs ["lancaster_externs.js"]
-   })
+   :externs ["lancaster_externs.js"]})
 
 (defn make-build-conf [id target-kw build-type-kw opt-level main]
   (let [build-type-str (name build-type-kw)
