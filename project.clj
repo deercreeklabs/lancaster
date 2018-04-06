@@ -1,5 +1,7 @@
 (def compiler-defaults
-  {:parallel-build true
+  {:npm-deps {:pako "1.0.6"}
+   :install-deps true
+   :parallel-build true
    :static-fns true
    ;; :pseudo-names true
    ;; :pretty-print true
@@ -60,13 +62,14 @@
     [[lein-ancient "0.6.15"]
      [lein-cljsbuild "1.1.7" :exclusions [org.clojure/clojure]]
      [lein-cloverage "1.0.10" :exclusions [org.clojure/clojure]]
-     [lein-doo "0.1.8"]
+     [lein-doo "0.1.10"
+      :exclusions [org.clojure/clojure org.clojure/clojurescript]]
      [lein-npm "0.6.2" :exclusions [com.fasterxml.jackson.core/jackson-core]]
      ;; Because of confusion with a defunct project also called
      ;; lein-release, we exclude lein-release from lein-ancient.
      [lein-release "1.0.9" :upgrade false :exclusions [org.clojure/clojure]]]
     :dependencies
-    [[doo "0.1.8"]
+    [[doo "0.1.10"]
      [org.clojure/tools.namespace "0.2.11"]]}}
 
   :npm {:devDependencies [[karma "1.7.1"]
@@ -79,12 +82,12 @@
   [[camel-snake-kebab "0.4.0"]
    [cheshire "5.8.0"]
    [com.taoensso/timbre "4.10.0"]
-   [deercreeklabs/baracus "0.1.3" :exclusions [prismatic/schema]]
-   [deercreeklabs/log-utils "0.1.3"]
+   [deercreeklabs/baracus "0.1.4" :exclusions [prismatic/schema]]
+   [deercreeklabs/log-utils "0.1.4"]
    [org.clojure/clojure "1.9.0"]
-   [org.clojure/clojurescript "1.9.946"]
+   [org.clojure/clojurescript "1.10.238"]
    [primitive-math "0.1.6"]
-   [prismatic/schema "1.1.7"]]
+   [prismatic/schema "1.1.9"]]
 
   :test-selectors {:default (complement :perf)
                    :perf :perf
