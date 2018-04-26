@@ -556,10 +556,11 @@
     (fn serialize [os data path]
       (when-not (map? data)
         (throw-invalid-data-error edn-schema data path))
-      (write-long-varint-zz os (count data))
-      (doseq [[k v] data]
-        (write-utf8-string os k)
-        (serialize-value os v (conj path k)))
+      (when (pos? (count data))
+        (write-long-varint-zz os (count data))
+        (doseq [[k v] data]
+          (write-utf8-string os k)
+          (serialize-value os v (conj path k))))
       (write-byte os 0))))
 
 (defmethod make-deserializer :map
@@ -585,11 +586,12 @@
     (fn serialize [os data path]
       (when-not (sequential? data)
         (throw-invalid-data-error edn-schema data path))
-      (write-long-varint-zz os (count data))
-      (doall
-       (map-indexed (fn [i item]
-                      (serialize-item os item (conj path i)))
-                    data))
+      (when (pos? (count data))
+        (write-long-varint-zz os (count data))
+        (doall
+         (map-indexed (fn [i item]
+                        (serialize-item os item (conj path i)))
+                      data)))
       (write-byte os 0))))
 
 (defmethod make-deserializer :array

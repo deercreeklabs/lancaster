@@ -386,6 +386,17 @@
          encoded))
     (is (= names decoded))))
 
+(deftest test-empty-array-serdes
+  (let [sch (l/make-array-schema l/int-schema)
+        pcf (l/get-parsing-canonical-form sch)
+        data []
+        encoded (l/serialize sch data)
+        _ (is (ba/equivalent-byte-arrays?
+               (ba/byte-array [0])
+               encoded))
+        decoded (l/deserialize sch pcf encoded)]
+    (is (= data decoded))))
+
 (deftest test-nested-array-schema
   (is (= {:type :array
           :items
@@ -509,6 +520,17 @@
          encoded))
     (is (= (xf-byte-arrays data)
            (xf-byte-arrays decoded)))))
+
+(deftest test-empty-map-serdes
+  (let [sch (l/make-map-schema l/int-schema)
+        pcf (l/get-parsing-canonical-form sch)
+        data {}
+        encoded (l/serialize sch data)
+        _ (is (ba/equivalent-byte-arrays?
+               (ba/byte-array [0])
+               encoded))
+        decoded (l/deserialize sch pcf encoded)]
+    (is (= data decoded))))
 
 (deftest test-union-schema
   (is (= [:int
