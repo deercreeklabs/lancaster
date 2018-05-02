@@ -116,7 +116,7 @@
       (when-not (keyword? name-kw)
         (throw (ex-info "First arg in field definition must be a name keyword."
                         {:given-name-kw name-kw})))
-      (when-not (satisfies? u/ILancasterSchema field-schema)
+      (when-not (instance? LancasterSchema field-schema)
         (throw (ex-info "Second arg in field definition must be schema object."
                         {:given-field-schema field-schema})))
       ;; TODO: Add validation for default
@@ -142,13 +142,13 @@
 
 (defmethod validate-schema-args :array
   [schema-type items-schema]
-  (when-not (satisfies? u/ILancasterSchema items-schema)
+  (when-not (instance? LancasterSchema items-schema)
     (throw (ex-info "Second arg to make-array-schema must be schema object."
                     {:given-items-schema items-schema}))))
 
 (defmethod validate-schema-args :map
   [schema-type values-schema]
-  (when-not (satisfies? u/ILancasterSchema values-schema)
+  (when-not (instance? LancasterSchema values-schema)
     (throw (ex-info "Second arg to make-map-schema must be schema object."
                     {:given-values-schema values-schema}))))
 
@@ -159,7 +159,7 @@
                          "of member schema objects.")
                     {:given-member-schemas member-schemas})))
   (doseq [member-schema member-schemas]
-    (when-not (satisfies? u/ILancasterSchema member-schema)
+    (when-not (instance? LancasterSchema member-schema)
       (throw (ex-info "All member schemas in a union must be schema objects."
                       {:bad-member-schema member-schema}))))
   (when (u/illegal-union? member-schemas)
@@ -167,7 +167,7 @@
 
 (defn ensure-edn-schema [schema]
   (cond
-    (satisfies? u/ILancasterSchema schema)
+    (instance? LancasterSchema schema)
     (u/get-edn-schema schema)
 
     (string? schema)

@@ -23,8 +23,8 @@
 #?(:cljs (def class type))
 #?(:cljs (def Long gm/Long))
 
-#?(:cljs (def max-int (.fromInt Long 2147483647)))
-#?(:cljs (def min-int (.fromInt Long -2147483648)))
+#?(:cljs (def max-int (gm/Long.fromInt 2147483647)))
+#?(:cljs (def min-int (gm/Long.fromInt -2147483648)))
 
 #?(:clj (pm/use-primitive-operators))
 
