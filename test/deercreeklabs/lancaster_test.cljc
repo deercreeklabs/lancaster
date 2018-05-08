@@ -917,6 +917,28 @@
         (let [msg (lu/get-exception-msg e)]
           (is (str/includes? msg "do not match.")))))))
 
+(deftest ^:the-one test-schema-evolution-named-ref
+  (let [data {:players [{:first "Chad" :last "Harrington"}]
+              :judges [{:first "Chibuzor" :last "Okonkwo"}]}
+        name-schema (l/make-record-schema
+                     ::name
+                     [[:first l/string-schema]
+                      [:last l/string-schema]])
+        writer-schema (l/make-record-schema
+                       ::game
+                       [[:players (l/make-array-schema name-schema)]
+                        [:judges (l/make-array-schema name-schema)]])
+        reader-schema (l/make-record-schema
+                       ::game
+                       [[:players (l/make-array-schema name-schema)]
+                        [:judges (l/make-array-schema name-schema)]
+                        [:audience (l/make-array-schema name-schema)]])
+        encoded (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded (l/deserialize reader-schema writer-pcf encoded)
+        expected (assoc data :audience [])]
+    (is (= expected decoded))))
+
 (deftest test-rec-w-array-and-enum-schema
   (is (= {:namespace :deercreeklabs.lancaster-test
           :name :rec-w-array-and-enum

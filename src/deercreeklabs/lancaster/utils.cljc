@@ -69,6 +69,7 @@
 
 (def avro-primitive-types #{:null :boolean :int :long :float :double
                             :bytes :string})
+(def avro-primitive-type-strings (into #{} (map name avro-primitive-types)))
 (def avro-named-types #{:record :fixed :enum})
 (def avro-complex-types #{:record :fixed :enum :array :map :union})
 
@@ -118,7 +119,11 @@
                                        :subtype :schema-is-nil
                                        :schema edn-schema}))
     (string? edn-schema) :string-reference
-    :else edn-schema))
+    (avro-primitive-types edn-schema) edn-schema
+    (keyword? edn-schema) :keyword-reference
+    :else (throw (ex-info (str "Failed to get avro type for schema: "
+                               edn-schema)
+                          (sym-map edn-schema)))))
 
 (defn get-schema-name [edn-schema]
   (cond
@@ -784,9 +789,9 @@
   [edn-schema]
   (reduce (fn [acc {:keys [name type]}]
             (let [key-fn (if (and (= :union (get-avro-type type))
-                              (= :null (first type)))
-                       s/optional-key
-                       s/required-key)]
+                                  (= :null (first type)))
+                           s/optional-key
+                           s/required-key)]
               (assoc acc (key-fn name)
                      (edn-schema->plumatic-schema type))))
           {s/Any s/Any} (:fields edn-schema)))

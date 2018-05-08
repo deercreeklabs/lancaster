@@ -46,7 +46,6 @@
 
 (defmethod xf-names :record
   [sch]
-
   (let [new-sch (xf-name sch)
         new-ns (u/fullname->ns (:name new-sch))]
     (binding [**enclosing-namespace** new-ns]
@@ -144,7 +143,8 @@
 (defmethod emit :default
   [sch]
   (cond
-    (keyword? sch) (str "\"" (name sch) "\"")
+    (simple-keyword? sch) (str "\"" (name sch) "\"")
+    (qualified-keyword? sch) (str "\"" (namespace sch) "." (name sch) "\"")
     :else sch))
 
 (defn avro-schema->pcf [avro-schema]
@@ -157,29 +157,32 @@
 
 (defn pcf-type-dispatch [avro-schema]
   (cond
-    (map? avro-schema) (let [{:keys [type]} avro-schema
-                             type-kw (keyword type)]
-                         (if (u/avro-primitive-types type-kw)
-                           :primitive
-                           type-kw))
-    (string? avro-schema) :primitive
-    (sequential? avro-schema) :union))
-#_
-(defn xf-name [sch]
-  (let [sch-ns (or (:namespace sch) **enclosing-namespace**)
-        sch-name (:name sch)
-        fullname (cond
-                   (u/fullname? sch-name) sch-name
-                   (and sch-ns sch-name) (str sch-ns "." sch-name)
-                   :else sch-name)]
-    (-> sch
-        (dissoc :namespace)
-        (assoc :name fullname))))
+    (map? avro-schema)
+    (let [{:keys [type]} avro-schema
+          type-kw (keyword type)]
+      (if (u/avro-primitive-types type-kw)
+        :primitive
+        type-kw))
+
+    (string? avro-schema)
+    (if (u/avro-primitive-type-strings avro-schema)
+      :primitive
+      :string-reference)
+
+    (sequential? avro-schema)
+    :union))
+
+(defn avro-name-str->edn-name-kw [name-str]
+  (if (u/fullname? name-str)
+    (let [ns (u/java-namespace->clj-namespace (u/fullname->ns name-str))
+          name (csk/->kebab-case (u/fullname->name name-str))]
+      (keyword ns name))
+    (csk/->kebab-case-keyword name-str)))
 
 (defn avro-name->edn-name [schema]
   (let [schema-name-str (:name schema)]
     (if-not (u/fullname? schema-name-str)
-      (assoc schema :name (keyword schema-name-str))
+      (assoc schema :name (csk/->kebab-case-keyword schema-name-str))
       (let [schema-ns (-> (u/fullname->ns schema-name-str)
                           (u/java-namespace->clj-namespace)
                           (keyword))
@@ -192,6 +195,10 @@
 (defmethod avro-schema->edn-schema :primitive
   [avro-schema]
   (keyword avro-schema))
+
+(defmethod avro-schema->edn-schema :string-reference
+  [avro-schema]
+  (avro-name-str->edn-name-kw avro-schema))
 
 (defmethod avro-schema->edn-schema :array
   [avro-schema]
@@ -219,7 +226,7 @@
 (defn avro-field->edn-field [field]
   (-> field
       (update :type avro-schema->edn-schema)
-      (update :name csk/->kebab-case-keyword)))
+      (update :name avro-name-str->edn-name-kw)))
 
 (defmethod avro-schema->edn-schema :record
   [avro-schema]
@@ -231,6 +238,29 @@
   [avro-union-schema]
   (mapv avro-schema->edn-schema avro-union-schema))
 
+(defn expand-references
+  ([edn-schema]
+   (expand-references edn-schema (atom {})))
+  ([edn-schema *name->schema]
+   (let [expand* #(expand-references % *name->schema)
+         update-names! (fn [edn-schema]
+                         (let [schema-name (u/get-schema-name edn-schema)]
+                           (swap! *name->schema assoc schema-name edn-schema)
+                           edn-schema))
+         avro-type (u/get-avro-type edn-schema)]
+     (case avro-type
+       :enum (update-names! edn-schema)
+       :fixed (update-names! edn-schema)
+       :array (update edn-schema :items expand*)
+       :map (update edn-schema :values expand*)
+       :union (mapv expand* edn-schema)
+       :record (let [edn-schema (update-names! edn-schema)
+                     fix-field (fn [field]
+                                 (update field :type expand*))]
+                 (update edn-schema :fields #(mapv fix-field %)))
+       :keyword-reference (@*name->schema edn-schema)
+       edn-schema))))
+
 (defn pcf->edn-schema [pcf]
   (case pcf
     "null" :null
@@ -241,5 +271,7 @@
     "double" :double
     "bytes" :bytes
     "string" :string
-    (let [json (u/json-string->edn pcf)]
-      (avro-schema->edn-schema json))))
+    (-> pcf
+        (u/json-string->edn)
+        (avro-schema->edn-schema)
+        (expand-references))))
