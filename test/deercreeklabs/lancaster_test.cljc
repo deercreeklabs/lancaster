@@ -8,7 +8,12 @@
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+   [taoensso.timbre :as timbre :refer [debugf errorf infof]])
+  #?(:clj
+     (:import
+      (org.apache.avro Schema
+                       SchemaNormalization
+                       Schema$Parser))))
 
 ;; Use this instead of fixtures, which are hard to make work w/ async testing.
 (s/set-fn-validation! false)
@@ -28,6 +33,30 @@
 
 (defn get-rel-err [expected actual]
   (/ (get-abs-err expected actual) expected))
+
+(defn xf-byte-arrays
+  [edn-schema]
+  (walk/postwalk #(if (ba/byte-array? %)
+                    (u/byte-array->byte-str %)
+                    %)
+                 edn-schema))
+
+#?(:clj
+   (defn fp-matches? [schema]
+     (let [json-schema (l/get-json-schema schema)
+           parser (Schema$Parser.)
+           java-schema (.parse parser ^String json-schema)
+           java-fp (SchemaNormalization/parsingFingerprint64 java-schema)
+           clj-fp (l/get-fingerprint64 schema)]
+       (or (= java-fp clj-fp)
+           (let [java-pcf (SchemaNormalization/toParsingForm java-schema)
+                 clj-pcf (l/get-parsing-canonical-form schema)
+                 err-str (str "Fingerprints do not match!\n"
+                              "java-fp: " java-fp "\n"
+                              "clj-fp: " clj-fp "\n"
+                              "java-pcf:\n" java-pcf "\n"
+                              "clj-pcf:\n" clj-pcf "\n")]
+             (errorf err-str))))))
 
 (l/def-record-schema add-to-cart-req-schema
   [:sku l/int-schema]
@@ -152,6 +181,7 @@
                               {:name :qty-requested
                                :type :int
                                :default 0}]}]
+    #?(:clj (is (fp-matches? add-to-cart-req-schema)))
     (is (= "5027717767048351978"
            (u/long->str (l/get-fingerprint64 add-to-cart-req-schema))))
     (is (= expected-edn-schema (l/get-edn-schema add-to-cart-req-schema)))
@@ -172,6 +202,7 @@
           :type :enum
           :symbols [:all :stock :limit]}
          (l/get-edn-schema why-schema)))
+  #?(:clj (is (fp-matches? why-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.Why\",\"type\":"
               "\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}")
          (l/get-parsing-canonical-form why-schema)))
@@ -191,6 +222,7 @@
           :type :fixed
           :size 2}
          (l/get-edn-schema a-fixed-schema)))
+  #?(:clj (is (fp-matches? a-fixed-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.AFixed\",\"type\":"
               "\"fixed\",\"size\":2}")
          (l/get-parsing-canonical-form a-fixed-schema)))
@@ -204,13 +236,6 @@
     (is (ba/equivalent-byte-arrays?
          data encoded))
     (is (ba/equivalent-byte-arrays? data decoded))))
-
-(defn xf-byte-arrays
-  [edn-schema]
-  (walk/postwalk #(if (ba/byte-array? %)
-                    (u/byte-array->byte-str %)
-                    %)
-                 edn-schema))
 
 (deftest test-nested-record-schema
   (let [expected {:namespace :deercreeklabs.lancaster-test
@@ -246,6 +271,7 @@
                    {:name :other-data
                     :type :bytes
                     :default ""}]}]
+    #?(:clj (is (fp-matches? add-to-cart-rsp-schema)))
     (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.AddToCartRsp\","
                 "\"type\":\"record\",\"fields\":[{\"name\":\"qtyRequested\","
                 "\"type\":\"int\"},{\"name\":\"qtyAdded\",\"type\":\"int\"},"
@@ -283,6 +309,7 @@
   (let [data nil
         encoded (l/serialize l/null-schema data)
         decoded (deserialize-same l/null-schema encoded)]
+    #?(:clj (is (fp-matches? l/null-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array []) encoded))
     (is (= data decoded))))
 
@@ -290,6 +317,7 @@
   (let [data true
         encoded (l/serialize l/boolean-schema data)
         decoded (deserialize-same l/boolean-schema encoded)]
+    #?(:clj (is (fp-matches? l/boolean-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [1]) encoded))
     (is (= data decoded))))
 
@@ -297,6 +325,7 @@
   (let [data 7890
         encoded (l/serialize l/int-schema data)
         decoded (deserialize-same l/int-schema encoded)]
+    #?(:clj (is (fp-matches? l/int-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-92 123]) encoded))
     (is (= data decoded))))
 
@@ -304,6 +333,7 @@
   (let [data (u/ints->long 2147483647 -1)
         encoded (l/serialize l/long-schema data)
         decoded (deserialize-same l/long-schema encoded)]
+    #?(:clj (is (fp-matches? l/long-schema)))
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [-2 -1 -1 -1 -1 -1 -1 -1 -1 1])
          encoded))
@@ -319,6 +349,7 @@
         encoded (l/serialize l/float-schema data)
         decoded (deserialize-same l/float-schema encoded)
         abs-err (get-abs-err data decoded)]
+    #?(:clj (is (fp-matches? l/float-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-48 15 73 64]) encoded))
     (is (< abs-err 0.000001))))
 
@@ -327,6 +358,7 @@
         encoded (l/serialize l/double-schema data)
         decoded (deserialize-same l/double-schema encoded)
         abs-err (get-abs-err data decoded)]
+    #?(:clj (is (fp-matches? l/double-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-22 46 68 84 -5 33 9 64])
                                     encoded))
     (is (< abs-err 0.000001))))
@@ -335,6 +367,7 @@
   (let [data (ba/byte-array [1 1 2 3 5 8 13 21])
         encoded (l/serialize l/bytes-schema data)
         decoded (deserialize-same l/bytes-schema encoded)]
+    #?(:clj (is (fp-matches? l/bytes-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [16 1 1 2 3 5 8 13 21])
                                     encoded))
     (is (ba/equivalent-byte-arrays? data decoded))))
@@ -343,6 +376,7 @@
   (let [data "Hello world!"
         encoded (l/serialize l/string-schema data)
         decoded (deserialize-same l/string-schema encoded)]
+    #?(:clj (is (fp-matches? l/string-schema)))
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [24 72 101 108 108 111 32 119 111 114 108 100 33])
          encoded))
@@ -351,6 +385,7 @@
 (deftest test-def-map-schema
   (is (= {:type :map :values :int}
          (l/get-edn-schema ages-schema)))
+  #?(:clj (is (fp-matches? ages-schema)))
   (is (= "{\"type\":\"map\",\"values\":\"int\"}"
          (l/get-parsing-canonical-form ages-schema)))
   (is (= "-2649837581481768589"
@@ -369,6 +404,7 @@
     (is (= data decoded))))
 
 (deftest test-def-array-schema
+  #?(:clj (is (fp-matches? simple-array-schema)))
   (is (= {:type :array :items :string}
          (l/get-edn-schema simple-array-schema)))
   (is (= "{\"type\":\"array\",\"items\":\"string\"}"
@@ -398,6 +434,7 @@
     (is (= data decoded))))
 
 (deftest test-nested-array-schema
+  #?(:clj (is (fp-matches? rsps-schema)))
   (is (= {:type :array
           :items
           {:namespace :deercreeklabs.lancaster-test
@@ -460,6 +497,7 @@
            (xf-byte-arrays decoded)))))
 
 (deftest test-nested-map-schema
+  #?(:clj (is (fp-matches? nested-map-schema)))
   (is (= {:type :map
           :values
           {:namespace :deercreeklabs.lancaster-test
@@ -533,6 +571,7 @@
     (is (= data decoded))))
 
 (deftest test-union-schema
+  #?(:clj (is (fp-matches? union-schema)))
   (is (= [:int
           {:namespace :deercreeklabs.lancaster-test
            :name :add-to-cart-req
@@ -563,6 +602,7 @@
     (is (= data decoded))))
 
 (deftest test-wrapped-union-schema
+  #?(:clj (is (fp-matches? person-or-dog-schema)))
   (is (= [{:namespace :deercreeklabs.lancaster-test
            :name :person
            :type :record
@@ -605,6 +645,7 @@
              msg "`:non-existent-schema-name` is not in the union schema"))))))
 
 (deftest test-map-or-array-schema
+  #?(:clj (is (fp-matches? map-or-array-schema)))
   (is (= [{:type :map :values :int}
           {:type :array :items :string}]
          (l/get-edn-schema map-or-array-schema)))
@@ -630,6 +671,7 @@
     (is (= data decoded))))
 
 (deftest test-mopodoa-schema
+  #?(:clj (is (fp-matches? mopodoa-schema)))
   (is (= [{:type :map :values :int}
           {:namespace :deercreeklabs.lancaster-test
            :name :person
@@ -677,6 +719,7 @@
 ;;             :type [:null "deercreeklabs.lancaster-test.tree"]
 ;;             :default nil}]}
 ;;          (l/get-edn-schema tree-schema)))
+;;   #?(:clj (is (fp-matches? tree-schema)))
 ;;   (is (= "7S/pDrRPpfq+cxuNpMNKlw=="
 ;;          (u/long->str (l/get-fingerprint64 tree-schema)))))
 
@@ -949,6 +992,7 @@
     (is (= expected decoded))))
 
 (deftest test-rec-w-array-and-enum-schema
+  #?(:clj (is (fp-matches? rec-w-array-and-enum-schema)))
   (is (= {:namespace :deercreeklabs.lancaster-test
           :name :rec-w-array-and-enum
           :type :record
@@ -980,6 +1024,7 @@
     (is (= data decoded))))
 
 (deftest test-rec-w-map-schema
+  #?(:clj (is (fp-matches? rec-w-map-schema)))
   (is (= {:namespace :deercreeklabs.lancaster-test
           :name :rec-w-map
           :type :record
@@ -1007,6 +1052,7 @@
     (is (= data decoded))))
 
 (deftest test-rec-w-fixed-no-default
+  #?(:clj (is (fp-matches? rec-w-fixed-no-default-schema)))
   (is (= {:namespace :deercreeklabs.lancaster-test
           :name :rec-w-fixed-no-default
           :type :record
@@ -1034,6 +1080,7 @@
          (:data data) (:data decoded)))))
 
 (deftest test-rec-w-maybe-field
+  #?(:clj (is (fp-matches? rec-w-maybe-field-schema)))
   (is (= {:name :rec-w-maybe-field,
           :namespace :deercreeklabs.lancaster-test,
           :type :record,
@@ -1098,6 +1145,7 @@
     (is (not= nil (s/check pl-sch bad-wrapped-data)))))
 
 (deftest test-merge-record-schemas
+  #?(:clj (is (fp-matches? date-time-schema)))
   (let [expected {:name :deercreeklabs.lancaster-test/date-time
                   :type :record
                   :fields

@@ -152,7 +152,7 @@
 
 (defn avro-schema->pcf [avro-schema]
   (if (string? avro-schema) ;; primitives are strings at this point
-    avro-schema
+    (str "\"" avro-schema "\"")
     (-> avro-schema
         (xf-names)
         (filter-attrs)
