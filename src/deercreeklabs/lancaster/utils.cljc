@@ -96,10 +96,12 @@
       (last parts))))
 
 (defn clj-namespace->java-namespace [ns]
-  (clojure.string/replace (str ns) #"-" "_"))
+  (when ns
+    (clojure.string/replace (str ns) #"-" "_")))
 
 (defn java-namespace->clj-namespace [ns]
-  (clojure.string/replace (str ns) #"_" "-"))
+  (when ns
+    (clojure.string/replace (str ns) #"_" "-")))
 
 (defn edn-name->avro-name [s]
   (if (fullname? s)
@@ -291,29 +293,30 @@
   #?(:clj (clojure.core/long int)
      :cljs (.fromInt Long int)))
 
-(defn more-than-one? [schema-set schemas]
-  (> (count (keep #(schema-set (get-avro-type %)) schemas)) 1))
+(defn more-than-one? [schema-set edn-schemas]
+  (> (count (keep #(schema-set (get-avro-type %)) edn-schemas))
+     1))
 
-(defn contains-union? [schemas]
-  (some #(= :union (get-avro-type %)) schemas))
+(defn contains-union? [edn-schemas]
+  (some #(= :union (get-avro-type %)) edn-schemas))
 
-(defn illegal-union? [schemas]
-  (or (contains-union? schemas)
-      (more-than-one? #{:int} schemas)
-      (more-than-one? #{:long} schemas)
-      (more-than-one? #{:float} schemas)
-      (more-than-one? #{:double} schemas)
-      (more-than-one? #{:null} schemas)
-      (more-than-one? #{:boolean} schemas)
-      (more-than-one? #{:string} schemas)
-      (more-than-one? #{:bytes} schemas)
-      (more-than-one? #{:map} schemas)
-      (more-than-one? #{:array} schemas)))
+(defn illegal-union? [edn-schemas]
+  (or (contains-union? edn-schemas)
+      (more-than-one? #{:int} edn-schemas)
+      (more-than-one? #{:long} edn-schemas)
+      (more-than-one? #{:float} edn-schemas)
+      (more-than-one? #{:double} edn-schemas)
+      (more-than-one? #{:null} edn-schemas)
+      (more-than-one? #{:boolean} edn-schemas)
+      (more-than-one? #{:string} edn-schemas)
+      (more-than-one? #{:bytes} edn-schemas)
+      (more-than-one? #{:map} edn-schemas)
+      (more-than-one? #{:array} edn-schemas)))
 
-(defn wrapping-required? [schemas]
-  (or (more-than-one? #{:map :record} schemas)
-      (more-than-one? #{:int :long :float :double} schemas)
-      (more-than-one? #{:bytes :fixed} schemas)))
+(defn wrapping-required? [edn-schemas]
+  (or (more-than-one? #{:map :record} edn-schemas)
+      (more-than-one? #{:int :long :float :double} edn-schemas)
+      (more-than-one? #{:bytes :fixed} edn-schemas)))
 
 #?(:cljs
    (defn write-long-varint-zz-long [output-stream ^Long l]

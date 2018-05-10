@@ -162,7 +162,7 @@
     (when-not (instance? LancasterSchema member-schema)
       (throw (ex-info "All member schemas in a union must be schema objects."
                       {:bad-member-schema member-schema}))))
-  (when (u/illegal-union? member-schemas)
+  (when (u/illegal-union? (map u/get-edn-schema member-schemas))
     (throw (ex-info "Illegal union schema." {:schema member-schemas}))))
 
 (defn ensure-edn-schema [schema]
@@ -371,10 +371,10 @@
 (defmethod edn-schema->avro-schema :record
   [edn-schema]
   (-> edn-schema
+      (fix-repeated-schemas)
       (fix-name)
       (fix-aliases)
-      (fix-fields)
-      (fix-repeated-schemas)))
+      (fix-fields)))
 
 (defmethod edn-schema->avro-schema :enum
   [edn-schema]
@@ -391,22 +391,26 @@
 
 (defmethod edn-schema->avro-schema :array
   [edn-schema]
-  (-> (update edn-schema :items edn-schema->avro-schema)
-      (fix-repeated-schemas)))
+  (-> (fix-repeated-schemas edn-schema)
+      (update :items edn-schema->avro-schema)))
 
 (defmethod edn-schema->avro-schema :map
   [edn-schema]
-  (-> (update edn-schema :values edn-schema->avro-schema)
-      (fix-repeated-schemas)))
+  (-> (fix-repeated-schemas edn-schema)
+      (update :values edn-schema->avro-schema)))
 
 (defmethod edn-schema->avro-schema :union
   [edn-schema]
-  (-> (mapv edn-schema->avro-schema edn-schema)
-      (fix-repeated-schemas)))
+  (->> (fix-repeated-schemas edn-schema)
+       (mapv edn-schema->avro-schema)))
 
-(defmethod edn-schema->avro-schema :string-reference
-  [edn-schema]
-  (u/edn-name->avro-name edn-schema))
+(defmethod edn-schema->avro-schema :keyword-reference
+  [kw]
+  (let [kw-ns (u/clj-namespace->java-namespace (namespace kw))
+        kw-name (csk/->PascalCase (name kw))]
+    (if kw-ns
+      (str kw-ns "." kw-name)
+      kw-name)))
 
 (defmethod edn-schema->avro-schema :default
   [edn-schema]
