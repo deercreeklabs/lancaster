@@ -917,7 +917,7 @@
         (let [msg (lu/get-exception-msg e)]
           (is (str/includes? msg "do not match.")))))))
 
-(deftest ^:the-one test-schema-evolution-named-ref
+(deftest test-schema-evolution-named-ref
   (let [data {:players [{:first "Chad" :last "Harrington"}]
               :judges [{:first "Chibuzor" :last "Okonkwo"}]}
         name-schema (l/make-record-schema
@@ -937,6 +937,15 @@
         writer-pcf (l/get-parsing-canonical-form writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
         expected (assoc data :audience [])]
+    (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.Game\",\"type\":"
+                "\"record\",\"fields\":[{\"name\":\"players\",\"type\":"
+                "{\"type\":\"array\",\"items\":{\"name\":"
+                "\"deercreeklabs.lancaster_test.Name\",\"type\":\"record\","
+                "\"fields\":[{\"name\":\"first\",\"type\":\"string\"},"
+                "{\"name\":\"last\",\"type\":\"string\"}]}}},{\"name\":"
+                "\"judges\",\"type\":{\"type\":\"array\",\"items\":"
+                "\"deercreeklabs.lancaster_test.Name\"}}]}")
+           writer-pcf))
     (is (= expected decoded))))
 
 (deftest test-rec-w-array-and-enum-schema
@@ -1089,15 +1098,15 @@
     (is (not= nil (s/check pl-sch bad-wrapped-data)))))
 
 (deftest test-merge-record-schemas
-  (let [expected {:name :deercreeklabs.lancaster-test/date-time,
-                  :type :record,
+  (let [expected {:name :deercreeklabs.lancaster-test/date-time
+                  :type :record
                   :fields
-                  [{:name :year, :type :int, :default -1}
-                   {:name :month, :type :int, :default -1}
-                   {:name :day, :type :int, :default -1}
-                   {:name :hour, :type :int, :default -1}
-                   {:name :minute, :type :int, :default -1}
-                   {:name :second, :type :int, :default -1}]}]
+                  [{:name :year :type :int :default -1}
+                   {:name :month :type :int :default -1}
+                   {:name :day :type :int :default -1}
+                   {:name :hour :type :int :default -1}
+                   {:name :minute :type :int :default -1}
+                   {:name :second :type :int :default -1}]}]
     (is (= expected (l/get-edn-schema date-time-schema)))))
 
 (deftest test-plumatic-maybe-missing-key

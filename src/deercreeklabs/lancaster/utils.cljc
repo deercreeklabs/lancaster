@@ -110,7 +110,8 @@
            (csk/->PascalCase schema-name)))
     (csk/->PascalCase s)))
 
-(defn get-avro-type [edn-schema]
+(s/defn get-avro-type :- s/Keyword
+  [edn-schema]
   (cond
     (sequential? edn-schema) :union
     (map? edn-schema) (:type edn-schema)
@@ -125,7 +126,8 @@
                                edn-schema)
                           (sym-map edn-schema)))))
 
-(defn get-schema-name [edn-schema]
+(s/defn get-schema-name :- s/Keyword
+  [edn-schema]
   (cond
     (avro-named-types (:type edn-schema))
     (if-let [schema-ns (:namespace edn-schema)]
@@ -146,6 +148,14 @@
 
     :else
     edn-schema))
+
+(s/defn name-kw->name-str :- s/Str
+  [kw :- s/Keyword]
+  (cond
+    (simple-keyword? kw) (name kw)
+    (qualified-keyword? kw) (str (namespace kw) "." (name kw))
+    :else (throw (ex-info (str "Argument (" kw ") is not a keyword.")
+                          {:arg kw}))))
 
 (defn byte-array->byte-str [ba]
   (apply str (map char ba)))

@@ -140,12 +140,15 @@
   (let [schs (clojure.string/join "," (map emit sch))]
     (str "[" schs "]")))
 
+(defmethod emit :string-reference
+  [sch]
+  (str "\"" sch "\""))
+
 (defmethod emit :default
   [sch]
-  (cond
-    (simple-keyword? sch) (str "\"" (name sch) "\"")
-    (qualified-keyword? sch) (str "\"" (namespace sch) "." (name sch) "\"")
-    :else sch))
+  (if (keyword? sch)
+    (str "\"" (u/name-kw->name-str sch) "\"")
+    sch))
 
 (defn avro-schema->pcf [avro-schema]
   (if (string? avro-schema) ;; primitives are strings at this point
@@ -242,12 +245,15 @@
   ([edn-schema]
    (expand-references edn-schema (atom {})))
   ([edn-schema *name->schema]
+
    (let [expand* #(expand-references % *name->schema)
          update-names! (fn [edn-schema]
-                         (let [schema-name (u/get-schema-name edn-schema)]
+                         (let [schema-name (u/name-kw->name-str
+                                            (u/get-schema-name edn-schema))]
                            (swap! *name->schema assoc schema-name edn-schema)
                            edn-schema))
          avro-type (u/get-avro-type edn-schema)]
+
      (case avro-type
        :enum (update-names! edn-schema)
        :fixed (update-names! edn-schema)
@@ -258,7 +264,7 @@
                      fix-field (fn [field]
                                  (update field :type expand*))]
                  (update edn-schema :fields #(mapv fix-field %)))
-       :keyword-reference (@*name->schema edn-schema)
+       :keyword-reference (@*name->schema (u/name-kw->name-str edn-schema))
        edn-schema))))
 
 (defn pcf->edn-schema [pcf]
