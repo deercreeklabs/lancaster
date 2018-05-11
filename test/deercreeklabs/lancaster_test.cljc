@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
+   [deercreeklabs.lancaster.resolution :as reso]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    [schema.core :as s :include-macros true]
@@ -156,7 +157,15 @@
   [:minute l/int-schema]
   [:second l/int-schema])
 
-(def date-time-schema
+(l/def-record-schema date-time-schema
+  ;; Note that this does not include seconds.
+  [:year l/int-schema]
+  [:month l/int-schema]
+  [:day l/int-schema]
+  [:hour l/int-schema]
+  [:minute l/int-schema])
+
+(def merged-date-time-schema
   (l/merge-record-schemas ::date-time [date-schema time-schema]))
 
 ;; TODO: Enable recursive schemas
@@ -1145,8 +1154,9 @@
     (is (not= nil (s/check pl-sch bad-wrapped-data)))))
 
 (deftest test-merge-record-schemas
-  #?(:clj (is (fp-matches? date-time-schema)))
-  (let [expected {:name :deercreeklabs.lancaster-test/date-time
+  #?(:clj (is (fp-matches? merged-date-time-schema)))
+  (let [expected {:name :date-time
+                  :namespace :deercreeklabs.lancaster-test
                   :type :record
                   :fields
                   [{:name :year :type :int :default -1}
@@ -1154,8 +1164,13 @@
                    {:name :day :type :int :default -1}
                    {:name :hour :type :int :default -1}
                    {:name :minute :type :int :default -1}
-                   {:name :second :type :int :default -1}]}]
-    (is (= expected (l/get-edn-schema date-time-schema)))))
+                   {:name :second :type :int :default -1}]}
+        merged-name (reso/get-normalized-name
+                     (l/get-edn-schema merged-date-time-schema))
+        normal-name (reso/get-normalized-name
+                     (l/get-edn-schema date-time-schema))]
+    (is (= merged-name normal-name))
+    (is (= expected (l/get-edn-schema merged-date-time-schema)))))
 
 (deftest test-plumatic-maybe-missing-key
   (let [ps (l/get-plumatic-schema rec-w-maybe-field-schema)

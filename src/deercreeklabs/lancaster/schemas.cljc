@@ -92,14 +92,20 @@
                       (make-edn-schema schema-type name-kw args))]
      (edn-schema->lancaster-schema schema-type edn-schema))))
 
+(defn make-named-schema-base [name-kw]
+  (cond-> {:name (keyword (name name-kw))}
+    (qualified-keyword? name-kw) (assoc :namespace
+                                        (keyword (namespace name-kw)))))
+
 (defn merge-record-schemas [name-kw schemas]
   (when-not (keyword? name-kw)
     (throw (ex-info (str "First arg to merge-record-schemas must be a name "
                          "keyword. The keyword can be namespaced or not.")
                     {:given-name-kw name-kw})))
-  (let [new-schema {:name name-kw
-                    :type :record
-                    :fields (mapcat #(:fields (u/get-edn-schema %)) schemas)}]
+  (let [new-schema (assoc (make-named-schema-base name-kw)
+                          :type :record
+                          :fields (mapcat #(:fields (u/get-edn-schema %))
+                                          schemas))]
     (edn-schema->lancaster-schema :record new-schema)))
 
 (defn make-primitive-schema [schema-kw]
@@ -222,11 +228,6 @@
      :type field-edn-schema
      :default (get-field-default field-edn-schema
                                  field-default)}))
-
-(defn make-named-schema-base [name-kw]
-  (cond-> {:name (keyword (name name-kw))}
-    (qualified-keyword? name-kw) (assoc :namespace
-                                        (keyword (namespace name-kw)))))
 
 (defmethod make-edn-schema :record
   [schema-type name-kw fields]
