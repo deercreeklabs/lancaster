@@ -222,8 +222,17 @@
             :array []
             :map {})))))
 
-(defn make-record-field [[field-name field-schema field-default]]
-  (let [field-edn-schema (u/get-edn-schema field-schema)]
+(defn make-record-field [field]
+  (when-not (#{2 3} (count field))
+    (throw
+     (ex-info (str "Record field definition must have 2 or 3 parameters. ("
+                   "[field-name field-schema] or "
+                   "[field-name field-schema field-default]).\n"
+                   "  Got " (count field) " parameters.\n"
+                   "  Bad field definition: " field)
+              {:bad-field-def field})))
+  (let [[field-name field-schema field-default] field
+        field-edn-schema (u/get-edn-schema field-schema)]
     {:name (keyword field-name)
      :type field-edn-schema
      :default (get-field-default field-edn-schema
