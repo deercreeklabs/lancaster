@@ -168,20 +168,17 @@
 (def merged-date-time-schema
   (l/merge-record-schemas ::date-time [date-schema time-schema]))
 
-;; TODO: Enable recursive schemas
-#_
 (l/def-record-schema tree-schema
   [:value l/int-schema]
-  [:right :nil-or-recur]
-  [:left :nil-or-recur])
+  [:right (l/maybe :tree)]
+  [:left (l/maybe :tree)])
 
 (deftest test-record-schema
   (let [expected-pcf (str "{\"name\":\"deercreeklabs.lancaster_test."
                           "AddToCartReq\",\"type\":\"record\",\"fields\":"
                           "[{\"name\":\"sku\",\"type\":\"int\"},{\"name\":"
                           "\"qtyRequested\",\"type\":\"int\"}]}")
-        expected-edn-schema {:namespace :deercreeklabs.lancaster-test
-                             :name :add-to-cart-req
+        expected-edn-schema {:name :deercreeklabs.lancaster-test/add-to-cart-req
                              :type :record
                              :fields
                              [{:name :sku
@@ -206,8 +203,7 @@
     (is (= data decoded))))
 
 (deftest test-def-enum-schema
-  (is (= {:namespace :deercreeklabs.lancaster-test
-          :name :why
+  (is (= {:name :deercreeklabs.lancaster-test/why
           :type :enum
           :symbols [:all :stock :limit]}
          (l/get-edn-schema why-schema)))
@@ -226,8 +222,7 @@
     (is (= data decoded))))
 
 (deftest test-def-fixed-schema
-  (is (= {:namespace :deercreeklabs.lancaster-test
-          :name :a-fixed
+  (is (= {:name :deercreeklabs.lancaster-test/a-fixed
           :type :fixed
           :size 2}
          (l/get-edn-schema a-fixed-schema)))
@@ -247,8 +242,7 @@
     (is (ba/equivalent-byte-arrays? data decoded))))
 
 (deftest test-nested-record-schema
-  (let [expected {:namespace :deercreeklabs.lancaster-test
-                  :name :add-to-cart-rsp
+  (let [expected {:name :deercreeklabs.lancaster-test/add-to-cart-rsp
                   :type :record
                   :fields
                   [{:name :qty-requested :type :int :default -1}
@@ -256,8 +250,7 @@
                    {:name :current-qty :type :int :default -1}
                    {:name :req
                     :type
-                    {:namespace :deercreeklabs.lancaster-test
-                     :name :add-to-cart-req
+                    {:name :deercreeklabs.lancaster-test/add-to-cart-req
                      :type :record
                      :fields
                      [{:name :sku :type :int :default -1}
@@ -265,15 +258,13 @@
                     :default {:sku 10 :qty-requested 1}}
                    {:name :the-reason-why
                     :type
-                    {:namespace :deercreeklabs.lancaster-test
-                     :name :why
+                    {:name :deercreeklabs.lancaster-test/why
                      :type :enum
                      :symbols [:all :stock :limit]}
                     :default :stock}
                    {:name :data
                     :type
-                    {:namespace :deercreeklabs.lancaster-test
-                     :name :a-fixed
+                    {:name :deercreeklabs.lancaster-test/a-fixed
                      :type :fixed
                      :size 2}
                     :default "MX"}
@@ -446,8 +437,7 @@
   #?(:clj (is (fp-matches? rsps-schema)))
   (is (= {:type :array
           :items
-          {:namespace :deercreeklabs.lancaster-test
-           :name :add-to-cart-rsp
+          {:name :deercreeklabs.lancaster-test/add-to-cart-rsp
            :type :record
            :fields
            [{:name :qty-requested :type :int :default -1}
@@ -455,8 +445,7 @@
             {:name :current-qty :type :int :default -1}
             {:name :req
              :type
-             {:namespace :deercreeklabs.lancaster-test
-              :name :add-to-cart-req
+             {:name :deercreeklabs.lancaster-test/add-to-cart-req
               :type :record
               :fields
               [{:name :sku :type :int :default -1}
@@ -464,15 +453,13 @@
              :default {:sku 10 :qty-requested 1}}
             {:name :the-reason-why
              :type
-             {:namespace :deercreeklabs.lancaster-test
-              :name :why
+             {:name :deercreeklabs.lancaster-test/why
               :type :enum
               :symbols [:all :stock :limit]}
              :default :stock}
             {:name :data
              :type
-             {:namespace :deercreeklabs.lancaster-test
-              :name :a-fixed
+             {:name :deercreeklabs.lancaster-test/a-fixed
               :type :fixed
               :size 2}
              :default "MX"}
@@ -509,8 +496,7 @@
   #?(:clj (is (fp-matches? nested-map-schema)))
   (is (= {:type :map
           :values
-          {:namespace :deercreeklabs.lancaster-test
-           :name :add-to-cart-rsp
+          {:name :deercreeklabs.lancaster-test/add-to-cart-rsp
            :type :record
            :fields
            [{:name :qty-requested :type :int :default -1}
@@ -518,8 +504,7 @@
             {:name :current-qty :type :int :default -1}
             {:name :req
              :type
-             {:namespace :deercreeklabs.lancaster-test
-              :name :add-to-cart-req
+             {:name :deercreeklabs.lancaster-test/add-to-cart-req
               :type :record
               :fields
               [{:name :sku :type :int :default -1}
@@ -527,15 +512,13 @@
              :default {:sku 10 :qty-requested 1}}
             {:name :the-reason-why
              :type
-             {:namespace :deercreeklabs.lancaster-test
-              :name :why
+             {:name :deercreeklabs.lancaster-test/why
               :type :enum
               :symbols [:all :stock :limit]}
              :default :stock}
             {:name :data
              :type
-             {:namespace :deercreeklabs.lancaster-test
-              :name :a-fixed
+             {:name :deercreeklabs.lancaster-test/a-fixed
               :type :fixed
               :size 2}
              :default "MX"}
@@ -582,14 +565,12 @@
 (deftest test-union-schema
   #?(:clj (is (fp-matches? union-schema)))
   (is (= [:int
-          {:namespace :deercreeklabs.lancaster-test
-           :name :add-to-cart-req
+          {:name :deercreeklabs.lancaster-test/add-to-cart-req
            :type :record
            :fields
            [{:name :sku :type :int :default -1}
             {:name :qty-requested :type :int :default 0}]}
-          {:namespace :deercreeklabs.lancaster-test
-           :name :a-fixed
+          {:name :deercreeklabs.lancaster-test/a-fixed
            :type :fixed
            :size 2}]
          (l/get-edn-schema union-schema)))
@@ -612,14 +593,12 @@
 
 (deftest test-wrapped-union-schema
   #?(:clj (is (fp-matches? person-or-dog-schema)))
-  (is (= [{:namespace :deercreeklabs.lancaster-test
-           :name :person
+  (is (= [{:name :deercreeklabs.lancaster-test/person
            :type :record
            :fields
            [{:name :name :type :string :default "No name"}
             {:name :age :type :int :default 0}]}
-          {:namespace :deercreeklabs.lancaster-test
-           :name :dog
+          {:name :deercreeklabs.lancaster-test/dog
            :type :record
            :fields
            [{:name :name :type :string :default "No name"}
@@ -682,13 +661,11 @@
 (deftest test-mopodoa-schema
   #?(:clj (is (fp-matches? mopodoa-schema)))
   (is (= [{:type :map :values :int}
-          {:namespace :deercreeklabs.lancaster-test
-           :name :person
+          {:name :deercreeklabs.lancaster-test/person
            :type :record
            :fields [{:name :name :type :string :default "No name"}
                     {:name :age :type :int :default 0}]}
-          {:namespace :deercreeklabs.lancaster-test
-           :name :dog
+          {:name :deercreeklabs.lancaster-test/dog
            :type :record
            :fields [{:name :name :type :string :default "No name"}
                     {:name :owner :type :string :default "No owner"}]}
@@ -715,43 +692,42 @@
          encoded))
     (is (= data decoded))))
 
-;; (deftest test-recursive-schema
-;;   (is (= {:namespace "deercreeklabs.lancaster-test"
-;;           :name :tree
-;;           :type :record
-;;           :fields
-;;           [{:name :value :type :int :default -1}
-;;            {:name :right
-;;             :type [:null "deercreeklabs.lancaster-test.tree"]
-;;             :default nil}
-;;            {:name :left
-;;             :type [:null "deercreeklabs.lancaster-test.tree"]
-;;             :default nil}]}
-;;          (l/get-edn-schema tree-schema)))
-;;   #?(:clj (is (fp-matches? tree-schema)))
-;;   (is (= "7S/pDrRPpfq+cxuNpMNKlw=="
-;;          (u/long->str (l/get-fingerprint64 tree-schema)))))
+(deftest test-recursive-schema
+  (is (= {:name :deercreeklabs.lancaster-test/tree
+          :type :record
+          :fields
+          [{:name :value :type :int :default -1}
+           {:name :right
+            :type [:null :tree]
+            :default nil}
+           {:name :left
+            :type [:null :tree]
+            :default nil}]}
+         (l/get-edn-schema tree-schema)))
+  #?(:clj (is (fp-matches? tree-schema)))
+  (is (= "1955448859740230833"
+         (u/long->str (l/get-fingerprint64 tree-schema)))))
 
-;; (deftest test-recursive-schema-serdes
-;;   (let [data {:value 5
-;;               :right {:value -10
-;;                       :right {:value -20
-;;                               :right nil
-;;                               :left nil}
-;;                       :left nil}
-;;               :left {:value 10
-;;                      :right nil
-;;                      :left {:value 20
-;;                             :right nil
-;;                             :left {:value 40
-;;                                    :right nil
-;;                                    :left nil}}}}
-;;         encoded (l/serialize tree-schema data)
-;;         decoded (deserialize-same tree-schema encoded)
-;;         _ (is (ba/equivalent-byte-arrays?
-;;                (ba/byte-array [10 2 19 2 39 0 0 0 2 20 0 2 40 0 2 80 0 0])
-;;                encoded))
-;;         _ (is (= data decoded))]))
+(deftest test-recursive-schema-serdes
+  (let [data {:value 5
+              :right {:value -10
+                      :right {:value -20
+                              :right nil
+                              :left nil}
+                      :left nil}
+              :left {:value 10
+                     :right nil
+                     :left {:value 20
+                            :right nil
+                            :left {:value 40
+                                   :right nil
+                                   :left nil}}}}
+        encoded (l/serialize tree-schema data)
+        decoded (deserialize-same tree-schema encoded)
+        _ (is (ba/equivalent-byte-arrays?
+               (ba/byte-array [10 2 19 2 39 0 0 0 2 20 0 2 40 0 2 80 0 0])
+               encoded))
+        _ (is (= data decoded))]))
 
 (deftest test-schema-resolution-int-to-long
   (let [data 10
@@ -843,7 +819,7 @@
         expected {"one" 1.0 "two" 2.0}]
     (is (= expected decoded))))
 
-(deftest test-schema-resolution-enum-added-symbol
+(deftest  test-schema-resolution-enum-added-symbol
   (let [data :stock
         writer-schema why-schema
         reader-schema (l/make-enum-schema ::why
@@ -1002,8 +978,7 @@
 
 (deftest test-rec-w-array-and-enum-schema
   #?(:clj (is (fp-matches? rec-w-array-and-enum-schema)))
-  (is (= {:namespace :deercreeklabs.lancaster-test
-          :name :rec-w-array-and-enum
+  (is (= {:name :deercreeklabs.lancaster-test/rec-w-array-and-enum
           :type :record
           :fields
           [{:name :names
@@ -1011,8 +986,7 @@
             :default []}
            {:name :why
             :type
-            {:namespace :deercreeklabs.lancaster-test
-             :name :why
+            {:name :deercreeklabs.lancaster-test/why
              :type :enum
              :symbols [:all :stock :limit]}
             :default :all}]}
@@ -1034,8 +1008,7 @@
 
 (deftest test-rec-w-map-schema
   #?(:clj (is (fp-matches? rec-w-map-schema)))
-  (is (= {:namespace :deercreeklabs.lancaster-test
-          :name :rec-w-map
+  (is (= {:name :deercreeklabs.lancaster-test/rec-w-map
           :type :record
           :fields
           [{:name :name-to-age
@@ -1062,14 +1035,12 @@
 
 (deftest test-rec-w-fixed-no-default
   #?(:clj (is (fp-matches? rec-w-fixed-no-default-schema)))
-  (is (= {:namespace :deercreeklabs.lancaster-test
-          :name :rec-w-fixed-no-default
+  (is (= {:name :deercreeklabs.lancaster-test/rec-w-fixed-no-default
           :type :record
           :fields
           [{:name :data
             :type
-            {:namespace :deercreeklabs.lancaster-test
-             :name :a-fixed
+            {:name :deercreeklabs.lancaster-test/a-fixed
              :type :fixed
              :size 2}
             :default "\0\0"}]}
@@ -1090,8 +1061,7 @@
 
 (deftest test-rec-w-maybe-field
   #?(:clj (is (fp-matches? rec-w-maybe-field-schema)))
-  (is (= {:name :rec-w-maybe-field,
-          :namespace :deercreeklabs.lancaster-test,
+  (is (= {:name :deercreeklabs.lancaster-test/rec-w-maybe-field,
           :type :record,
           :fields
           [{:name :name, :type :string, :default ""}
@@ -1155,8 +1125,7 @@
 
 (deftest test-merge-record-schemas
   #?(:clj (is (fp-matches? merged-date-time-schema)))
-  (let [expected {:name :date-time
-                  :namespace :deercreeklabs.lancaster-test
+  (let [expected {:name :deercreeklabs.lancaster-test/date-time
                   :type :record
                   :fields
                   [{:name :year :type :int :default -1}
@@ -1165,9 +1134,9 @@
                    {:name :hour :type :int :default -1}
                    {:name :minute :type :int :default -1}
                    {:name :second :type :int :default -1}]}
-        merged-name (reso/get-normalized-name
+        merged-name (:name
                      (l/get-edn-schema merged-date-time-schema))
-        normal-name (reso/get-normalized-name
+        normal-name (:name
                      (l/get-edn-schema date-time-schema))]
     (is (= merged-name normal-name))
     (is (= expected (l/get-edn-schema merged-date-time-schema)))))

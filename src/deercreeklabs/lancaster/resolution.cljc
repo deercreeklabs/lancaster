@@ -13,19 +13,9 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-(defn get-normalized-name [edn-schema]
-  (let [{:keys [namespace]} edn-schema
-        namespace-str (when namespace
-                        (name namespace))
-        name-str (name (:name edn-schema))
-        fullname (if namespace
-                   (str/join "." [namespace-str name-str])
-                   name-str)]
-    (u/edn-name->avro-name fullname)))
-
 (defn check-names [writer-edn-schema reader-edn-schema]
-  (let [writer-name (get-normalized-name writer-edn-schema)
-        reader-name (get-normalized-name reader-edn-schema)]
+  (let [writer-name (:name writer-edn-schema)
+        reader-name (:name reader-edn-schema)]
     (if (= writer-name reader-name)
       true
       (throw
@@ -115,6 +105,15 @@
             (assoc acc (:name field) field))
           {} fields))
 
+(defn edn-schema->pcf [edn-schema]
+  (-> edn-schema
+      (u/edn-schema->avro-schema)
+      (pcf/avro-schema->pcf)))
+
+(defn equivalent-schemas? [edn-schema1 edn-schema2]
+  (= (edn-schema->pcf edn-schema1)
+     (edn-schema->pcf edn-schema2)))
+
 (defn get-field-changes [writer-fields reader-fields]
   (let [writer-fields-map (fields->fields-map writer-fields)
         reader-fields-map (fields->fields-map reader-fields)
@@ -131,7 +130,8 @@
                   (and reader-field (not writer-field))
                   (update acc :added-fields conj reader-field)
 
-                  (not= (:type reader-field) (:type writer-field))
+                  (not (equivalent-schemas? (:type reader-field)
+                                            (:type writer-field)))
                   (update acc :changed-fields conj
                           [writer-field reader-field])
 
@@ -270,10 +270,13 @@
             (throw-mismatch-error writer-item-schema reader-union-schema)))))))
 
 (defn make-union-resolving-decoder
-  [writer-edn-schema reader-edn-schema writer-type reader-type]
+  [writer-edn-schema reader-edn-schema writer-type reader-type
+   *name->deserializer]
   (cond
     (and (= :union writer-type) (= :union reader-type))
-    (let [branch->deserializer (mapv u/make-deserializer writer-edn-schema)
+    (let [branch->deserializer (mapv
+                                #(u/make-deserializer % *name->deserializer)
+                                writer-edn-schema)
           branch->schema-name (mapv u/get-schema-name writer-edn-schema)
           branch->xf (mapv #(make-union-xf % (vec reader-edn-schema))
                            writer-edn-schema)]
@@ -293,7 +296,8 @@
             data))))
 
     (= :union writer-type)
-    (let [branch->deserializer (mapv u/make-deserializer writer-edn-schema)
+    (let [branch->deserializer (mapv #(u/make-deserializer % *name->deserializer)
+                                     writer-edn-schema)
           branch->schema-name (mapv u/get-schema-name writer-edn-schema)
           branch->xf (mapv #(make-union-xf % [reader-edn-schema])
                            writer-edn-schema)]
@@ -314,7 +318,8 @@
 
     :else
     (let [xf (make-union-xf writer-edn-schema reader-edn-schema)
-          deserializer (u/make-deserializer writer-edn-schema)
+          deserializer (u/make-deserializer writer-edn-schema
+                                            *name->deserializer)
           schema-name (u/get-schema-name writer-edn-schema)]
       (if (u/wrapping-required? reader-edn-schema)
         (fn deserialize [is]
@@ -323,7 +328,7 @@
         (fn deserialize [is]
           (xf (deserializer is)))))))
 
-(defn make-resolving-deserializer [writer-pcf reader-schema]
+(defn make-resolving-deserializer [writer-pcf reader-schema *name->deserializer]
   (let [writer-edn-schema (pcf/pcf->edn-schema writer-pcf)
         reader-edn-schema (u/get-edn-schema reader-schema)
         writer-type (u/get-avro-type writer-edn-schema)
@@ -331,17 +336,19 @@
     (try
       (if (or (= :union writer-type) (= :union reader-type))
         (make-union-resolving-decoder writer-edn-schema reader-edn-schema
-                                      writer-type reader-type)
-        (let [writer-deserializer (u/make-deserializer writer-edn-schema)
+                                      writer-type reader-type
+                                      *name->deserializer)
+        (let [writer-deserializer (u/make-deserializer writer-edn-schema
+                                                       *name->deserializer)
               xf (make-xf writer-edn-schema reader-edn-schema)]
           (fn deserialize [is]
             (xf (writer-deserializer is)))))
       (catch #?(:clj IllegalArgumentException :cljs js/Error) e
         (let [msg (lu/get-exception-msg e)]
-          (if-not (str/includes?
-                   msg
-                   #?(:clj "No method in multimethod 'make-xf'"
-                      :cljs (str "No method in multimethod 'deercreeklabs."
-                                 "lancaster.resolution/make-xf'")))
-            (throw e)
-            (throw-mismatch-error writer-edn-schema reader-edn-schema)))))))
+          (if (str/includes?
+               msg
+               #?(:clj "No method in multimethod 'make-xf'"
+                  :cljs (str "No method in multimethod 'deercreeklabs."
+                             "lancaster.resolution/make-xf'")))
+            (throw-mismatch-error writer-edn-schema reader-edn-schema)
+            (throw e)))))))

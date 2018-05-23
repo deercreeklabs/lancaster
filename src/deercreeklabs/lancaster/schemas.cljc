@@ -27,8 +27,8 @@
 
 (defrecord LancasterSchema
     [schema-name edn-schema json-schema parsing-canonical-form
-     fingerprint64 plumatic-schema serializer deserializer
-     *pcf->resolving-deserializer]
+     fingerprint64 plumatic-schema serializer deserializer *name->serializer
+     *name->deserializer *pcf->resolving-deserializer]
   u/ILancasterSchema
   (serialize [this os data]
     (serializer os data []))
@@ -37,7 +37,8 @@
       (deserializer is)
       (if-let [rd (@*pcf->resolving-deserializer writer-pcf)]
         (rd is)
-        (let [rd (resolution/make-resolving-deserializer writer-pcf this)]
+        (let [rd (resolution/make-resolving-deserializer writer-pcf this
+                                                         *name->deserializer)]
           (swap! *pcf->resolving-deserializer assoc writer-pcf rd)
           (rd is)))))
   (wrap [this data]
@@ -54,25 +55,56 @@
     plumatic-schema))
 
 (defmulti make-edn-schema u/first-arg-dispatch)
-(defmulti edn-schema->avro-schema u/avro-type-dispatch)
 (defmulti validate-schema-args u/first-arg-dispatch)
 
 (defn edn-schema->lancaster-schema [schema-type edn-schema]
-  (let [avro-schema (if (u/avro-primitive-types schema-type)
+  (let [name->avro-type (u/make-name->avro-type edn-schema)
+        avro-schema (if (u/avro-primitive-types schema-type)
                       (name schema-type)
-                      (edn-schema->avro-schema edn-schema))
+                      (u/edn-schema->avro-schema edn-schema))
         json-schema (u/edn->json-string avro-schema)
         parsing-canonical-form (pcf/avro-schema->pcf avro-schema)
         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
-        plumatic-schema (u/edn-schema->plumatic-schema edn-schema)
-        serializer (u/make-serializer edn-schema)
-        deserializer (u/make-deserializer edn-schema)
+        plumatic-schema (u/edn-schema->plumatic-schema edn-schema
+                                                       name->avro-type)
+        *name->serializer (atom {})
+        *name->deserializer (atom {})
+        serializer (u/make-serializer edn-schema name->avro-type
+                                      *name->serializer)
+        deserializer (u/make-deserializer edn-schema *name->deserializer)
         *pcf->resolving-deserializer (atom {})
         schema-name (u/get-schema-name edn-schema)]
     (->LancasterSchema
      schema-name edn-schema json-schema parsing-canonical-form
-     fingerprint64 plumatic-schema serializer deserializer
-     *pcf->resolving-deserializer)))
+     fingerprint64 plumatic-schema serializer deserializer *name->serializer
+     *name->deserializer *pcf->resolving-deserializer)))
+
+(defn get-name-or-schema [edn-schema *names]
+  (let [schema-name (u/get-schema-name edn-schema)]
+    (if (@*names schema-name)
+      schema-name
+      (do
+        (swap! *names conj schema-name)
+        edn-schema))))
+
+(defn fix-repeated-schemas
+  ([edn-schema]
+   (fix-repeated-schemas edn-schema (atom #{})))
+  ([edn-schema *names]
+   (case (u/get-avro-type edn-schema)
+     :enum (get-name-or-schema edn-schema *names)
+     :fixed (get-name-or-schema edn-schema *names)
+     :array (update edn-schema :items #(fix-repeated-schemas % *names))
+     :map (update edn-schema :values #(fix-repeated-schemas % *names))
+     :union (mapv #(fix-repeated-schemas % *names) edn-schema)
+     :record (let [name-or-schema (get-name-or-schema edn-schema *names)
+                   fix-field (fn [field]
+                               (update field :type
+                                       #(fix-repeated-schemas % *names)))]
+               (if (map? name-or-schema)
+                 (update edn-schema :fields #(mapv fix-field %))
+                 name-or-schema))
+     edn-schema)))
 
 (defn make-schema
   ([schema-type ns-name schema-name args]
@@ -89,27 +121,28 @@
      (validate-schema-args schema-type args))
    (let [edn-schema (if (u/avro-primitive-types schema-type)
                       schema-type
-                      (make-edn-schema schema-type name-kw args))]
-     (edn-schema->lancaster-schema schema-type edn-schema))))
-
-(defn make-named-schema-base [name-kw]
-  (cond-> {:name (keyword (name name-kw))}
-    (qualified-keyword? name-kw) (assoc :namespace
-                                        (keyword (namespace name-kw)))))
+                      (-> (make-edn-schema schema-type name-kw args)
+                          (fix-repeated-schemas)))]
+     (edn-schema->lancaster-schema schema-type edn-schema ))))
 
 (defn merge-record-schemas [name-kw schemas]
   (when-not (keyword? name-kw)
     (throw (ex-info (str "First arg to merge-record-schemas must be a name "
                          "keyword. The keyword can be namespaced or not.")
                     {:given-name-kw name-kw})))
-  (let [new-schema (assoc (make-named-schema-base name-kw)
-                          :type :record
-                          :fields (mapcat #(:fields (u/get-edn-schema %))
-                                          schemas))]
-    (edn-schema->lancaster-schema :record new-schema)))
+
+  (let [fields (->> (mapcat #(:fields (u/get-edn-schema %))
+                            schemas)
+                    (mapv (fn [{:keys [name type default]}]
+                            [name type default])))]
+    (make-schema :record name-kw fields)))
 
 (defn make-primitive-schema [schema-kw]
   (make-schema schema-kw nil nil))
+
+(defn schema-or-kw? [x]
+  (or (instance? LancasterSchema x)
+      (keyword? x)))
 
 (defmethod validate-schema-args :record
   [schema-type fields]
@@ -122,9 +155,11 @@
       (when-not (keyword? name-kw)
         (throw (ex-info "First arg in field definition must be a name keyword."
                         {:given-name-kw name-kw})))
-      (when-not (instance? LancasterSchema field-schema)
-        (throw (ex-info "Second arg in field definition must be schema object."
-                        {:given-field-schema field-schema})))
+      (when-not (schema-or-kw? field-schema)
+        (throw
+         (ex-info (str "Second arg in field definition must be a schema object "
+                       "or a name keyword.")
+                  {:given-field-schema field-schema})))
       ;; TODO: Add validation for default
       )))
 
@@ -148,38 +183,41 @@
 
 (defmethod validate-schema-args :array
   [schema-type items-schema]
-  (when-not (instance? LancasterSchema items-schema)
-    (throw (ex-info "Second arg to make-array-schema must be schema object."
-                    {:given-items-schema items-schema}))))
+  (when-not (schema-or-kw? items-schema)
+    (throw
+     (ex-info (str "Second arg to make-array-schema must be a schema object "
+                   "or a name keyword.")
+              {:given-items-schema items-schema}))))
 
 (defmethod validate-schema-args :map
   [schema-type values-schema]
-  (when-not (instance? LancasterSchema values-schema)
-    (throw (ex-info "Second arg to make-map-schema must be schema object."
-                    {:given-values-schema values-schema}))))
+  (when-not (schema-or-kw? values-schema)
+    (throw
+     (ex-info (str "Second arg to make-map-schema must be a schema object "
+                   "or a name keyword.")
+              {:given-values-schema values-schema}))))
 
 (defmethod validate-schema-args :union
   [schema-type member-schemas]
   (when-not (sequential? member-schemas)
     (throw (ex-info (str "Second arg to make-union-schema must be a sequence "
-                         "of member schema objects.")
+                         "of member schema objects or name keywords.")
                     {:given-member-schemas member-schemas})))
   (doseq [member-schema member-schemas]
-    (when-not (instance? LancasterSchema member-schema)
-      (throw (ex-info "All member schemas in a union must be schema objects."
-                      {:bad-member-schema member-schema}))))
-  (when (u/illegal-union? (map u/get-edn-schema member-schemas))
+    (when-not (schema-or-kw? member-schema)
+      (throw
+       (ex-info (str "All member schemas in a union must be schema objects "
+                     "or name keywords.")
+                {:bad-member-schema member-schema}))))
+  (when (u/illegal-union? (map u/get-edn-schema
+                               ;; Name keywords & named schemas are always okay
+                               (remove keyword? member-schemas)))
     (throw (ex-info "Illegal union schema." {:schema member-schemas}))))
 
 (defn ensure-edn-schema [schema]
   (cond
     (instance? LancasterSchema schema)
     (u/get-edn-schema schema)
-
-    (string? schema)
-    (if (clojure.string/includes? schema ".")
-      schema
-      (str *ns* "." schema))
 
     (sequential? schema)
     (mapv ensure-edn-schema schema) ;; union
@@ -232,29 +270,43 @@
                    "  Bad field definition: " field)
               {:bad-field-def field})))
   (let [[field-name field-schema field-default] field
-        field-edn-schema (u/get-edn-schema field-schema)]
-    {:name (keyword field-name)
+        field-edn-schema (if (keyword? field-schema)
+                           field-schema
+                           (u/get-edn-schema field-schema))]
+    (when-not (keyword? field-name)
+      (throw
+       (ex-info (str "Field names must be keywords. Bad field name: "
+                     field-name)
+                (u/sym-map field-name field-schema field-default field))))
+    {:name field-name
      :type field-edn-schema
-     :default (get-field-default field-edn-schema
-                                 field-default)}))
+     :default (get-field-default field-edn-schema field-default)}))
 
 (defmethod make-edn-schema :record
   [schema-type name-kw fields]
-  (assoc (make-named-schema-base name-kw)
-         :type :record
-         :fields (mapv make-record-field fields)))
+  (let [name-kw (u/qualify-name-kw name-kw)
+        fields (binding [u/**enclosing-namespace** (namespace name-kw)]
+                 (mapv make-record-field fields))
+        edn-schema {:name name-kw
+                    :type :record
+                    :fields fields}]
+    edn-schema))
 
 (defmethod make-edn-schema :enum
   [schema-type name-kw symbols]
-  (assoc (make-named-schema-base name-kw)
-         :type :enum
-         :symbols symbols))
+  (let [name-kw (u/qualify-name-kw name-kw)
+        edn-schema {:name name-kw
+                    :type :enum
+                    :symbols symbols}]
+    edn-schema))
 
 (defmethod make-edn-schema :fixed
   [schema-type name-kw size]
-  (assoc (make-named-schema-base name-kw)
-         :type :fixed
-         :size size))
+  (let [name-kw (u/qualify-name-kw name-kw)
+        edn-schema {:name name-kw
+                    :type :fixed
+                    :size size}]
+    edn-schema))
 
 (defmethod make-edn-schema :array
   [schema-type name-kw items]
@@ -269,159 +321,3 @@
 (defmethod make-edn-schema :union
   [schema-type name-kw member-schemas]
   (mapv ensure-edn-schema member-schemas))
-
-(defn fix-name [edn-schema]
-  (cond-> edn-schema
-    (:namespace edn-schema)
-    (update :namespace #(u/clj-namespace->java-namespace (name %)))
-
-    true
-    (update :name #(csk/->PascalCase (name %)))))
-
-(defn fix-alias [alias-kw]
-  (-> alias-kw name u/edn-name->avro-name))
-
-(defn fix-aliases [edn-schema]
-  (if (contains? edn-schema :aliases)
-    (update edn-schema :aliases #(map fix-alias %))
-    edn-schema))
-
-(defmulti fix-default u/avro-type-dispatch)
-
-(defmethod fix-default :fixed
-  [field-schema default]
-  (u/byte-array->byte-str default))
-
-(defmethod fix-default :bytes
-  [field-schema default]
-  (u/byte-array->byte-str default))
-
-(defmethod fix-default :enum
-  [field-schema default]
-  (-> (name default)
-      (csk/->SCREAMING_SNAKE_CASE)))
-
-(defmethod fix-default :record
-  [default-schema default-record]
-  (reduce (fn [acc field]
-            (let [{field-name :name
-                   field-type :type
-                   field-default :default} field]
-              (assoc acc field-name (fix-default field-type field-default))))
-          {} (:fields default-schema)))
-
-(defmethod fix-default :array
-  [field-schema default]
-  (let [child-schema (:items field-schema)]
-    (mapv #(fix-default child-schema %) default)))
-
-(defmethod fix-default :map
-  [field-schema default]
-  (let [child-schema (:values field-schema)]
-    (reduce-kv (fn [acc k v]
-                 (assoc acc k (fix-default child-schema v)))
-               {} default)))
-
-(defmethod fix-default :union
-  [field-schema default]
-  ;; Union default's type must be the first type in the union
-  (fix-default (first field-schema) default))
-
-(defmethod fix-default :default
-  [field-schema default]
-  default)
-
-(defn fix-fields [edn-schema]
-  (update edn-schema :fields
-          (fn [fields]
-            (mapv (fn [field]
-                    (let [field-type (:type field)
-                          avro-type (u/get-avro-type field-type)]
-                      (cond-> field
-                        true
-                        (update :name #(csk/->camelCase (name %)))
-
-                        (u/avro-complex-types avro-type)
-                        (update :type edn-schema->avro-schema)
-
-                        true
-                        (update :default #(fix-default field-type %)))))
-                  fields))))
-
-(defn fix-symbols [edn-schema]
-  (update edn-schema :symbols #(mapv csk/->SCREAMING_SNAKE_CASE %)))
-
-(defn get-name-or-schema [edn-schema *names]
-  (let [schema-name (u/get-schema-name edn-schema)]
-    (if (@*names schema-name)
-      schema-name
-      (do
-        (swap! *names conj schema-name)
-        edn-schema))))
-
-(defn fix-repeated-schemas
-  ([edn-schema]
-   (fix-repeated-schemas edn-schema (atom #{})))
-  ([edn-schema *names]
-   (case (u/get-avro-type edn-schema)
-     :enum (get-name-or-schema edn-schema *names)
-     :fixed (get-name-or-schema edn-schema *names)
-     :array (update edn-schema :items #(fix-repeated-schemas % *names))
-     :map (update edn-schema :values #(fix-repeated-schemas % *names))
-     :union (mapv #(fix-repeated-schemas % *names) edn-schema)
-     :record (let [name-or-schema (get-name-or-schema edn-schema *names)
-                   fix-field (fn [field]
-                               (update field :type
-                                       #(fix-repeated-schemas % *names)))]
-               (if (map? name-or-schema)
-                 (update edn-schema :fields #(mapv fix-field %))
-                 name-or-schema))
-     edn-schema)))
-
-(defmethod edn-schema->avro-schema :record
-  [edn-schema]
-  (-> edn-schema
-      (fix-repeated-schemas)
-      (fix-name)
-      (fix-aliases)
-      (fix-fields)))
-
-(defmethod edn-schema->avro-schema :enum
-  [edn-schema]
-  (-> edn-schema
-      (fix-name)
-      (fix-aliases)
-      (fix-symbols)))
-
-(defmethod edn-schema->avro-schema :fixed
-  [edn-schema]
-  (-> edn-schema
-      (fix-name)
-      (fix-aliases)))
-
-(defmethod edn-schema->avro-schema :array
-  [edn-schema]
-  (-> (fix-repeated-schemas edn-schema)
-      (update :items edn-schema->avro-schema)))
-
-(defmethod edn-schema->avro-schema :map
-  [edn-schema]
-  (-> (fix-repeated-schemas edn-schema)
-      (update :values edn-schema->avro-schema)))
-
-(defmethod edn-schema->avro-schema :union
-  [edn-schema]
-  (->> (fix-repeated-schemas edn-schema)
-       (mapv edn-schema->avro-schema)))
-
-(defmethod edn-schema->avro-schema :keyword-reference
-  [kw]
-  (let [kw-ns (u/clj-namespace->java-namespace (namespace kw))
-        kw-name (csk/->PascalCase (name kw))]
-    (if kw-ns
-      (str kw-ns "." kw-name)
-      kw-name)))
-
-(defmethod edn-schema->avro-schema :default
-  [edn-schema]
-  edn-schema)
