@@ -931,7 +931,7 @@
     (when (avro-named-types avro-type)
       (swap! *name->avro-type assoc (:name edn-schema) avro-type))
     (let [child-schemas (case avro-type
-                          :record (:fields edn-schema)
+                          :record (map :type (:fields edn-schema))
                           :array [(:items edn-schema)]
                           :map [(:values edn-schema)]
                           :union edn-schema
