@@ -130,12 +130,21 @@
     (throw (ex-info (str "First arg to merge-record-schemas must be a name "
                          "keyword. The keyword can be namespaced or not.")
                     {:given-name-kw name-kw})))
-
-  (let [fields (->> (mapcat #(:fields (u/get-edn-schema %))
-                            schemas)
-                    (mapv (fn [{:keys [name type default]}]
-                            [name type default])))]
-    (make-schema :record name-kw fields)))
+  (when-not (sequential? schemas)
+    (throw (ex-info (str "Second arg to merge-record-schemas must be a "
+                         "sequence of record schema objects.")
+                    {:given-schemas schemas})))
+  (doseq [schema schemas]
+    (when (or (not (instance? LancasterSchema schema))
+              (not (= :record (:type (u/get-edn-schema schema)))))
+      (throw (ex-info (str "Second arg to merge-record-schemas must be a "
+                           "sequence of record schema objects.")
+                      {:bad-schema schema}))))
+  (let [fields (mapcat #(:fields (u/get-edn-schema %)) schemas)
+        edn-schema {:name name-kw
+                    :type :record
+                    :fields fields}]
+    (edn-schema->lancaster-schema :record edn-schema)))
 
 (defn make-primitive-schema [schema-kw]
   (make-schema schema-kw nil nil))

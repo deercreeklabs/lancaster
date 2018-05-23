@@ -155,7 +155,7 @@
 (l/def-record-schema time-schema
   [:hour l/int-schema]
   [:minute l/int-schema]
-  [:second l/int-schema])
+  [:second (l/maybe l/int-schema)])
 
 (l/def-record-schema date-time-schema
   ;; Note that this does not include seconds.
@@ -1133,7 +1133,7 @@
                    {:name :day :type :int :default -1}
                    {:name :hour :type :int :default -1}
                    {:name :minute :type :int :default -1}
-                   {:name :second :type :int :default -1}]}
+                   {:name :second :type [:null :int] :default nil}]}
         merged-name (:name
                      (l/get-edn-schema merged-date-time-schema))
         normal-name (:name
