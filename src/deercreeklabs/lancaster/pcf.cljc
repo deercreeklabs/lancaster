@@ -127,9 +127,9 @@
   (let [schs (clojure.string/join "," (map emit sch))]
     (str "[" schs "]")))
 
-;; (defmethod emit :name-keyword
-;;   [sch]
-;;   (str "\"" (u/name-kw->name-str sch) "\""))
+(defmethod emit :name-keyword
+  [sch]
+  (str "\"" (u/name-kw->name-str sch) "\""))
 
 (defmethod emit :name-string
   [name-str]
