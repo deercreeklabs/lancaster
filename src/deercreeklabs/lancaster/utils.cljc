@@ -28,6 +28,8 @@
 
 #?(:clj (pm/use-primitive-operators))
 
+(declare get-field-default)
+
 (defmacro sym-map
   "Builds a map from symbols.
    Symbol names are turned into keywords and become the map's keys.
@@ -189,6 +191,55 @@
 
 (defn byte-array->byte-str [ba]
   (apply str (map char ba)))
+
+(defn ensure-edn-schema [schema]
+  (cond
+    (satisfies? ILancasterSchema schema)
+    (get-edn-schema schema)
+
+    (sequential? schema)
+    (mapv ensure-edn-schema schema) ;; union
+
+    :else
+    schema))
+
+(defn make-default-fixed-or-bytes [num-bytes default]
+  (byte-array->byte-str (or default
+                            (ba/byte-array (take num-bytes (repeat 0))))))
+
+(defn make-default-record [record-edn-schema default-record]
+  (reduce (fn [acc field]
+            (let [{field-name :name
+                   field-type :type
+                   field-default :default} field
+                  field-schema (ensure-edn-schema field-type)
+                  v (get-field-default field-schema
+                                       (field-name default-record))]
+              (assoc acc field-name v)))
+          {} (:fields record-edn-schema)))
+
+(defn get-field-default
+  ([field-schema]
+   (get-field-default field-schema nil))
+  ([field-schema field-default]
+   (let [avro-type (get-avro-type field-schema)]
+     (case avro-type
+       :record (make-default-record field-schema field-default)
+       :union (get-field-default (first field-schema) field-default)
+       :fixed (make-default-fixed-or-bytes (:size field-schema) field-default)
+       :bytes (make-default-fixed-or-bytes 0 field-default)
+       (or field-default
+           (case avro-type
+             :null nil
+             :boolean false
+             :int (int -1)
+             :long -1
+             :float (float -1.0)
+             :double (double -1.0)
+             :string ""
+             :enum (first (:symbols field-schema))
+             :array []
+             :map {}))))))
 
 (defn first-arg-dispatch [first-arg & rest-of-args]
   first-arg)

@@ -15,9 +15,6 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-(declare get-field-default)
-
-
 (def WrappedData [(s/one s/Keyword "schema-name")
                   (s/one s/Any "data")])
 
@@ -223,52 +220,6 @@
                                (remove keyword? member-schemas)))
     (throw (ex-info "Illegal union schema." {:schema member-schemas}))))
 
-(defn ensure-edn-schema [schema]
-  (cond
-    (instance? LancasterSchema schema)
-    (u/get-edn-schema schema)
-
-    (sequential? schema)
-    (mapv ensure-edn-schema schema) ;; union
-
-    :else
-    schema))
-
-(defn make-default-record [record-edn-schema default-record]
-  (reduce (fn [acc field]
-            (let [{field-name :name
-                   field-type :type
-                   field-default :default} field
-                  field-schema (ensure-edn-schema field-type)
-                  v (get-field-default field-schema
-                                       (field-name default-record))]
-              (assoc acc field-name v)))
-          {} (:fields record-edn-schema)))
-
-(defn make-default-fixed-or-bytes [num-bytes default]
-  (u/byte-array->byte-str (or default
-                              (ba/byte-array (take num-bytes (repeat 0))))))
-
-(defn get-field-default [field-schema field-default]
-  (let [avro-type (u/get-avro-type field-schema)]
-    (case avro-type
-      :record (make-default-record field-schema field-default)
-      :union (get-field-default (first field-schema) field-default)
-      :fixed (make-default-fixed-or-bytes (:size field-schema) field-default)
-      :bytes (make-default-fixed-or-bytes 0 field-default)
-      (or field-default
-          (case avro-type
-            :null nil
-            :boolean false
-            :int (int -1)
-            :long -1
-            :float (float -1.0)
-            :double (double -1.0)
-            :string ""
-            :enum (first (:symbols field-schema))
-            :array []
-            :map {})))))
-
 (defn make-record-field [field]
   (when-not (#{2 3} (count field))
     (throw
@@ -289,7 +240,7 @@
                 (u/sym-map field-name field-schema field-default field))))
     {:name field-name
      :type field-edn-schema
-     :default (get-field-default field-edn-schema field-default)}))
+     :default (u/get-field-default field-edn-schema field-default)}))
 
 (defmethod make-edn-schema :record
   [schema-type name-kw fields]
@@ -320,13 +271,13 @@
 (defmethod make-edn-schema :array
   [schema-type name-kw items]
   {:type :array
-   :items (ensure-edn-schema items)})
+   :items (u/ensure-edn-schema items)})
 
 (defmethod make-edn-schema :map
   [schema-type name-kw values]
   {:type :map
-   :values (ensure-edn-schema values)})
+   :values (u/ensure-edn-schema values)})
 
 (defmethod make-edn-schema :union
   [schema-type name-kw member-schemas]
-  (mapv ensure-edn-schema member-schemas))
+  (mapv u/ensure-edn-schema member-schemas))

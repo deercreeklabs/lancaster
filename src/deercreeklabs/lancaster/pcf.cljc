@@ -228,6 +228,40 @@
   [avro-union-schema]
   (mapv avro-schema->edn-schema avro-union-schema))
 
+(defmulti add-defaults u/avro-type-dispatch)
+
+(defmethod add-defaults :default
+  [edn-schema]
+  edn-schema)
+
+(defmethod add-defaults :array
+  [edn-schema]
+  (update edn-schema :items add-defaults))
+
+(defmethod add-defaults :map
+  [edn-schema]
+  (update edn-schema :values add-defaults))
+
+(defmethod add-defaults :union
+  [edn-schema]
+  (mapv add-defaults edn-schema))
+
+(defmethod add-defaults :record
+  [edn-schema]
+  (update edn-schema :fields
+          (fn [fields]
+            (mapv
+             (fn [field]
+               (let [{:keys [type]} field
+                     default (u/get-field-default type)
+                     new-type (add-defaults type)
+                     field-type (u/get-avro-type type)
+                     new-field (-> field
+                                   (assoc :default default)
+                                   (assoc :type new-type))]
+                 new-field))
+             fields))))
+
 (defn pcf->edn-schema [pcf]
   (case pcf
     "null" :null
@@ -239,4 +273,6 @@
     "bytes" :bytes
     "string" :string
     (-> (u/json-string->edn pcf)
-        (avro-schema->edn-schema))))
+        (avro-schema->edn-schema)
+        (add-defaults)
+        )))

@@ -5,7 +5,9 @@
    [clojure.walk :as walk]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
+   [deercreeklabs.lancaster.pcf :as pcf]
    [deercreeklabs.lancaster.resolution :as reso]
+   [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    [schema.core :as s :include-macros true]
@@ -1165,3 +1167,19 @@
 (deftest test-schema?
   (is (l/schema? person-or-dog-schema))
   (is (not (l/schema? :foo))))
+
+(deftest test-deserialize-from-pcf
+  (let [pcf (l/get-parsing-canonical-form add-to-cart-rsp-schema)
+        data {:qty-requested 123
+              :qty-added 10
+              :current-qty 10
+              :req {:sku 123 :qty-requested 123}
+              :the-reason-why :limit
+              :data (ba/byte-array [66 67])
+              :other-data (ba/byte-array [123 123])}
+        encoded (l/serialize add-to-cart-rsp-schema data)
+        sch (->> (pcf/pcf->edn-schema pcf)
+                 (schemas/edn-schema->lancaster-schema :record))
+        decoded (l/deserialize sch pcf encoded)]
+    (is (= (dissoc data :data :other-data)
+           (dissoc decoded :data :other-data)))))
