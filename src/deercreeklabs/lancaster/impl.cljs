@@ -100,9 +100,13 @@
   (read-double [this]
     _ (debugf "@@@@@@@@@@@@@@@@@@@@ in read-double @@@@@@@@@@@@")
     (let [bs (u/read-bytes this 8)
+          bs-type (type bs)
           array-buf (goog.object/get bs "buffer")
+          array-buf1 (.-buffer bs)
           array-buf-type (type array-buf)
-          _ (debugs bs array-buf-type array-buf)
+          array-buf-type1 (type array-buf1)
+          _ (debugs bs-type bs array-buf-type array-buf
+                    array-buf-type1 array-buf1)
           dataview (js/DataView. array-buf)]
       (debugs dataview)
       (.getFloat64 dataview 0 true)))
