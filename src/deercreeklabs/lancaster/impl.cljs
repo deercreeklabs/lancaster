@@ -98,8 +98,13 @@
       (.getFloat32 dataview 0 true)))
 
   (read-double [this]
+    _ (debugf "@@@@@@@@@@@@@@@@@@@@ in read-double @@@@@@@@@@@@")
     (let [bs (u/read-bytes this 8)
-          dataview (js/DataView. (goog.object/get bs "buffer"))]
+          array-buf (goog.object/get bs "buffer")
+          array-buf-type (type array-buf)
+          _ (debugs bs array-buf-type array-buf)
+          dataview (js/DataView. array-buf)]
+      (debugs dataview)
       (.getFloat64 dataview 0 true)))
 
   (reset-to-mark! [this]

@@ -1183,3 +1183,36 @@
         decoded (l/deserialize sch pcf encoded)]
     (is (= (dissoc data :data :other-data)
            (dissoc decoded :data :other-data)))))
+
+(deftest ^:the-one test-expected-arraybuffer-cljs-error
+  (let [pcf "{\"name\":\"farbetter.common.schemas.UserDb\",\"type\":\"record\",\"fields\":[{\"name\":\"version\",\"type\":\"int\"},{\"name\":\"prefs\",\"type\":{\"name\":\"farbetter.common.schemas.Prefs\",\"type\":\"record\",\"fields\":[{\"name\":\"scheduleWeight\",\"type\":\"int\"},{\"name\":\"airCostWeight\",\"type\":\"int\"},{\"name\":\"airBrandWeight\",\"type\":\"int\"},{\"name\":\"hotelCostWeight\",\"type\":\"int\"},{\"name\":\"hotelBrandWeight\",\"type\":\"int\"},{\"name\":\"groundCostWeight\",\"type\":\"int\"},{\"name\":\"groundBrandWeight\",\"type\":\"int\"},{\"name\":\"earlyOrLateHoursWeight\",\"type\":\"int\"},{\"name\":\"preferredAirBrands\",\"type\":{\"type\":\"array\",\"items\":{\"name\":\"farbetter.common.schemas.BrandPreference\",\"type\":\"record\",\"fields\":[{\"name\":\"supplierCode\",\"type\":\"string\"},{\"name\":\"cardNumber\",\"type\":[\"null\",\"string\"]}]}}},{\"name\":\"preferredHotelBrands\",\"type\":{\"type\":\"array\",\"items\":\"farbetter.common.schemas.BrandPreference\"}},{\"name\":\"preferredCarBrands\",\"type\":{\"type\":\"array\",\"items\":\"farbetter.common.schemas.BrandPreference\"}},{\"name\":\"preferredCarClass\",\"type\":{\"name\":\"farbetter.common.schemas.RentalCarClass\",\"type\":\"enum\",\"symbols\":[\"COMPACT\",\"INTERMEDIATE\",\"FULLSIZE\",\"SUV\"]}},{\"name\":\"seatPreference\",\"type\":{\"name\":\"farbetter.common.schemas.SeatPreference\",\"type\":\"enum\",\"symbols\":[\"AISLE\",\"WINDOW\",\"MIDDLE\",\"BULKHEAD\",\"EXIT\",\"ANY\"]}},{\"name\":\"home\",\"type\":[\"null\",{\"name\":\"farbetter.common.schemas.Location\",\"type\":\"record\",\"fields\":[{\"name\":\"lat\",\"type\":\"double\"},{\"name\":\"long\",\"type\":\"double\"},{\"name\":\"address\",\"type\":[\"null\",{\"name\":\"farbetter.common.schemas.Address\",\"type\":\"record\",\"fields\":[{\"name\":\"streets\",\"type\":[\"null\",{\"type\":\"array\",\"items\":\"string\"}]},{\"name\":\"city\",\"type\":[\"null\",\"string\"]},{\"name\":\"state\",\"type\":[\"null\",\"string\"]},{\"name\":\"postalCode\",\"type\":[\"null\",\"string\"]},{\"name\":\"country\",\"type\":[\"null\",\"string\"]}]}]}]}]}]}}]}"
+        encoded (ba/byte-array
+                 [2,4,4,4,4,4,4,4,4,0,0,0,2,0,2,-107,127,83,105,-111,-87,66,64,-103,50,-87,8,-104,-127,94,-64,2,2,2,36,49,48,49,48,48,32,67,97,114,111,108,32,76,101,101,32,68,114,0,2,18,67,117,112,101,114,116,105,110,111,2,4,67,65,2,10,57,53,48,49,52,2,26,85,110,105,116,101,100,32,83,116,97,116,101,115])
+        sch (->> (pcf/pcf->edn-schema pcf)
+                 (schemas/edn-schema->lancaster-schema :record))
+        decoded (l/deserialize sch pcf encoded)
+        expected {:version 1,
+                  :prefs
+                  {:air-cost-weight 2,
+                   :air-brand-weight 2,
+                   :early-or-late-hours-weight 2,
+                   :home
+                   {:lat 37.324750104685485,
+                    :long -122.02490440867622,
+                    :address
+                    {:streets ["10100 Carol Lee Dr"],
+                     :city "Cupertino",
+                     :state "CA",
+                     :postal-code "95014",
+                     :country "United States"}},
+                   :preferred-air-brands [],
+                   :ground-cost-weight 2,
+                   :hotel-brand-weight 2,
+                   :preferred-car-brands [],
+                   :hotel-cost-weight 2,
+                   :schedule-weight 2,
+                   :preferred-hotel-brands [],
+                   :preferred-car-class :intermediate,
+                   :seat-preference :aisle,
+                   :ground-brand-weight 2}}]
+    (is (= expected decoded))))
