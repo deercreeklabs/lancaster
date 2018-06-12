@@ -64,6 +64,13 @@
 (s/defn serialize :- ba/ByteArray
   [schema-obj :- (s/protocol u/ILancasterSchema)
    data :- s/Any]
+  (when-not (satisfies? u/ILancasterSchema schema-obj)
+    (throw
+     (ex-info (str "First argument to serialize must be a schema "
+                   "object. The object must satisfy the ILancasterSchema "
+                   "protocol.")
+              {:schema-obj schema-obj
+               :schema-obj-type (#?(:clj class :cljs type) schema-obj)})))
   ;; TODO: Figure out how to set initial size better
   (let [os (impl/make-output-stream 100)]
     (u/serialize schema-obj os data)
@@ -73,6 +80,25 @@
   [reader-schema-obj :- (s/protocol u/ILancasterSchema)
    writer-pcf :- s/Str
    ba :- ba/ByteArray]
+  (when-not (satisfies? u/ILancasterSchema reader-schema-obj)
+    (throw
+     (ex-info (str "First argument to deserialize must be a schema "
+                   "object representing the reader's schema. The object "
+                   "must satisfy the ILancasterSchema protocol.")
+              {:reader-schema-obj reader-schema-obj
+               :reader-schema-obj-type
+               (#?(:clj class :cljs type) reader-schema-obj)})))
+  (when-not (string? writer-pcf)
+    (throw
+     (ex-info (str "Second argument to deserialize must be a string "
+                   "representing the parsing canonical form of the "
+                   "writer's schema.")
+              {:writer-pcf writer-pcf
+               :writer-pcf-type (#?(:clj class :cljs type) writer-pcf)})))
+  (when-not (instance? ba/ByteArray ba)
+    (throw (ex-info "Third argument to deserialize must be a byte array."
+                    {:ba ba
+                     :ba-type (#?(:clj class :cljs type) ba)})))
   (let [is (impl/make-input-stream ba)]
     (u/deserialize reader-schema-obj writer-pcf is)))
 
