@@ -83,7 +83,7 @@
    [cheshire "5.8.0"]
    [com.taoensso/timbre "4.10.0"]
    [deercreeklabs/baracus "0.1.6" :exclusions [prismatic/schema]]
-   [deercreeklabs/log-utils "0.1.5"]
+   [deercreeklabs/log-utils "0.1.6"]
    [org.clojure/clojure "1.9.0"]
    [org.clojure/clojurescript "1.10.238"]
    [primitive-math "0.1.6"]
