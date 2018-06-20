@@ -131,6 +131,14 @@
   [arg :- s/Any]
   (satisfies? u/ILancasterSchema arg))
 
+(s/defn get-default-data :- s/Any
+  [schema :- (s/protocol u/ILancasterSchema)]
+  (when-not (satisfies? u/ILancasterSchema schema)
+    (throw
+     (ex-info "Argument to get-default-data must be a schema object."
+              {:given-arg schema})))
+  (u/get-default-data (get-edn-schema schema)))
+
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 
 (defmacro def-record-schema

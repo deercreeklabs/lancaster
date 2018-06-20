@@ -28,7 +28,7 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-(declare get-field-default)
+(declare get-default-data)
 
 (defmacro sym-map
   "Builds a map from symbols.
@@ -213,20 +213,22 @@
                    field-type :type
                    field-default :default} field
                   field-schema (ensure-edn-schema field-type)
-                  v (get-field-default field-schema
-                                       (field-name default-record))]
+                  v (if default-record
+                      (get-default-data field-schema
+                                        (field-name default-record))
+                      field-default)]
               (assoc acc field-name v)))
           {} (:fields record-edn-schema)))
 
-(defn get-field-default
-  ([field-schema]
-   (get-field-default field-schema nil))
-  ([field-schema field-default]
-   (let [avro-type (get-avro-type field-schema)]
+(defn get-default-data
+  ([edn-schema]
+   (get-default-data edn-schema nil))
+  ([edn-schema field-default]
+   (let [avro-type (get-avro-type edn-schema)]
      (case avro-type
-       :record (make-default-record field-schema field-default)
-       :union (get-field-default (first field-schema) field-default)
-       :fixed (make-default-fixed-or-bytes (:size field-schema) field-default)
+       :record (make-default-record edn-schema field-default)
+       :union (get-default-data (first edn-schema) field-default)
+       :fixed (make-default-fixed-or-bytes (:size edn-schema) field-default)
        :bytes (make-default-fixed-or-bytes 0 field-default)
        (or field-default
            (case avro-type
@@ -237,7 +239,7 @@
              :float (float -1.0)
              :double (double -1.0)
              :string ""
-             :enum (first (:symbols field-schema))
+             :enum (first (:symbols edn-schema))
              :array []
              :map {}))))))
 

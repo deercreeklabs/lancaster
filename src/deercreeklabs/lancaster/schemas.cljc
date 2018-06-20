@@ -249,7 +249,7 @@
                 (u/sym-map field-name field-schema field-default field))))
     {:name field-name
      :type field-edn-schema
-     :default (u/get-field-default field-edn-schema field-default)}))
+     :default (u/get-default-data field-edn-schema field-default)}))
 
 (defmethod make-edn-schema :record
   [schema-type name-kw fields]

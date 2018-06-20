@@ -253,7 +253,7 @@
             (mapv
              (fn [field]
                (let [{:keys [type]} field
-                     default (u/get-field-default type)
+                     default (u/get-default-data type)
                      new-type (add-defaults type)
                      field-type (u/get-avro-type type)
                      new-field (-> field
