@@ -131,7 +131,7 @@
   [arg :- s/Any]
   (satisfies? u/ILancasterSchema arg))
 
-(s/defn get-default-data :- s/Any
+(s/defn make-default-data :- s/Any
   [schema :- (s/protocol u/ILancasterSchema)]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw

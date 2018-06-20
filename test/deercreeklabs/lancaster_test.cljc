@@ -1240,7 +1240,7 @@
       (let [msg (lu/get-exception-msg e)]
         (is (re-find #"Default value for field .* is invalid" msg))))))
 
-(deftest test-get-default-data
-  (is (= :all (l/get-default-data why-schema)))
+(deftest test-make-default-data
+  (is (= :all (l/make-default-data why-schema)))
   (is (= {:sku -1, :qty-requested 0}
-         (l/get-default-data add-to-cart-req-schema))))
+         (l/make-default-data add-to-cart-req-schema))))
