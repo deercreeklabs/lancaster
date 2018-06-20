@@ -1187,18 +1187,21 @@
 (deftest test-bad-serialize-arg
   (try
     (l/serialize nil nil)
+    (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/get-exception-msg e)]
         (is (str/includes?
              msg "First argument to serialize must be a schema object")))))
   (try
     (l/deserialize why-schema nil (ba/byte-array []))
+    (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/get-exception-msg e)]
         (is (str/includes?
              msg "parsing canonical form")))))
   (try
     (l/deserialize why-schema (l/get-parsing-canonical-form why-schema) [])
+    (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/get-exception-msg e)]
         (is (str/includes?
@@ -1208,19 +1211,31 @@
   (try
     (l/deserialize nil (l/get-parsing-canonical-form why-schema)
                    (ba/byte-array []))
+    (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/get-exception-msg e)]
         (is (str/includes?
              msg "First argument to deserialize must be a schema object")))))
   (try
     (l/deserialize why-schema nil (ba/byte-array []))
+    (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/get-exception-msg e)]
         (is (str/includes?
              msg "parsing canonical form")))))
   (try
     (l/deserialize why-schema (l/get-parsing-canonical-form why-schema) [])
+    (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/get-exception-msg e)]
         (is (str/includes?
              msg "Third argument to deserialize must be a byte array"))))))
+
+(deftest test-field-default-validation
+  (try
+    (l/make-record-schema :test-schema
+                          [[:int-field l/int-schema "a"]])
+    (is (= :should-have-thrown :but-didnt))
+    (catch #?(:clj Exception :cljs js/Error) e
+      (let [msg (lu/get-exception-msg e)]
+        (is (re-find #"Default value for field .* is invalid" msg))))))

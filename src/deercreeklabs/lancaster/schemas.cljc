@@ -166,8 +166,17 @@
          (ex-info (str "Second arg in field definition must be a schema object "
                        "or a name keyword.")
                   {:given-field-schema field-schema})))
-      ;; TODO: Add validation for default
-      )))
+      (when default
+        (try
+          (u/serialize field-schema (impl/make-output-stream 100) default)
+          (catch #?(:clj Exception :cljs js/Error) e
+            (let [ex-msg (lu/get-exception-msg e)]
+              (if (str/includes? ex-msg "not a valid")
+                (throw
+                 (ex-info
+                  (str "Default value for field `" name-kw "` is invalid. "
+                       ex-msg)
+                  (u/sym-map name-kw default ex-msg)))))))))))
 
 (defmethod validate-schema-args :enum
   [schema-type symbols]
