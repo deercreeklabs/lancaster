@@ -231,30 +231,30 @@
 (defmulti add-defaults u/avro-type-dispatch)
 
 (defmethod add-defaults :default
-  [edn-schema]
+  [edn-schema name->edn-schema]
   edn-schema)
 
 (defmethod add-defaults :array
-  [edn-schema]
-  (update edn-schema :items add-defaults))
+  [edn-schema name->edn-schema]
+  (update edn-schema :items #(add-defaults % name->edn-schema)))
 
 (defmethod add-defaults :map
-  [edn-schema]
-  (update edn-schema :values add-defaults))
+  [edn-schema name->edn-schema]
+  (update edn-schema :values #(add-defaults % name->edn-schema)))
 
 (defmethod add-defaults :union
-  [edn-schema]
-  (mapv add-defaults edn-schema))
+  [edn-schema name->edn-schema]
+  (mapv #(add-defaults % name->edn-schema) edn-schema))
 
 (defmethod add-defaults :record
-  [edn-schema]
+  [edn-schema name->edn-schema]
   (update edn-schema :fields
           (fn [fields]
             (mapv
              (fn [field]
                (let [{:keys [type]} field
-                     default (u/get-default-data type)
-                     new-type (add-defaults type)
+                     default (u/get-default-data type nil name->edn-schema)
+                     new-type (add-defaults type name->edn-schema)
                      field-type (u/get-avro-type type)
                      new-field (-> field
                                    (assoc :default default)
@@ -272,7 +272,6 @@
     "double" :double
     "bytes" :bytes
     "string" :string
-    (-> (u/json-string->edn pcf)
-        (avro-schema->edn-schema)
-        (add-defaults)
-        )))
+    (let [edn-schema (avro-schema->edn-schema (u/json-string->edn pcf))
+          name->edn-schema (u/make-name->edn-schema edn-schema)]
+      (add-defaults edn-schema name->edn-schema))))

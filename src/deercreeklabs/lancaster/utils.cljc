@@ -147,10 +147,11 @@
   (cond
     (sequential? edn-schema) :union
     (map? edn-schema) (:type edn-schema)
-    (nil? edn-schema) (throw (ex-info "Schema is nil."
-                                      {:type :illegal-schema
-                                       :subtype :schema-is-nil
-                                       :schema edn-schema}))
+    (nil? edn-schema) (throw
+                       (ex-info "Schema argument to get-avro-type is nil."
+                                {:type :illegal-schema
+                                 :subtype :schema-is-nil
+                                 :schema edn-schema}))
     (string? edn-schema) :name-string ;; For Avro schemas
     (avro-primitive-types edn-schema) edn-schema
     (keyword? edn-schema) :name-keyword
@@ -222,8 +223,10 @@
 
 (defn get-default-data
   ([edn-schema]
-   (get-default-data edn-schema nil))
+   (get-default-data edn-schema nil {}))
   ([edn-schema field-default]
+   (get-default-data edn-schema field-default {}))
+  ([edn-schema field-default name->edn-schema]
    (let [avro-type (get-avro-type edn-schema)]
      (case avro-type
        :record (make-default-record edn-schema field-default)
@@ -241,7 +244,10 @@
              :string ""
              :enum (first (:symbols edn-schema))
              :array []
-             :map {}))))))
+             :map {}
+             :name-keyword (get-default-data (name->edn-schema edn-schema)
+                                             field-default
+                                             name->edn-schema)))))))
 
 (defn first-arg-dispatch [first-arg & rest-of-args]
   first-arg)
@@ -506,7 +512,7 @@
               (sym-map expected data type path edn-schema)))))
 
 (defmethod make-serializer :null
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (fn serialize [os data path]
     (when-not (nil? data)
       (throw-invalid-data-error edn-schema data path))))
@@ -517,7 +523,7 @@
     nil))
 
 (defmethod make-serializer :boolean
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (fn serialize [os data path]
     (when-not (boolean? data)
       (throw
@@ -530,7 +536,7 @@
     (= 1 (read-byte is))))
 
 (defmethod make-serializer :int
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (fn serialize [os data path]
     (when-not (valid-int? data)
       (throw-invalid-data-error edn-schema data path))
@@ -542,7 +548,7 @@
     (int (read-long-varint-zz is))))
 
 (defmethod make-serializer :long
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (fn serialize [os data path]
     (when-not (valid-long? data)
       (throw-invalid-data-error edn-schema data path))
@@ -554,7 +560,7 @@
     (read-long-varint-zz is)))
 
 (defmethod make-serializer :float
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (fn serialize [os data path]
     (when-not (valid-float? data)
       (throw-invalid-data-error edn-schema data path))
@@ -566,7 +572,7 @@
     (read-float is)))
 
 (defmethod make-serializer :double
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (fn serialize [os data path]
     (when-not (valid-double? data)
       (throw-invalid-data-error edn-schema data path))
@@ -578,7 +584,7 @@
     (read-double is)))
 
 (defmethod make-serializer :string
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (fn serialize [os data path]
     (when-not (string? data)
       (throw-invalid-data-error edn-schema data path))
@@ -590,7 +596,7 @@
     (read-utf8-string is)))
 
 (defmethod make-serializer :bytes
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (fn serialize [os data path]
     (when-not (ba/byte-array? data)
       (throw-invalid-data-error edn-schema data path))
@@ -602,7 +608,7 @@
     (read-len-prefixed-bytes is)))
 
 (defmethod make-serializer :enum
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [symbols name]} edn-schema
         symbol->index (apply hash-map
                              (apply concat (map-indexed
@@ -632,7 +638,7 @@
     deserializer))
 
 (defmethod make-serializer :fixed
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [size name]} edn-schema
         serializer (fn serialize [os data path]
                      (when-not (ba/byte-array? data)
@@ -659,9 +665,9 @@
     deserializer))
 
 (defmethod make-serializer :map
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [values]} edn-schema
-        serialize-value (make-serializer values name->avro-type
+        serialize-value (make-serializer values name->edn-schema
                                          *name->serializer)]
     (fn serialize [os data path]
       (when-not (map? data)
@@ -690,9 +696,9 @@
                            m (range count)))))))))
 
 (defmethod make-serializer :array
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [items]} edn-schema
-        serialize-item (make-serializer items name->avro-type
+        serialize-item (make-serializer items name->edn-schema
                                         *name->serializer)]
     (fn serialize [os data path]
       (when-not (sequential? data)
@@ -733,15 +739,16 @@
    :record map?
    nil (constantly true)})
 
-(defn edn-schema->pred [edn-schema name->avro-type]
+(defn edn-schema->pred [edn-schema name->edn-schema]
   (let [avro-type (get-avro-type edn-schema)]
-    (avro-type->pred (if (= :name-keyword avro-type)
-                       (name->avro-type edn-schema)
-                       avro-type))))
+    (avro-type->pred (if (not= :name-keyword avro-type)
+                       avro-type
+                       (when-let [edn-schema (name->edn-schema edn-schema)]
+                         (get-avro-type edn-schema))))))
 
-(defn make-data->branch [member-schemas name->avro-type]
+(defn make-data->branch [member-schemas name->edn-schema]
   (let [num-schemas (count member-schemas)
-        tests (mapv #(edn-schema->pred % name->avro-type) member-schemas)]
+        tests (mapv #(edn-schema->pred % name->edn-schema) member-schemas)]
     (fn [data path]
       (loop [i 0]
         (cond
@@ -752,20 +759,20 @@
                                " Path: " path)
                           (sym-map data path member-schemas))))))))
 
-(defn make-schema-name->branch-info [edn-schema name->avro-type
+(defn make-schema-name->branch-info [edn-schema name->edn-schema
                                      *name->serializer]
   (reduce (fn [acc i]
             (let [sch (nth edn-schema i)
-                  serializer (make-serializer sch name->avro-type
+                  serializer (make-serializer sch name->edn-schema
                                               *name->serializer)]
               (assoc acc (get-schema-name sch) [i serializer])))
           {} (range (count edn-schema))))
 
 (defmethod make-serializer :union
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (if (wrapping-required? edn-schema)
     (let [schema-name->branch-info (make-schema-name->branch-info
-                                    edn-schema name->avro-type
+                                    edn-schema name->edn-schema
                                     *name->serializer)]
       (fn serialize [os data path]
         (try
@@ -786,8 +793,8 @@
                e
                (ex-info "Union requires wrapping, but data is not wrapped."
                         (sym-map data path edn-schema))))))))
-    (let [data->branch (make-data->branch edn-schema name->avro-type)
-          branch->serializer (mapv #(make-serializer % name->avro-type
+    (let [data->branch (make-data->branch edn-schema name->edn-schema)
+          branch->serializer (mapv #(make-serializer % name->edn-schema
                                                      *name->serializer)
                                    edn-schema)]
       (fn serialize [os data path]
@@ -810,16 +817,16 @@
           (let [schema-name (branch->schema-name branch)]
             [schema-name data]))))))
 
-(defn make-field-info [field-schema name->avro-type *name->serializer]
+(defn make-field-info [field-schema name->edn-schema *name->serializer]
   (let [{:keys [name type default]} field-schema
-        serializer (make-serializer type name->avro-type *name->serializer)]
+        serializer (make-serializer type name->edn-schema *name->serializer)]
     [name default serializer]))
 
 (defmethod make-serializer :record
-  [edn-schema name->avro-type *name->serializer]
+  [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [fields name]} edn-schema
         field-infos (binding [**enclosing-namespace** (namespace name)]
-                      (mapv #(make-field-info % name->avro-type
+                      (mapv #(make-field-info % name->edn-schema
                                               *name->serializer)
                             fields))
         serializer (fn serialize [os data path]
@@ -858,7 +865,7 @@
     deserializer))
 
 (defmethod make-serializer :name-keyword
-  [name-kw name->avro-type *name->serializer]
+  [name-kw name->edn-schema *name->serializer]
   (let [qualified-name-kw (qualify-name-kw name-kw)]
     (fn serialize [os data path]
       (let [serializer (@*name->serializer qualified-name-kw)]
@@ -890,71 +897,72 @@
      :cljs (.getTime (js/Date.))))
 
 (defmethod edn-schema->plumatic-schema :null
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   Nil)
 
 (defmethod edn-schema->plumatic-schema :boolean
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   s/Bool)
 
 (defmethod edn-schema->plumatic-schema :int
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   s/Int)
 
 (defmethod edn-schema->plumatic-schema :long
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   LongOrInt)
 
 (defmethod edn-schema->plumatic-schema :float
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   s/Num)
 
 (defmethod edn-schema->plumatic-schema :double
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   s/Num)
 
 (defmethod edn-schema->plumatic-schema :bytes
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   StringOrBytes)
 
 (defmethod edn-schema->plumatic-schema :string
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   StringOrBytes)
 
 (defmethod edn-schema->plumatic-schema :enum
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   (apply s/enum (:symbols edn-schema)))
 
 (defmethod edn-schema->plumatic-schema :fixed
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   StringOrBytes)
 
 (defmethod edn-schema->plumatic-schema :array
-  [edn-schema name->avro-type]
-  [(edn-schema->plumatic-schema (:items edn-schema) name->avro-type)])
+  [edn-schema name->edn-schema]
+  [(edn-schema->plumatic-schema (:items edn-schema) name->edn-schema)])
 
 (defmethod edn-schema->plumatic-schema :map
-  [edn-schema name->avro-type]
-  {s/Str (edn-schema->plumatic-schema (:values edn-schema) name->avro-type)})
+  [edn-schema name->edn-schema]
+  {s/Str (edn-schema->plumatic-schema (:values edn-schema) name->edn-schema)})
 
 (defmethod edn-schema->plumatic-schema :record
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   (reduce (fn [acc {:keys [name type]}]
             (let [key-fn (if (and (= :union (get-avro-type type))
                                   (= :null (first type)))
                            s/optional-key
                            s/required-key)]
               (assoc acc (key-fn name)
-                     (edn-schema->plumatic-schema type name->avro-type))))
+                     (edn-schema->plumatic-schema type name->edn-schema))))
           {s/Any s/Any} (:fields edn-schema)))
 
 (defmethod edn-schema->plumatic-schema :name-keyword
-  [name-kw name->avro-type]
+  [name-kw name->edn-schema]
   ;; Schemas are looser than optimal, due to recursion issues
-  (case (name->avro-type name-kw)
-    :record {s/Any s/Any}
-    :fixed StringOrBytes
-    :enum s/Keyword
+  (if-let [edn-schema (name->edn-schema name-kw)]
+    (case (get-avro-type edn-schema)
+      :record {s/Any s/Any}
+      :fixed StringOrBytes
+      :enum s/Keyword)
     s/Any))
 
 (defn make-wrapped-union-pred [edn-schema]
@@ -962,27 +970,27 @@
     (fn [[data-name data]]
       (= schema-name data-name))))
 
-(defn edn-schema->pred-and-plumatic-schema [edn-schema wrap? name->avro-type]
+(defn edn-schema->pred-and-plumatic-schema [edn-schema wrap? name->edn-schema]
   (let [pred (if wrap?
                (make-wrapped-union-pred edn-schema)
-               (edn-schema->pred edn-schema name->avro-type))
-        pschema (edn-schema->plumatic-schema edn-schema name->avro-type)
+               (edn-schema->pred edn-schema name->edn-schema))
+        pschema (edn-schema->plumatic-schema edn-schema name->edn-schema)
         pschema (if wrap?
                   [(s/one s/Keyword :schema-name) (s/one pschema :schema)]
                   pschema)]
     [pred pschema]))
 
 (defmethod edn-schema->plumatic-schema :union
-  [edn-schema name->avro-type]
+  [edn-schema name->edn-schema]
   (apply s/conditional (mapcat
                         #(edn-schema->pred-and-plumatic-schema
-                          % (wrapping-required? edn-schema) name->avro-type)
+                          % (wrapping-required? edn-schema) name->edn-schema)
                         edn-schema)))
 
-(defn get-types! [edn-schema *name->avro-type]
+(defn get-schemas! [edn-schema *name->edn-schema]
   (let [avro-type (get-avro-type edn-schema)]
     (when (avro-named-types avro-type)
-      (swap! *name->avro-type assoc (:name edn-schema) avro-type))
+      (swap! *name->edn-schema assoc (:name edn-schema) edn-schema))
     (let [child-schemas (case avro-type
                           :record (map :type (:fields edn-schema))
                           :array [(:items edn-schema)]
@@ -990,12 +998,12 @@
                           :union edn-schema
                           [])]
       (doseq [child-schema child-schemas]
-        (get-types! child-schema *name->avro-type)))))
+        (get-schemas! child-schema *name->edn-schema)))))
 
-(defn make-name->avro-type [edn-schema]
-  (let [*name->avro-type (atom {})]
-    (get-types! edn-schema *name->avro-type)
-    @*name->avro-type))
+(defn make-name->edn-schema [edn-schema]
+  (let [*name->edn-schema (atom {})]
+    (get-schemas! edn-schema *name->edn-schema)
+    @*name->edn-schema))
 
 (defn fix-name [edn-schema]
   (update edn-schema :name edn-name-kw->avro-name))

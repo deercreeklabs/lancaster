@@ -55,7 +55,7 @@
 (defmulti validate-schema-args u/first-arg-dispatch)
 
 (defn edn-schema->lancaster-schema [schema-type edn-schema]
-  (let [name->avro-type (u/make-name->avro-type edn-schema)
+  (let [name->edn-schema (u/make-name->edn-schema edn-schema)
         avro-schema (if (u/avro-primitive-types schema-type)
                       (name schema-type)
                       (u/edn-schema->avro-schema edn-schema))
@@ -63,10 +63,10 @@
         parsing-canonical-form (pcf/avro-schema->pcf avro-schema)
         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
         plumatic-schema (u/edn-schema->plumatic-schema edn-schema
-                                                       name->avro-type)
+                                                       name->edn-schema)
         *name->serializer (atom {})
         *name->deserializer (atom {})
-        serializer (u/make-serializer edn-schema name->avro-type
+        serializer (u/make-serializer edn-schema name->edn-schema
                                       *name->serializer)
         deserializer (u/make-deserializer edn-schema *name->deserializer)
         *pcf->resolving-deserializer (atom {})
