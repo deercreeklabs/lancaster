@@ -41,7 +41,7 @@
   (zipmap (map keyword syms) syms))
 
 (defprotocol ILancasterSchema
-  (serialize [this os data])
+  (serialize [this data] [this os data])
   (deserialize [this writer-pcf is])
   (wrap [this data])
   (get-edn-schema [this])
@@ -259,6 +259,7 @@
 (defmulti make-deserializer avro-type-dispatch)
 (defmulti edn-schema->avro-schema avro-type-dispatch)
 (defmulti edn-schema->plumatic-schema avro-type-dispatch)
+(defmulti make-default-data-size avro-type-dispatch)
 
 (s/defn long? :- s/Bool
   [x :- s/Any]
@@ -1120,3 +1121,73 @@
 (defmethod edn-schema->avro-schema :default
   [edn-schema]
   edn-schema)
+
+(defmethod make-default-data-size :null
+  [edn-schema name->edn-schema]
+  0)
+
+(defmethod make-default-data-size :boolean
+  [edn-schema name->edn-schema]
+  1)
+
+(defmethod make-default-data-size :int
+  [edn-schema name->edn-schema]
+  1) ;; Assume small numbers
+
+(defmethod make-default-data-size :long
+  [edn-schema name->edn-schema]
+  8) ;; Assume large numbers
+
+(defmethod make-default-data-size :float
+  [edn-schema name->edn-schema]
+  4)
+
+(defmethod make-default-data-size :double
+  [edn-schema name->edn-schema]
+  8)
+
+(defmethod make-default-data-size :bytes
+  [edn-schema name->edn-schema]
+  100) ;; SWAG
+
+(defmethod make-default-data-size :string
+  [edn-schema name->edn-schema]
+  100) ;; SWAG
+
+(defmethod make-default-data-size :record
+  [edn-schema name->edn-schema]
+  (reduce (fn [acc field]
+            (+ (int acc)
+               (int (make-default-data-size (:type field) name->edn-schema))))
+          0 (:fields edn-schema)))
+
+(defmethod make-default-data-size :enum
+  [edn-schema name->edn-schema]
+  ;; Return max number of bytes
+  (Math/ceil (/ (count (:symbols edn-schema)) 128)))
+
+(defmethod make-default-data-size :fixed
+  [edn-schema name->edn-schema]
+  (:size edn-schema))
+
+(defmethod make-default-data-size :array
+  [edn-schema name->edn-schema]
+  ;; Return number of bytes of 10 items
+  (* 10 (make-default-data-size (:items edn-schema) name->edn-schema)))
+
+(defmethod make-default-data-size :map
+  [edn-schema name->edn-schema]
+  ;; Return number of bytes of one item
+  (* 10 (make-default-data-size (:values edn-schema) name->edn-schema)))
+
+(defmethod make-default-data-size :union
+  [edn-schema name->edn-schema]
+  (apply clojure.core/max (map #(make-default-data-size % name->edn-schema)
+                               edn-schema)))
+
+(defmethod make-default-data-size :name-keyword
+  [name-kw name->edn-schema]
+  (if-let [edn-schema (name->edn-schema name-kw)]
+    (make-default-data-size edn-schema name->edn-schema)
+    100 ;; Recursive schema, so just return a reasonable default
+    ))

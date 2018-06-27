@@ -24,9 +24,13 @@
 
 (defrecord LancasterSchema
     [schema-name edn-schema json-schema parsing-canonical-form
-     fingerprint64 plumatic-schema serializer deserializer *name->serializer
-     *name->deserializer *pcf->resolving-deserializer]
+     fingerprint64 plumatic-schema serializer deserializer default-data-size
+     *name->serializer *name->deserializer *pcf->resolving-deserializer]
   u/ILancasterSchema
+  (serialize [this data]
+    (let [os (impl/make-output-stream default-data-size)]
+      (u/serialize this os data)
+      (u/to-byte-array os)))
   (serialize [this os data]
     (serializer os data []))
   (deserialize [this writer-pcf is]
@@ -69,12 +73,14 @@
         serializer (u/make-serializer edn-schema name->edn-schema
                                       *name->serializer)
         deserializer (u/make-deserializer edn-schema *name->deserializer)
+        default-data-size (u/make-default-data-size edn-schema
+                                                    name->edn-schema)
         *pcf->resolving-deserializer (atom {})
         schema-name (u/get-schema-name edn-schema)]
     (->LancasterSchema
      schema-name edn-schema json-schema parsing-canonical-form
-     fingerprint64 plumatic-schema serializer deserializer *name->serializer
-     *name->deserializer *pcf->resolving-deserializer)))
+     fingerprint64 plumatic-schema serializer deserializer default-data-size
+     *name->serializer *name->deserializer *pcf->resolving-deserializer)))
 
 (defn get-name-or-schema [edn-schema *names]
   (let [schema-name (u/get-schema-name edn-schema)]

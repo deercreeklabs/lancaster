@@ -71,10 +71,7 @@
                    "protocol.")
               {:schema-obj schema-obj
                :schema-obj-type (#?(:clj class :cljs type) schema-obj)})))
-  ;; TODO: Figure out how to set initial size better
-  (let [os (impl/make-output-stream 100)]
-    (u/serialize schema-obj os data)
-    (u/to-byte-array os)))
+  (u/serialize schema-obj data))
 
 (s/defn deserialize :- s/Any
   [reader-schema-obj :- (s/protocol u/ILancasterSchema)
