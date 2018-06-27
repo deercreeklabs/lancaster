@@ -15,14 +15,14 @@
   u/IOutputStream
   (write-byte [this b]
     (let [new-pos (inc pos)]
-      (when (>= new-pos buflen)
+      (when (> new-pos buflen)
         (embiggen this 1))
       (aset ba pos b)
       (set! pos new-pos)))
 
   (write-bytes [this source-ba num-bytes]
     (let [new-pos (+ pos num-bytes)]
-      (when (>= new-pos buflen)
+      (when (> new-pos buflen)
         (embiggen this num-bytes))
       (.set ba source-ba pos)
       (set! pos new-pos)))
@@ -38,7 +38,7 @@
   (write-float [this f]
     (let [new-pos (+ pos 4)
           dataview (js/DataView. (goog.object/get ba "buffer"))]
-      (when (>= new-pos buflen)
+      (when (> new-pos buflen)
         (embiggen this 4))
       (.setFloat32 dataview pos f true)
       (set! pos new-pos)))
@@ -46,7 +46,7 @@
   (write-double [this d]
     (let [new-pos (+ pos 8)
           dataview (js/DataView. (goog.object/get ba "buffer"))]
-      (when (>= new-pos buflen)
+      (when (> new-pos buflen)
         (embiggen this 8))
       (.setFloat64 dataview pos d true)
       (set! pos new-pos)))
