@@ -1173,12 +1173,12 @@
 (defmethod make-default-data-size :array
   [edn-schema name->edn-schema]
   ;; Return number of bytes of 10 items
-  (* 10 (make-default-data-size (:items edn-schema) name->edn-schema)))
+  (* 10 (int (make-default-data-size (:items edn-schema) name->edn-schema))))
 
 (defmethod make-default-data-size :map
   [edn-schema name->edn-schema]
   ;; Return number of bytes of one item
-  (* 10 (make-default-data-size (:values edn-schema) name->edn-schema)))
+  (* 10 (int (make-default-data-size (:values edn-schema) name->edn-schema))))
 
 (defmethod make-default-data-size :union
   [edn-schema name->edn-schema]
