@@ -15,6 +15,9 @@
 (declare make-name*)
 
 (def LancasterSchema (s/protocol u/ILancasterSchema))
+(def LancasterSchemaOrNameKW (s/if keyword?
+                               s/Keyword
+                               LancasterSchema))
 #?(:cljs
    (def Long gm/Long))
 
@@ -51,7 +54,7 @@
   (schemas/make-schema :map nil values-schema))
 
 (s/defn make-union-schema :- LancasterSchema
-  [members :- [LancasterSchema]]
+  [members :- [LancasterSchemaOrNameKW]]
   (schemas/make-schema :union nil members))
 
 (s/defn merge-record-schemas :- LancasterSchema
@@ -60,7 +63,7 @@
   (schemas/merge-record-schemas name-kw schemas))
 
 (s/defn maybe :- LancasterSchema
-  [schema :- LancasterSchema]
+  [schema :- LancasterSchemaOrNameKW]
   (make-union-schema [null-schema schema]))
 
 (s/defn serialize :- ba/ByteArray

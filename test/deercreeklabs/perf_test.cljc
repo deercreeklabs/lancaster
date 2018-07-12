@@ -6,7 +6,11 @@
    [deercreeklabs.lancaster :as l]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
+   [schema.core :as s :include-macros true]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+
+;; Use this instead of fixtures, which are hard to make work w/ async testing.
+(s/set-fn-validation! false)
 
 (def add-to-cart-req-schema
   (l/make-record-schema ::add-to-cart-req

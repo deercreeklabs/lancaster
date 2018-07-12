@@ -19,7 +19,7 @@
                        Schema$Parser))))
 
 ;; Use this instead of fixtures, which are hard to make work w/ async testing.
-(s/set-fn-validation! false)
+(s/set-fn-validation! true)
 
 (u/configure-logging)
 
@@ -1185,51 +1185,53 @@
            (dissoc decoded :data :other-data)))))
 
 (deftest test-bad-serialize-arg
-  (try
-    (l/serialize nil nil)
-    (is (= :should-have-thrown :but-didnt))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
-        (is (str/includes?
-             msg "First argument to serialize must be a schema object")))))
-  (try
-    (l/deserialize why-schema nil (ba/byte-array []))
-    (is (= :should-have-thrown :but-didnt))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
-        (is (str/includes?
-             msg "parsing canonical form")))))
-  (try
-    (l/deserialize why-schema (l/get-parsing-canonical-form why-schema) [])
-    (is (= :should-have-thrown :but-didnt))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
-        (is (str/includes?
-             msg "Third argument to deserialize must be a byte array"))))))
+  (s/without-fn-validation ;; Allow built-in handlers to throw
+   (try
+     (l/serialize nil nil)
+     (is (= :should-have-thrown :but-didnt))
+     (catch #?(:clj Exception :cljs js/Error) e
+       (let [msg (lu/get-exception-msg e)]
+         (is (str/includes?
+              msg "First argument to serialize must be a schema object")))))
+   (try
+     (l/deserialize why-schema nil (ba/byte-array []))
+     (is (= :should-have-thrown :but-didnt))
+     (catch #?(:clj Exception :cljs js/Error) e
+       (let [msg (lu/get-exception-msg e)]
+         (is (str/includes?
+              msg "parsing canonical form")))))
+   (try
+     (l/deserialize why-schema (l/get-parsing-canonical-form why-schema) [])
+     (is (= :should-have-thrown :but-didnt))
+     (catch #?(:clj Exception :cljs js/Error) e
+       (let [msg (lu/get-exception-msg e)]
+         (is (str/includes?
+              msg "Third argument to deserialize must be a byte array")))))))
 
 (deftest test-bad-deserialize-args
-  (try
-    (l/deserialize nil (l/get-parsing-canonical-form why-schema)
-                   (ba/byte-array []))
-    (is (= :should-have-thrown :but-didnt))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
-        (is (str/includes?
-             msg "First argument to deserialize must be a schema object")))))
-  (try
-    (l/deserialize why-schema nil (ba/byte-array []))
-    (is (= :should-have-thrown :but-didnt))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
-        (is (str/includes?
-             msg "parsing canonical form")))))
-  (try
-    (l/deserialize why-schema (l/get-parsing-canonical-form why-schema) [])
-    (is (= :should-have-thrown :but-didnt))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
-        (is (str/includes?
-             msg "Third argument to deserialize must be a byte array"))))))
+  (s/without-fn-validation ;; Allow built-in handlers to throw
+   (try
+     (l/deserialize nil (l/get-parsing-canonical-form why-schema)
+                    (ba/byte-array []))
+     (is (= :should-have-thrown :but-didnt))
+     (catch #?(:clj Exception :cljs js/Error) e
+       (let [msg (lu/get-exception-msg e)]
+         (is (str/includes?
+              msg "First argument to deserialize must be a schema object")))))
+   (try
+     (l/deserialize why-schema nil (ba/byte-array []))
+     (is (= :should-have-thrown :but-didnt))
+     (catch #?(:clj Exception :cljs js/Error) e
+       (let [msg (lu/get-exception-msg e)]
+         (is (str/includes?
+              msg "parsing canonical form")))))
+   (try
+     (l/deserialize why-schema (l/get-parsing-canonical-form why-schema) [])
+     (is (= :should-have-thrown :but-didnt))
+     (catch #?(:clj Exception :cljs js/Error) e
+       (let [msg (lu/get-exception-msg e)]
+         (is (str/includes?
+              msg "Third argument to deserialize must be a byte array")))))))
 
 (deftest test-field-default-validation
   (try

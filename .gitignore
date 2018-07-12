@@ -26,3 +26,4 @@ tramp
 
 # Mac stuff
 .DS_Store
+/package-lock.json

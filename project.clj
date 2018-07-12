@@ -1,5 +1,6 @@
 (def compiler-defaults
-  {:npm-deps {:pako "1.0.6"}
+  {:npm-deps {:pako "1.0.6"
+              :source-map-support "0.5.6"}
    :install-deps true
    :parallel-build true
    :static-fns true
@@ -50,7 +51,7 @@
   :lein-release {:scm :git
                  :deploy-via :clojars}
 
-  :pedantic? :abort
+  ;;:pedantic? :abort
 
   :profiles
   {:dev
@@ -63,7 +64,6 @@
      [lein-cloverage "1.0.11" :exclusions [fipp org.clojure/clojure]]
      [lein-doo "0.1.10"
       :exclusions [org.clojure/clojure org.clojure/clojurescript]]
-     [lein-npm "0.6.2" :exclusions [com.fasterxml.jackson.core/jackson-core]]
      ;; Because of confusion with a defunct project also called
      ;; lein-release, we exclude lein-release from lein-ancient.
      [lein-release "1.0.9" :upgrade false :exclusions [org.clojure/clojure]]]
@@ -71,12 +71,6 @@
     [[doo "0.1.10"]
      [org.apache.avro/avro "1.8.2"]
      [org.clojure/tools.namespace "0.2.11"]]}}
-
-  :npm {:devDependencies [[karma "1.7.1"]
-                          [karma-chrome-launcher "2.2.0"]
-                          [karma-cljs-test "0.1.0"]
-                          [karma-firefox-launcher "1.0.1"]
-                          [source-map-support "0.4.17"]]}
 
   :dependencies
   [[camel-snake-kebab "0.4.0"]
