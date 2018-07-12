@@ -14,7 +14,9 @@
 
 (declare make-name*)
 
-#?(:cljs (def Long gm/Long))
+(def LancasterSchema (s/protocol u/ILancasterSchema))
+#?(:cljs
+   (def Long gm/Long))
 
 (def int-schema (schemas/make-primitive-schema :int))
 (def null-schema (schemas/make-primitive-schema :null))
@@ -25,44 +27,44 @@
 (def bytes-schema (schemas/make-primitive-schema :bytes))
 (def string-schema (schemas/make-primitive-schema :string))
 
-(s/defn make-record-schema :- (s/protocol u/ILancasterSchema)
+(s/defn make-record-schema :- LancasterSchema
   [name-kw :- s/Keyword
    fields :- [schemas/RecordFieldDef]]
   (schemas/make-schema :record name-kw fields))
 
-(s/defn make-enum-schema :- (s/protocol u/ILancasterSchema)
+(s/defn make-enum-schema :- LancasterSchema
   [name-kw :- s/Keyword
    symbols :- [s/Keyword]]
   (schemas/make-schema :enum name-kw symbols))
 
-(s/defn make-fixed-schema :- (s/protocol u/ILancasterSchema)
+(s/defn make-fixed-schema :- LancasterSchema
   [name-kw :- s/Keyword
    size :- s/Int]
   (schemas/make-schema :fixed name-kw size))
 
-(s/defn make-array-schema :- (s/protocol u/ILancasterSchema)
-  [items-schema :- (s/protocol u/ILancasterSchema)]
+(s/defn make-array-schema :- LancasterSchema
+  [items-schema :- LancasterSchema]
   (schemas/make-schema :array nil items-schema))
 
-(s/defn make-map-schema :- (s/protocol u/ILancasterSchema)
-  [values-schema :- (s/protocol u/ILancasterSchema)]
+(s/defn make-map-schema :- LancasterSchema
+  [values-schema :- LancasterSchema]
   (schemas/make-schema :map nil values-schema))
 
-(s/defn make-union-schema :- (s/protocol u/ILancasterSchema)
-  [members :- [(s/protocol u/ILancasterSchema)]]
+(s/defn make-union-schema :- LancasterSchema
+  [members :- [LancasterSchema]]
   (schemas/make-schema :union nil members))
 
-(s/defn merge-record-schemas :- (s/protocol u/ILancasterSchema)
+(s/defn merge-record-schemas :- LancasterSchema
   [name-kw :- s/Keyword
-   schemas :- [(s/protocol u/ILancasterSchema)]]
+   schemas :- [LancasterSchema]]
   (schemas/merge-record-schemas name-kw schemas))
 
-(s/defn maybe :- (s/protocol u/ILancasterSchema)
-  [schema :- (s/protocol u/ILancasterSchema)]
+(s/defn maybe :- LancasterSchema
+  [schema :- LancasterSchema]
   (make-union-schema [null-schema schema]))
 
 (s/defn serialize :- ba/ByteArray
-  [schema-obj :- (s/protocol u/ILancasterSchema)
+  [schema-obj :- LancasterSchema
    data :- s/Any]
   (when-not (satisfies? u/ILancasterSchema schema-obj)
     (throw
@@ -74,7 +76,7 @@
   (u/serialize schema-obj data))
 
 (s/defn deserialize :- s/Any
-  [reader-schema-obj :- (s/protocol u/ILancasterSchema)
+  [reader-schema-obj :- LancasterSchema
    writer-pcf :- s/Str
    ba :- ba/ByteArray]
   (when-not (satisfies? u/ILancasterSchema reader-schema-obj)
@@ -100,28 +102,28 @@
     (u/deserialize reader-schema-obj writer-pcf is)))
 
 (s/defn wrap :- schemas/WrappedData
-  [schema :- (s/protocol u/ILancasterSchema)
+  [schema :- LancasterSchema
    data :- s/Any]
   (u/wrap schema data))
 
 (s/defn get-edn-schema :- s/Any
-  [schema :- (s/protocol u/ILancasterSchema)]
+  [schema :- LancasterSchema]
   (u/get-edn-schema schema))
 
 (s/defn get-json-schema :- s/Str
-  [schema :- (s/protocol u/ILancasterSchema)]
+  [schema :- LancasterSchema]
   (u/get-json-schema schema))
 
 (s/defn get-plumatic-schema :- s/Any
-  [schema :- (s/protocol u/ILancasterSchema)]
+  [schema :- LancasterSchema]
   (u/get-plumatic-schema schema))
 
 (s/defn get-parsing-canonical-form :- s/Str
-  [schema :- (s/protocol u/ILancasterSchema)]
+  [schema :- LancasterSchema]
   (u/get-parsing-canonical-form schema))
 
 (s/defn get-fingerprint64 :- Long
-  [schema :- (s/protocol u/ILancasterSchema)]
+  [schema :- LancasterSchema]
   (u/get-fingerprint64 schema))
 
 (s/defn schema? :- s/Bool
@@ -129,7 +131,7 @@
   (satisfies? u/ILancasterSchema arg))
 
 (s/defn make-default-data :- s/Any
-  [schema :- (s/protocol u/ILancasterSchema)]
+  [schema :- LancasterSchema]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
      (ex-info "Argument to get-default-data must be a schema object."
