@@ -76,7 +76,7 @@
   [[camel-snake-kebab "0.4.0"]
    [cheshire "5.8.0"]
    [com.taoensso/timbre "4.10.0"]
-   [deercreeklabs/baracus "0.1.10"]
+   [deercreeklabs/baracus "0.1.11"]
    [deercreeklabs/log-utils "0.1.8"]
    [org.clojure/clojure "1.9.0"]
    [org.clojure/clojurescript "1.10.339"]
