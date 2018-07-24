@@ -53,6 +53,11 @@
   [values-schema :- LancasterSchema]
   (schemas/make-schema :map nil values-schema))
 
+(s/defn make-flex-map-schema :- LancasterSchema
+  [keys-schema :- LancasterSchema
+   values-schema :- LancasterSchema]
+  (schemas/make-schema :flex-map nil [keys-schema values-schema]))
+
 (s/defn make-union-schema :- LancasterSchema
   [members :- [LancasterSchemaOrNameKW]]
   (schemas/make-schema :union nil members))
@@ -137,7 +142,7 @@
   [schema :- LancasterSchema]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
-     (ex-info "Argument to get-default-data must be a schema object."
+     (ex-info "Argument to make-default-data must be a schema object."
               {:given-arg schema})))
   (u/get-default-data (get-edn-schema schema)))
 

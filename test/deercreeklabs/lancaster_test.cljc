@@ -113,6 +113,8 @@
   [:name-to-age ages-schema]
   [:what l/string-schema])
 
+(def sku->qty-schema (l/make-flex-map-schema l/int-schema l/int-schema))
+
 (def nested-map-schema (l/make-map-schema add-to-cart-rsp-schema))
 
 (def union-schema
@@ -384,7 +386,7 @@
          encoded))
     (is (= data decoded))))
 
-(deftest test-def-map-schema
+(deftest test-map-schema
   (is (= {:type :map :values :int}
          (l/get-edn-schema ages-schema)))
   #?(:clj (is (fp-matches? ages-schema)))
@@ -405,7 +407,51 @@
          encoded))
     (is (= data decoded))))
 
-(deftest test-def-array-schema
+(deftest test-flex-map-schema
+  (is (= {:name
+          :flex-map-record-8247732601305521295-8247732601305521295,
+          :type :record,
+          :fields
+          [{:name :ks, :type {:type :array, :items :int}, :default []}
+           {:name :vs,
+            :type {:type :array, :items :int},
+            :default []}]}
+         (l/get-edn-schema sku->qty-schema)))
+  #?(:clj (is (fp-matches? sku->qty-schema)))
+  (is (= (str
+          "{\"name\":\"FlexMapRecord82477326013055212958247732601305521295\","
+          "\"type\":\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\""
+          ":\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":{\"type\":"
+          "\"array\",\"items\":\"int\"}}]}")
+         (l/get-parsing-canonical-form sku->qty-schema)))
+  (is (= "-1342815058390831865"
+         (u/long->str (l/get-fingerprint64 sku->qty-schema)))))
+
+(deftest test-flex-schema-serdes
+  (let [data {123 10
+              456 100
+              789 2}
+        encoded (l/serialize sku->qty-schema data)
+        decoded (deserialize-same sku->qty-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [6, -10, 1, -112, 7, -86, 12, 0, 6, 20, -56, 1, 4, 0])
+         encoded))
+    (is (= data decoded))))
+
+(deftest test-complex-key-flex-schema-serdes
+  (let [schema (l/make-flex-map-schema add-to-cart-req-schema l/boolean-schema)
+        data {{:sku 123 :qty-requested 10} true
+              {:sku 999 :qty-requested 7} false}
+        encoded (l/serialize schema data)
+        decoded (deserialize-same schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [4, -10, 1, 20, -50, 15, 14, 0, 4, 1, 0, 0])
+         encoded))
+    (is (= data decoded))))
+
+
+
+(deftest test-array-schema
   #?(:clj (is (fp-matches? simple-array-schema)))
   (is (= {:type :array :items :string}
          (l/get-edn-schema simple-array-schema)))

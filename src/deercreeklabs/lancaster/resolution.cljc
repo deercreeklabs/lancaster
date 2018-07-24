@@ -275,7 +275,8 @@
   (cond
     (and (= :union writer-type) (= :union reader-type))
     (let [branch->deserializer (mapv
-                                #(u/make-deserializer % *name->deserializer)
+                                #(u/make-deserializer
+                                  (u/get-avro-type %) % *name->deserializer)
                                 writer-edn-schema)
           branch->schema-name (mapv u/get-schema-name writer-edn-schema)
           branch->xf (mapv #(make-union-xf % (vec reader-edn-schema))
@@ -296,7 +297,9 @@
             data))))
 
     (= :union writer-type)
-    (let [branch->deserializer (mapv #(u/make-deserializer % *name->deserializer)
+    (let [branch->deserializer (mapv #(u/make-deserializer
+                                       (u/get-avro-type %)
+                                       % *name->deserializer)
                                      writer-edn-schema)
           branch->schema-name (mapv u/get-schema-name writer-edn-schema)
           branch->xf (mapv #(make-union-xf % [reader-edn-schema])
@@ -318,8 +321,9 @@
 
     :else
     (let [xf (make-union-xf writer-edn-schema reader-edn-schema)
-          deserializer (u/make-deserializer writer-edn-schema
-                                            *name->deserializer)
+          deserializer (u/make-deserializer
+                        (u/get-avro-type writer-edn-schema) writer-edn-schema
+                        *name->deserializer)
           schema-name (u/get-schema-name writer-edn-schema)]
       (if (u/wrapping-required? reader-edn-schema)
         (fn deserialize [is]
@@ -338,8 +342,10 @@
         (make-union-resolving-decoder writer-edn-schema reader-edn-schema
                                       writer-type reader-type
                                       *name->deserializer)
-        (let [writer-deserializer (u/make-deserializer writer-edn-schema
-                                                       *name->deserializer)
+        (let [writer-deserializer (u/make-deserializer
+                                   (u/get-avro-type writer-edn-schema)
+                                   writer-edn-schema
+                                   *name->deserializer)
               xf (make-xf writer-edn-schema reader-edn-schema)]
           (fn deserialize [is]
             (xf (writer-deserializer is)))))
