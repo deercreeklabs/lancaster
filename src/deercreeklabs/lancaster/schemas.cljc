@@ -110,17 +110,26 @@
                  name-or-schema))
      edn-schema)))
 
+(defn validate-name-kw [name-kw]
+  (when-not (re-matches #"[A-Za-z][A-Za-z0-9\-]*" (name name-kw))
+    (throw (ex-info
+            (str "Name keywords must start with a letter and "
+                 "subsequently may only contain letters, numbers, "
+                 "or hyphens")
+            {:given-name-kw name-kw}))))
+
 (defn make-schema
   ([schema-type ns-name schema-name args]
    (let [name-kw (keyword ns-name schema-name)]
      (make-schema schema-type name-kw args)))
   ([schema-type name-kw args]
-   (when (and (u/avro-named-types schema-type)
-              (not (keyword? name-kw)))
-     (let [fn-name (str "make-" (name schema-type) "-schema")]
-       (throw (ex-info (str "First arg to " fn-name " must be a name keyword."
-                            "The keyword can be namespaced or not.")
-                       {:given-name-kw name-kw}))))
+   (when (u/avro-named-types schema-type)
+     (when (not (keyword? name-kw))
+       (let [fn-name (str "make-" (name schema-type) "-schema")]
+         (throw (ex-info (str "First arg to " fn-name " must be a name keyword."
+                              "The keyword can be namespaced or not.")
+                         {:given-name-kw name-kw}))))
+     (validate-name-kw name-kw))
    (when-not (u/avro-primitive-types schema-type)
      (validate-schema-args schema-type args))
    (let [edn-schema (if (u/avro-primitive-types schema-type)
@@ -168,6 +177,7 @@
       (when-not (keyword? name-kw)
         (throw (ex-info "First arg in field definition must be a name keyword."
                         {:given-name-kw name-kw})))
+      (validate-name-kw name-kw)
       (when-not (schema-or-kw? field-schema)
         (throw
          (ex-info (str "Second arg in field definition must be a schema object "

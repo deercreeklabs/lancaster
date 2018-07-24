@@ -1292,3 +1292,23 @@
   (is (= :all (l/make-default-data why-schema)))
   (is (= {:sku -1, :qty-requested 0}
          (l/make-default-data add-to-cart-req-schema))))
+
+(deftest test-bad-field-name
+  (try
+    (l/make-record-schema :test-schema
+                          [[:bad? l/boolean-schema]])
+    (is (= :should-have-thrown :but-didnt))
+    (catch #?(:clj Exception :cljs js/Error) e
+      (let [msg (lu/get-exception-msg e)]
+        (is (re-find #"Name keywords must start with a letter and subsequently"
+                     msg))))))
+
+(deftest test-bad-record-name
+  (try
+    (l/make-record-schema :*test-schema*
+                          [[:is-good l/boolean-schema]])
+    (is (= :should-have-thrown :but-didnt))
+    (catch #?(:clj Exception :cljs js/Error) e
+      (let [msg (lu/get-exception-msg e)]
+        (is (re-find #"Name keywords must start with a letter and subsequently"
+                     msg))))))
