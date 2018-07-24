@@ -62,22 +62,31 @@
         json-enc-fn (fn []
                       #?(:clj (json/generate-string data)
                          :cljs (js/JSON.stringify (clj->js data))))
+        deflated-json-enc-fn #(-> (json-enc-fn)
+                                  (ba/utf8->byte-array)
+                                  (ba/deflate))
         enc-ops (get-ops-per-sec enc-fn num-ops)
         json-enc-ops (get-ops-per-sec json-enc-fn num-ops)
+        deflated-json-enc-ops (get-ops-per-sec deflated-json-enc-fn
+                                               (/ num-ops 10))
         encoded (enc-fn)
         json-encoded (json-enc-fn)
+        deflated-json-encoded (deflated-json-enc-fn)
         dec-fn #(deserialize-same add-to-cart-rsp-schema
                                   encoded)
         json-dec-fn (fn []
                       #?(:clj (json/parse-string json-encoded true)
                          :cljs (js->clj (js/JSON.parse json-encoded))))
+
         dec-ops (get-ops-per-sec dec-fn num-ops)
         json-dec-ops (get-ops-per-sec json-dec-fn num-ops)]
-    (infof "Encoding ops per sec: %.0f" enc-ops)
-    (infof "Decoding ops per sec: %.0f" dec-ops)
-    (infof "JSON Enc ops per sec: %.0f" json-enc-ops)
-    (infof "JSON Dec ops per sec: %.0f" json-dec-ops)
-    (infof "Encoded size: %d" (count encoded))
-    (infof "JSON Enc size: %d" (count json-encoded))
+    (infof "Avro encode ops per sec:          %.0f" enc-ops)
+    (infof "Avro decode ops per sec:          %.0f" dec-ops)
+    (infof "JSON encode ops per sec:          %.0f" json-enc-ops)
+    (infof "JSON decode ops per sec:          %.0f" json-dec-ops)
+    (infof "Deflated JSON encode ops per sec: %.0f" deflated-json-enc-ops)
+    (infof "Avro encoded size:                %d" (count encoded))
+    (infof "JSON encoded size:                %d" (count json-encoded))
+    (infof "Deflated JSON encoded size:       %d" (count deflated-json-encoded))
     (is (< #?(:cljs 20000 :clj 200000) enc-ops))
     (is (< #?(:cljs 40000 :clj 300000) dec-ops))))
