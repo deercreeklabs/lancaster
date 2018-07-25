@@ -66,7 +66,7 @@
         json-schema (u/edn->json-string avro-schema)
         parsing-canonical-form (pcf/avro-schema->pcf avro-schema)
         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
-        plumatic-schema (u/edn-schema->plumatic-schema schema-type edn-schema
+        plumatic-schema (u/edn-schema->plumatic-schema edn-schema
                                                        name->edn-schema)
         *name->serializer (atom {})
         *name->deserializer (atom {})

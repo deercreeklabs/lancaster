@@ -258,7 +258,7 @@
 (defmulti make-serializer first-arg-dispatch)
 (defmulti make-deserializer first-arg-dispatch)
 (defmulti edn-schema->avro-schema avro-type-dispatch)
-(defmulti edn-schema->plumatic-schema first-arg-dispatch)
+(defmulti edn-schema->plumatic-schema avro-type-dispatch)
 (defmulti make-default-data-size avro-type-dispatch)
 
 (s/defn long? :- s/Bool
@@ -927,84 +927,66 @@
      :cljs (.getTime (js/Date.))))
 
 (defmethod edn-schema->plumatic-schema :null
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   Nil)
 
 (defmethod edn-schema->plumatic-schema :boolean
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   s/Bool)
 
 (defmethod edn-schema->plumatic-schema :int
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   s/Int)
 
 (defmethod edn-schema->plumatic-schema :long
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   LongOrInt)
 
 (defmethod edn-schema->plumatic-schema :float
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   s/Num)
 
 (defmethod edn-schema->plumatic-schema :double
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   s/Num)
 
 (defmethod edn-schema->plumatic-schema :bytes
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   StringOrBytes)
 
 (defmethod edn-schema->plumatic-schema :string
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   StringOrBytes)
 
 (defmethod edn-schema->plumatic-schema :enum
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   (apply s/enum (:symbols edn-schema)))
 
 (defmethod edn-schema->plumatic-schema :fixed
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   StringOrBytes)
 
 (defmethod edn-schema->plumatic-schema :array
-  [schema-type edn-schema name->edn-schema]
-  (let [sub-schema (:items edn-schema)
-        sub-schema-type (get-avro-type sub-schema)]
-    [(edn-schema->plumatic-schema sub-schema-type sub-schema
-                                  name->edn-schema)]))
+  [edn-schema name->edn-schema]
+  [(edn-schema->plumatic-schema (:items edn-schema) name->edn-schema)])
 
 (defmethod edn-schema->plumatic-schema :map
-  [schema-type edn-schema name->edn-schema]
-  (let [sub-schema (:values edn-schema)
-        sub-schema-type (get-avro-type sub-schema)]
-    {s/Str (edn-schema->plumatic-schema sub-schema-type sub-schema
-                                        name->edn-schema)}))
-
-(defmethod edn-schema->plumatic-schema :flex-map
-  [schema-type edn-schema name->edn-schema]
-  (let [[k-field v-field] (:fields edn-schema)
-        field->pschema (fn [field]
-                         (let [edn-schema* (get-in field [:type :items])
-                               schema-type* (get-avro-type edn-schema*)]
-                           (edn-schema->plumatic-schema
-                            schema-type* edn-schema* name->edn-schema)))]
-    {(field->pschema k-field) (field->pschema v-field)}))
+  [edn-schema name->edn-schema]
+  {s/Str (edn-schema->plumatic-schema (:values edn-schema) name->edn-schema)})
 
 (defmethod edn-schema->plumatic-schema :record
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   (reduce (fn [acc {:keys [name type]}]
-            (let [sub-schema-type (get-avro-type type)
-                  key-fn (if (and (= :union sub-schema-type)
+            (let [key-fn (if (and (= :union (get-avro-type type))
                                   (= :null (first type)))
                            s/optional-key
                            s/required-key)]
               (assoc acc (key-fn name)
-                     (edn-schema->plumatic-schema sub-schema-type type
-                                                  name->edn-schema))))
+                     (edn-schema->plumatic-schema type name->edn-schema))))
           {s/Any s/Any} (:fields edn-schema)))
 
 (defmethod edn-schema->plumatic-schema :name-keyword
-  [schema-type name-kw name->edn-schema]
+  [name-kw name->edn-schema]
   ;; Schemas are looser than optimal, due to recursion issues
   (if-let [edn-schema (name->edn-schema name-kw)]
     (case (get-avro-type edn-schema)
@@ -1022,15 +1004,14 @@
   (let [pred (if wrap?
                (make-wrapped-union-pred edn-schema)
                (edn-schema->pred edn-schema name->edn-schema))
-        pschema (edn-schema->plumatic-schema (get-avro-type edn-schema)
-                                             edn-schema name->edn-schema)
+        pschema (edn-schema->plumatic-schema edn-schema name->edn-schema)
         pschema (if wrap?
                   [(s/one s/Keyword :schema-name) (s/one pschema :schema)]
                   pschema)]
     [pred pschema]))
 
 (defmethod edn-schema->plumatic-schema :union
-  [schema-type edn-schema name->edn-schema]
+  [edn-schema name->edn-schema]
   (apply s/conditional (mapcat
                         #(edn-schema->pred-and-plumatic-schema
                           % (wrapping-required? edn-schema) name->edn-schema)
