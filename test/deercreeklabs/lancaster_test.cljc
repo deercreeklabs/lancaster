@@ -449,7 +449,12 @@
          encoded))
     (is (= data decoded))))
 
-
+(deftest test-plumatic-flex-map
+  (let [schema (l/make-flex-map-schema add-to-cart-req-schema l/boolean-schema)
+        pschema (l/get-plumatic-schema schema)
+        data {{:sku 123 :qty-requested 10} true
+              {:sku 999 :qty-requested 7} false}]
+    (is (nil? (s/check pschema data)))))
 
 (deftest test-array-schema
   #?(:clj (is (fp-matches? simple-array-schema)))
