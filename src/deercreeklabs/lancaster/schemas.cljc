@@ -70,10 +70,9 @@
                                                        name->edn-schema)
         *name->serializer (atom {})
         *name->deserializer (atom {})
-        serializer (u/make-serializer schema-type edn-schema name->edn-schema
+        serializer (u/make-serializer edn-schema name->edn-schema
                                       *name->serializer)
-        deserializer (u/make-deserializer schema-type edn-schema
-                                          *name->deserializer)
+        deserializer (u/make-deserializer edn-schema *name->deserializer)
         default-data-size (u/make-default-data-size edn-schema
                                                     name->edn-schema)
         *pcf->resolving-deserializer (atom {})
@@ -136,7 +135,7 @@
                       schema-type
                       (-> (make-edn-schema schema-type name-kw args)
                           (fix-repeated-schemas)))]
-     (edn-schema->lancaster-schema schema-type edn-schema))))
+     (edn-schema->lancaster-schema schema-type edn-schema ))))
 
 (defn merge-record-schemas [name-kw schemas]
   (when-not (keyword? name-kw)
@@ -217,7 +216,7 @@
   [schema-type items-schema]
   (when-not (schema-or-kw? items-schema)
     (throw
-     (ex-info (str "Arg to make-array-schema must be a schema object "
+     (ex-info (str "Second arg to make-array-schema must be a schema object "
                    "or a name keyword.")
               {:given-items-schema items-schema}))))
 
@@ -225,27 +224,14 @@
   [schema-type values-schema]
   (when-not (schema-or-kw? values-schema)
     (throw
-     (ex-info (str "Arg to make-map-schema must be a schema object "
+     (ex-info (str "Second arg to make-map-schema must be a schema object "
                    "or a name keyword.")
-              {:given-values-schema values-schema}))))
-
-(defmethod validate-schema-args :flex-map
-  [schema-type [keys-schema values-schema]]
-  (when-not (schema-or-kw? keys-schema)
-    (throw
-     (ex-info (str "First arg to make-flex-map-schema (keys-schema) "
-                   "must be a schema object or a name keyword.")
-              {:given-keys-schema keys-schema})))
-  (when-not (schema-or-kw? values-schema)
-    (throw
-     (ex-info (str "First arg to make-flex-map-schema (values-schema) "
-                   "must be a schema object or a name keyword.")
               {:given-values-schema values-schema}))))
 
 (defmethod validate-schema-args :union
   [schema-type member-schemas]
   (when-not (sequential? member-schemas)
-    (throw (ex-info (str "Arg to make-union-schema must be a sequence "
+    (throw (ex-info (str "Second arg to make-union-schema must be a sequence "
                          "of member schema objects or name keywords.")
                     {:given-member-schemas member-schemas})))
   (doseq [member-schema member-schemas]
@@ -316,16 +302,6 @@
   [schema-type name-kw values]
   {:type :map
    :values (u/ensure-edn-schema values)})
-
-(defmethod make-edn-schema :flex-map
-  [schema-type _ [keys-schema values-schema]]
-  (let [rec-name-kw (keyword (str/join "-"
-                                       ["flex-map-record"
-                                        (u/get-fingerprint64 keys-schema)
-                                        (u/get-fingerprint64 values-schema)]))
-        fields [[:ks (make-schema :array nil keys-schema)]
-                [:vs (make-schema :array nil values-schema)]]]
-    (make-edn-schema :record rec-name-kw fields)))
 
 (defmethod make-edn-schema :union
   [schema-type name-kw member-schemas]

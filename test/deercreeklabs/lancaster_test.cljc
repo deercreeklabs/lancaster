@@ -113,8 +113,6 @@
   [:name-to-age ages-schema]
   [:what l/string-schema])
 
-(def sku->qty-schema (l/make-flex-map-schema l/int-schema l/int-schema))
-
 (def nested-map-schema (l/make-map-schema add-to-cart-rsp-schema))
 
 (def union-schema
@@ -386,7 +384,7 @@
          encoded))
     (is (= data decoded))))
 
-(deftest test-map-schema
+(deftest test-def-map-schema
   (is (= {:type :map :values :int}
          (l/get-edn-schema ages-schema)))
   #?(:clj (is (fp-matches? ages-schema)))
@@ -458,7 +456,7 @@
                {:sku 999 :qty-requested 7} false}]]
     (is (nil? (s/check pschema data)))))
 
-(deftest test-array-schema
+(deftest test-def-array-schema
   #?(:clj (is (fp-matches? simple-array-schema)))
   (is (= {:type :array :items :string}
          (l/get-edn-schema simple-array-schema)))
