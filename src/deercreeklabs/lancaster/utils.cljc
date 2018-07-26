@@ -260,6 +260,7 @@
 (defmulti edn-schema->avro-schema avro-type-dispatch)
 (defmulti edn-schema->plumatic-schema avro-type-dispatch)
 (defmulti make-default-data-size avro-type-dispatch)
+(defmulti make-edn-schema first-arg-dispatch)
 
 (s/defn long? :- s/Bool
   [x :- s/Any]
@@ -512,6 +513,14 @@
                    expected ". Path: " path)
               (sym-map expected data type path edn-schema)))))
 
+(defn edn->json-string [edn]
+  #?(:clj (json/generate-string edn {:pretty true})
+     :cljs (js/JSON.stringify (clj->js edn))))
+
+(defn json-string->edn [json-str]
+  #?(:clj (json/parse-string json-str true)
+     :cljs (js->clj (js/JSON.parse json-str) :keywordize-keys true)))
+
 (defmethod make-serializer :null
   [edn-schema name->edn-schema *name->serializer]
   (fn serialize [os data path]
@@ -696,6 +705,45 @@
                                (assoc! acc k v)))
                            m (range count)))))))))
 
+(defn get-hash [edn-schema]
+  (let [schema-type (get-avro-type edn-schema)
+        avro-schema (if (avro-primitive-types schema-type)
+                      (name schema-type)
+                      (edn-schema->avro-schema edn-schema))]
+    (-> (edn->json-string avro-schema)
+        (ba/utf8->byte-array)
+        (ba/sha256)
+        (ba/byte-array->hex-str))))
+
+(defn flex-map-edn-schema->record-edn-schema [fm-edn-schema]
+  (let [keys-schema (:keys fm-edn-schema)
+        values-schema (:values fm-edn-schema)
+        rec-name-kw (keyword (str/join "-" ["flex-map-record"
+                                            (get-hash keys-schema)
+                                            (get-hash values-schema)]))
+        fields [[:ks (make-edn-schema :array nil keys-schema)]
+                [:vs (make-edn-schema :array nil values-schema)]]]
+    (make-edn-schema :record rec-name-kw fields)))
+
+(defmethod make-serializer :flex-map
+  [edn-schema name->edn-schema *name->serializer]
+  (let [ser-rec (-> (flex-map-edn-schema->record-edn-schema edn-schema)
+                    (make-serializer name->edn-schema *name->serializer))]
+    (fn serialize [os data path]
+      (when-not (map? data)
+        (throw-invalid-data-error edn-schema data path))
+      (let [ks (keys data)
+            vs (vals data)]
+        (ser-rec os (sym-map ks vs) path)))))
+
+(defmethod make-deserializer :flex-map
+  [edn-schema *name->deserializer]
+  (let [deser-rec (-> (flex-map-edn-schema->record-edn-schema edn-schema)
+                      (make-deserializer *name->deserializer))]
+    (fn deserialize [is]
+      (let [{:keys [ks vs]} (deser-rec is)]
+        (zipmap ks vs)))))
+
 (defmethod make-serializer :array
   [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [items]} edn-schema
@@ -879,14 +927,6 @@
       (let [deserializer (@*name->deserializer qualified-name-kw)]
         (deserializer is)))))
 
-(defn edn->json-string [edn]
-  #?(:clj (json/generate-string edn {:pretty true})
-     :cljs (js/JSON.stringify (clj->js edn))))
-
-(defn json-string->edn [json-str]
-  #?(:clj (json/parse-string json-str true)
-     :cljs (js->clj (js/JSON.parse json-str) :keywordize-keys true)))
-
 (defn configure-logging []
   (timbre/merge-config!
    {:level :debug
@@ -944,6 +984,13 @@
 (defmethod edn-schema->plumatic-schema :map
   [edn-schema name->edn-schema]
   {s/Str (edn-schema->plumatic-schema (:values edn-schema) name->edn-schema)})
+
+(defmethod edn-schema->plumatic-schema :flex-map
+  [edn-schema name->edn-schema]
+  (let [{:keys [keys values]} edn-schema
+        k-pschema (edn-schema->plumatic-schema keys name->edn-schema)
+        v-pschema (edn-schema->plumatic-schema values name->edn-schema)]
+    {k-pschema v-pschema}))
 
 (defmethod edn-schema->plumatic-schema :record
   [edn-schema name->edn-schema]
@@ -1110,6 +1157,11 @@
   [edn-schema]
   (update edn-schema :values edn-schema->avro-schema))
 
+(defmethod edn-schema->avro-schema :flex-map
+  [edn-schema]
+  (-> (flex-map-edn-schema->record-edn-schema edn-schema)
+      (edn-schema->avro-schema)))
+
 (defmethod edn-schema->avro-schema :union
   [edn-schema]
   (mapv edn-schema->avro-schema edn-schema))
@@ -1172,13 +1224,19 @@
 
 (defmethod make-default-data-size :array
   [edn-schema name->edn-schema]
-  ;; Return number of bytes of 10 items
   (* 10 (int (make-default-data-size (:items edn-schema) name->edn-schema))))
 
 (defmethod make-default-data-size :map
   [edn-schema name->edn-schema]
-  ;; Return number of bytes of one item
-  (* 10 (int (make-default-data-size (:values edn-schema) name->edn-schema))))
+  (* 10 (+ 10 ;; key
+           (int (make-default-data-size (:values edn-schema)
+                                        name->edn-schema)))))
+
+(defmethod make-default-data-size :flex-map
+  [edn-schema name->edn-schema]
+  (let [{:keys [keys values]} edn-schema]
+    (* 10 (+ (int (make-default-data-size keys name->edn-schema))
+             (int (make-default-data-size values name->edn-schema))))))
 
 (defmethod make-default-data-size :union
   [edn-schema name->edn-schema]
@@ -1191,3 +1249,71 @@
     (make-default-data-size edn-schema name->edn-schema)
     100 ;; Recursive schema, so just return a reasonable default
     ))
+
+(defn make-record-field [field]
+  (when-not (#{2 3} (count field))
+    (throw
+     (ex-info (str "Record field definition must have 2 or 3 parameters. ("
+                   "[field-name field-schema] or "
+                   "[field-name field-schema field-default]).\n"
+                   "  Got " (count field) " parameters.\n"
+                   "  Bad field definition: " field)
+              {:bad-field-def field})))
+  (let [[field-name field-schema field-default] field
+        field-edn-schema (if (satisfies? ILancasterSchema field-schema)
+                           (get-edn-schema field-schema)
+                           field-schema)]
+    (when-not (keyword? field-name)
+      (throw
+       (ex-info (str "Field names must be keywords. Bad field name: "
+                     field-name)
+                (sym-map field-name field-schema field-default field))))
+    {:name field-name
+     :type field-edn-schema
+     :default (get-default-data field-edn-schema field-default)}))
+
+(defmethod make-edn-schema :record
+  [schema-type name-kw fields]
+  (let [name-kw (qualify-name-kw name-kw)
+        fields (binding [**enclosing-namespace** (namespace name-kw)]
+                 (mapv make-record-field fields))
+        edn-schema {:name name-kw
+                    :type :record
+                    :fields fields}]
+    edn-schema))
+
+(defmethod make-edn-schema :enum
+  [schema-type name-kw symbols]
+  (let [name-kw (qualify-name-kw name-kw)
+        edn-schema {:name name-kw
+                    :type :enum
+                    :symbols symbols}]
+    edn-schema))
+
+(defmethod make-edn-schema :fixed
+  [schema-type name-kw size]
+  (let [name-kw (qualify-name-kw name-kw)
+        edn-schema {:name name-kw
+                    :type :fixed
+                    :size size}]
+    edn-schema))
+
+(defmethod make-edn-schema :array
+  [schema-type name-kw items]
+  {:type :array
+   :items (ensure-edn-schema items)})
+
+(defmethod make-edn-schema :map
+  [schema-type name-kw values]
+  {:type :map
+   :values (ensure-edn-schema values)})
+
+(defmethod make-edn-schema :flex-map
+  [schema-type name-kw [ks vs]]
+  {:type :flex-map
+   :keys  (ensure-edn-schema ks)
+   :values (ensure-edn-schema vs)})
+
+(defmethod make-edn-schema :union
+  [schema-type name-kw member-schemas]
+  (mapv ensure-edn-schema member-schemas))

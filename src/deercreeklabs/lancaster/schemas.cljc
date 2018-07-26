@@ -55,7 +55,6 @@
   (get-plumatic-schema [this]
     plumatic-schema))
 
-(defmulti make-edn-schema u/first-arg-dispatch)
 (defmulti validate-schema-args u/first-arg-dispatch)
 
 (defn edn-schema->lancaster-schema [schema-type edn-schema]
@@ -133,7 +132,7 @@
      (validate-schema-args schema-type args))
    (let [edn-schema (if (u/avro-primitive-types schema-type)
                       schema-type
-                      (-> (make-edn-schema schema-type name-kw args)
+                      (-> (u/make-edn-schema schema-type name-kw args)
                           (fix-repeated-schemas)))]
      (edn-schema->lancaster-schema schema-type edn-schema ))))
 
@@ -216,7 +215,7 @@
   [schema-type items-schema]
   (when-not (schema-or-kw? items-schema)
     (throw
-     (ex-info (str "Second arg to make-array-schema must be a schema object "
+     (ex-info (str "Arg to make-array-schema must be a schema object "
                    "or a name keyword.")
               {:given-items-schema items-schema}))))
 
@@ -224,14 +223,29 @@
   [schema-type values-schema]
   (when-not (schema-or-kw? values-schema)
     (throw
-     (ex-info (str "Second arg to make-map-schema must be a schema object "
+     (ex-info (str "Arg to make-map-schema must be a schema object "
                    "or a name keyword.")
+              {:given-values-schema values-schema}))))
+
+(defmethod validate-schema-args :flex-map
+  [schema-type [keys-schema values-schema]]
+  (when-not (schema-or-kw? keys-schema)
+    (throw
+     (ex-info (str "First arg to make-flex-map-schema must be a schema object "
+                   "or a name keyword indicating the key schema of the "
+                   "flex-map.")
+              {:given-values-schema values-schema})))
+  (when-not (schema-or-kw? values-schema)
+    (throw
+     (ex-info (str "Second arg to make-flex-map-schema must be a schema object "
+                   "or a name keyword indicating the value schema of the "
+                   "flex-map.")
               {:given-values-schema values-schema}))))
 
 (defmethod validate-schema-args :union
   [schema-type member-schemas]
   (when-not (sequential? member-schemas)
-    (throw (ex-info (str "Second arg to make-union-schema must be a sequence "
+    (throw (ex-info (str "Arg to make-union-schema must be a sequence "
                          "of member schema objects or name keywords.")
                     {:given-member-schemas member-schemas})))
   (doseq [member-schema member-schemas]
@@ -244,65 +258,3 @@
                                ;; Name keywords & named schemas are always okay
                                (remove keyword? member-schemas)))
     (throw (ex-info "Illegal union schema." {:schema member-schemas}))))
-
-(defn make-record-field [field]
-  (when-not (#{2 3} (count field))
-    (throw
-     (ex-info (str "Record field definition must have 2 or 3 parameters. ("
-                   "[field-name field-schema] or "
-                   "[field-name field-schema field-default]).\n"
-                   "  Got " (count field) " parameters.\n"
-                   "  Bad field definition: " field)
-              {:bad-field-def field})))
-  (let [[field-name field-schema field-default] field
-        field-edn-schema (if (keyword? field-schema)
-                           field-schema
-                           (u/get-edn-schema field-schema))]
-    (when-not (keyword? field-name)
-      (throw
-       (ex-info (str "Field names must be keywords. Bad field name: "
-                     field-name)
-                (u/sym-map field-name field-schema field-default field))))
-    {:name field-name
-     :type field-edn-schema
-     :default (u/get-default-data field-edn-schema field-default)}))
-
-(defmethod make-edn-schema :record
-  [schema-type name-kw fields]
-  (let [name-kw (u/qualify-name-kw name-kw)
-        fields (binding [u/**enclosing-namespace** (namespace name-kw)]
-                 (mapv make-record-field fields))
-        edn-schema {:name name-kw
-                    :type :record
-                    :fields fields}]
-    edn-schema))
-
-(defmethod make-edn-schema :enum
-  [schema-type name-kw symbols]
-  (let [name-kw (u/qualify-name-kw name-kw)
-        edn-schema {:name name-kw
-                    :type :enum
-                    :symbols symbols}]
-    edn-schema))
-
-(defmethod make-edn-schema :fixed
-  [schema-type name-kw size]
-  (let [name-kw (u/qualify-name-kw name-kw)
-        edn-schema {:name name-kw
-                    :type :fixed
-                    :size size}]
-    edn-schema))
-
-(defmethod make-edn-schema :array
-  [schema-type name-kw items]
-  {:type :array
-   :items (u/ensure-edn-schema items)})
-
-(defmethod make-edn-schema :map
-  [schema-type name-kw values]
-  {:type :map
-   :values (u/ensure-edn-schema values)})
-
-(defmethod make-edn-schema :union
-  [schema-type name-kw member-schemas]
-  (mapv u/ensure-edn-schema member-schemas))

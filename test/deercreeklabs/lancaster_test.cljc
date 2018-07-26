@@ -113,6 +113,8 @@
   [:name-to-age ages-schema]
   [:what l/string-schema])
 
+(def sku->qty-schema (l/make-flex-map-schema l/int-schema l/int-schema))
+
 (def nested-map-schema (l/make-map-schema add-to-cart-rsp-schema))
 
 (def union-schema
@@ -406,23 +408,19 @@
     (is (= data decoded))))
 
 (deftest test-flex-map-schema
-  (is (= {:name
-          :flex-map-record-8247732601305521295-8247732601305521295,
-          :type :record,
-          :fields
-          [{:name :ks, :type {:type :array, :items :int}, :default []}
-           {:name :vs,
-            :type {:type :array, :items :int},
-            :default []}]}
+  (is (= {:type :flex-map
+          :keys :int
+          :values :int}
          (l/get-edn-schema sku->qty-schema)))
   #?(:clj (is (fp-matches? sku->qty-schema)))
   (is (= (str
-          "{\"name\":\"FlexMapRecord82477326013055212958247732601305521295\","
-          "\"type\":\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\""
-          ":\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":{\"type\":"
-          "\"array\",\"items\":\"int\"}}]}")
+          "{\"name\":\"FlexMapRecord3f2b87a9fe7cc9b13835598c3981cd45e3e355309e"
+          "5090aa0933d7becb6fba453f2b87a9fe7cc9b13835598c3981cd45e3e355309e509"
+          "0aa0933d7becb6fba45\",\"type\":\"record\",\"fields\":[{\"name\":"
+          "\"ks\",\"type\":{\"type\":\"array\",\"items\":\"int\"}},{\"name\":"
+          "\"vs\",\"type\":{\"type\":\"array\",\"items\":\"int\"}}]}")
          (l/get-parsing-canonical-form sku->qty-schema)))
-  (is (= "-1342815058390831865"
+  (is (= "4449441013369317389"
          (u/long->str (l/get-fingerprint64 sku->qty-schema)))))
 
 (deftest test-flex-schema-serdes
@@ -432,18 +430,20 @@
         encoded (l/serialize sku->qty-schema data)
         decoded (deserialize-same sku->qty-schema encoded)]
     (is (ba/equivalent-byte-arrays?
-         (ba/byte-array [6, -10, 1, -112, 7, -86, 12, 0, 6, 20, -56, 1, 4, 0])
+         (ba/byte-array [6 -10 1 -112 7 -86 12 0 6 20 -56 1 4 0])
          encoded))
     (is (= data decoded))))
 
 (deftest test-complex-key-flex-schema-serdes
-  (let [schema (l/make-flex-map-schema add-to-cart-req-schema l/boolean-schema)
-        data {{:sku 123 :qty-requested 10} true
-              {:sku 999 :qty-requested 7} false}
+  (let [item-schema (l/make-flex-map-schema add-to-cart-req-schema
+                                            l/boolean-schema)
+        schema (l/make-array-schema item-schema)
+        data [{{:sku 123 :qty-requested 10} true
+               {:sku 999 :qty-requested 7} false}]
         encoded (l/serialize schema data)
         decoded (deserialize-same schema encoded)]
     (is (ba/equivalent-byte-arrays?
-         (ba/byte-array [4, -10, 1, 20, -50, 15, 14, 0, 4, 1, 0, 0])
+         (ba/byte-array [2 4 -10 1 20 -50 15 14 0 4 1 0 0 0])
          encoded))
     (is (= data decoded))))
 
