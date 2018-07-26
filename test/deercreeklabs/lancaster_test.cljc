@@ -116,8 +116,8 @@
 (l/def-flex-map-schema sku-to-qty-schema
   l/int-schema l/int-schema)
 
-(def sku->qty-v2-schema (l/make-flex-map-schema ::sku-to-qty
-                                                l/int-schema l/long-schema))
+(def sku-to-qty-v2-schema (l/make-flex-map-schema ::sku-to-qty
+                                                  l/int-schema l/long-schema))
 
 (def nested-map-schema (l/make-map-schema add-to-cart-rsp-schema))
 
@@ -444,8 +444,11 @@
               789 2}
         encoded (l/serialize sku-to-qty-schema data)
         writer-pcf (l/get-parsing-canonical-form sku-to-qty-schema)
-        decoded (l/deserialize sku->qty-v2-schema writer-pcf encoded)]
-    (is (= data decoded))))
+        decoded (l/deserialize sku-to-qty-v2-schema writer-pcf encoded)
+        expected (reduce-kv (fn [acc k v]
+                              (assoc acc k (u/int->long v)))
+                            {} data)]
+    (is (= expected decoded))))
 
 (deftest test-complex-key-flex-schema-serdes
   (let [item-schema (l/make-flex-map-schema ::item
