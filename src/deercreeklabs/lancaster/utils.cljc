@@ -245,6 +245,7 @@
              :enum (first (:symbols edn-schema))
              :array []
              :map {}
+             :flex-map {}
              :name-keyword (get-default-data (name->edn-schema edn-schema)
                                              field-default
                                              name->edn-schema)))))))
