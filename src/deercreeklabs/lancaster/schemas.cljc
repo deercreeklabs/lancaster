@@ -231,13 +231,13 @@
   [schema-type [keys-schema values-schema]]
   (when-not (schema-or-kw? keys-schema)
     (throw
-     (ex-info (str "First arg to make-flex-map-schema must be a schema object "
+     (ex-info (str "Second arg to make-flex-map-schema must be a schema object "
                    "or a name keyword indicating the key schema of the "
                    "flex-map.")
               {:given-values-schema values-schema})))
   (when-not (schema-or-kw? values-schema)
     (throw
-     (ex-info (str "Second arg to make-flex-map-schema must be a schema object "
+     (ex-info (str "Third arg to make-flex-map-schema must be a schema object "
                    "or a name keyword indicating the value schema of the "
                    "flex-map.")
               {:given-values-schema values-schema}))))

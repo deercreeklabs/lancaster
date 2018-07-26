@@ -113,7 +113,11 @@
   [:name-to-age ages-schema]
   [:what l/string-schema])
 
-(def sku->qty-schema (l/make-flex-map-schema l/int-schema l/int-schema))
+(l/def-flex-map-schema sku-to-qty-schema
+  l/int-schema l/int-schema)
+
+(def sku->qty-v2-schema (l/make-flex-map-schema ::sku-to-qty
+                                                l/int-schema l/long-schema))
 
 (def nested-map-schema (l/make-map-schema add-to-cart-rsp-schema))
 
@@ -408,34 +412,44 @@
     (is (= data decoded))))
 
 (deftest test-flex-map-schema
-  (is (= {:type :flex-map
-          :keys :int
+  (is (= {:name :deercreeklabs.lancaster-test/sku-to-qty,
+          :type :flex-map,
+          :keys :int,
           :values :int}
-         (l/get-edn-schema sku->qty-schema)))
-  #?(:clj (is (fp-matches? sku->qty-schema)))
+         (l/get-edn-schema sku-to-qty-schema)))
+  #?(:clj (is (fp-matches? sku-to-qty-schema)))
   (is (= (str
-          "{\"name\":\"FlexMapRecord3f2b87a9fe7cc9b13835598c3981cd45e3e355309e"
-          "5090aa0933d7becb6fba453f2b87a9fe7cc9b13835598c3981cd45e3e355309e509"
-          "0aa0933d7becb6fba45\",\"type\":\"record\",\"fields\":[{\"name\":"
-          "\"ks\",\"type\":{\"type\":\"array\",\"items\":\"int\"}},{\"name\":"
-          "\"vs\",\"type\":{\"type\":\"array\",\"items\":\"int\"}}]}")
-         (l/get-parsing-canonical-form sku->qty-schema)))
-  (is (= "4449441013369317389"
-         (u/long->str (l/get-fingerprint64 sku->qty-schema)))))
+          "{\"name\":\"deercreeklabs.lancaster_test.SkuToQty\",\"type\":"
+          "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\":"
+          "\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":{\"type\":"
+          "\"array\",\"items\":\"int\"}}]}")
+         (l/get-parsing-canonical-form sku-to-qty-schema)))
+  (is (= "6159813828138522206"
+         (u/long->str (l/get-fingerprint64 sku-to-qty-schema)))))
 
 (deftest test-flex-schema-serdes
   (let [data {123 10
               456 100
               789 2}
-        encoded (l/serialize sku->qty-schema data)
-        decoded (deserialize-same sku->qty-schema encoded)]
+        encoded (l/serialize sku-to-qty-schema data)
+        decoded (deserialize-same sku-to-qty-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [6 -10 1 -112 7 -86 12 0 6 20 -56 1 4 0])
          encoded))
     (is (= data decoded))))
 
+(deftest test-flex-map-evolution
+  (let [data {123 10
+              456 100
+              789 2}
+        encoded (l/serialize sku-to-qty-schema data)
+        writer-pcf (l/get-parsing-canonical-form sku-to-qty-schema)
+        decoded (l/deserialize sku->qty-v2-schema writer-pcf encoded)]
+    (is (= data decoded))))
+
 (deftest test-complex-key-flex-schema-serdes
-  (let [item-schema (l/make-flex-map-schema add-to-cart-req-schema
+  (let [item-schema (l/make-flex-map-schema ::item
+                                            add-to-cart-req-schema
                                             l/boolean-schema)
         schema (l/make-array-schema item-schema)
         data [{{:sku 123 :qty-requested 10} true
@@ -448,7 +462,8 @@
     (is (= data decoded))))
 
 (deftest test-plumatic-flex-map
-  (let [child-schema (l/make-flex-map-schema add-to-cart-req-schema
+  (let [child-schema (l/make-flex-map-schema ::child
+                                             add-to-cart-req-schema
                                              l/boolean-schema)
         schema (l/make-array-schema child-schema)
         pschema (l/get-plumatic-schema schema)

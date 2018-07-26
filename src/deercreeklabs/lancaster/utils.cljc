@@ -72,7 +72,7 @@
 (def ^:dynamic **enclosing-namespace** nil)
 (def avro-complex-types #{:record :fixed :enum :array :map :union})
 (def avro-container-types #{:record :array :map :union})
-(def avro-named-types #{:record :fixed :enum})
+(def avro-named-types #{:record :fixed :enum :flex-map})
 (def avro-primitive-types #{:null :boolean :int :long :float :double
                             :bytes :string})
 (def avro-primitive-type-strings (into #{} (map name avro-primitive-types)))
@@ -719,12 +719,9 @@
 (defn flex-map-edn-schema->record-edn-schema [fm-edn-schema]
   (let [keys-schema (:keys fm-edn-schema)
         values-schema (:values fm-edn-schema)
-        rec-name-kw (keyword (str/join "-" ["flex-map-record"
-                                            (get-hash keys-schema)
-                                            (get-hash values-schema)]))
         fields [[:ks (make-edn-schema :array nil keys-schema)]
                 [:vs (make-edn-schema :array nil values-schema)]]]
-    (make-edn-schema :record rec-name-kw fields)))
+    (make-edn-schema :record (:name fm-edn-schema) fields)))
 
 (defmethod make-serializer :flex-map
   [edn-schema name->edn-schema *name->serializer]
@@ -1311,7 +1308,8 @@
 
 (defmethod make-edn-schema :flex-map
   [schema-type name-kw [ks vs]]
-  {:type :flex-map
+  {:name name-kw
+   :type :flex-map
    :keys  (ensure-edn-schema ks)
    :values (ensure-edn-schema vs)})
 

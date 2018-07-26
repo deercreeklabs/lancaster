@@ -88,6 +88,27 @@
                     (assoc! acc k (xf-value v)))
                   (transient {}) data)))))
 
+(defn flex-rec->flex-map [{:keys [ks vs]}]
+  (zipmap ks vs))
+
+(defmethod make-xf [:record :flex-map]
+  [writer-edn-schema reader-edn-schema]
+  (check-names writer-edn-schema reader-edn-schema)
+  (let [reader-rec-schema (u/flex-map-edn-schema->record-edn-schema
+                           reader-edn-schema)
+        xf (make-xf writer-edn-schema reader-rec-schema)]
+    (comp flex-rec->flex-map xf)))
+
+(defmethod make-xf [:flex-map :flex-map]
+  [writer-edn-schema reader-edn-schema]
+  (check-names writer-edn-schema reader-edn-schema)
+  (let [writer-rec-schema (u/flex-map-edn-schema->record-edn-schema
+                           writer-edn-schema)
+        reader-rec-schema (u/flex-map-edn-schema->record-edn-schema
+                           reader-edn-schema)
+        xf (make-xf writer-rec-schema reader-rec-schema)]
+    (comp flex-rec->flex-map xf)))
+
 (defmethod make-xf [:enum :enum]
   [writer-edn-schema reader-edn-schema]
   (check-names writer-edn-schema reader-edn-schema)

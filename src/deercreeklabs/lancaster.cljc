@@ -45,6 +45,12 @@
    size :- s/Int]
   (schemas/make-schema :fixed name-kw size))
 
+(s/defn make-flex-map-schema :- LancasterSchema
+  [name-kw :- s/Keyword
+   keys-schema :- LancasterSchema
+   values-schema :- LancasterSchema]
+  (schemas/make-schema :flex-map name-kw [keys-schema values-schema]))
+
 (s/defn make-array-schema :- LancasterSchema
   [items-schema :- LancasterSchema]
   (schemas/make-schema :array nil items-schema))
@@ -52,11 +58,6 @@
 (s/defn make-map-schema :- LancasterSchema
   [values-schema :- LancasterSchema]
   (schemas/make-schema :map nil values-schema))
-
-(s/defn make-flex-map-schema :- LancasterSchema
-  [keys-schema :- LancasterSchema
-   values-schema :- LancasterSchema]
-  (schemas/make-schema :flex-map nil [keys-schema values-schema]))
 
 (s/defn make-union-schema :- LancasterSchema
   [members :- [LancasterSchemaOrNameKW]]
@@ -174,3 +175,13 @@
         schema-name (u/make-schema-name clj-name)]
     `(def ~clj-name
        (schemas/make-schema :fixed ~ns-name ~schema-name ~size))))
+
+(defmacro def-flex-map-schema
+  [clj-name keys-schema values-schema]
+  (let [ns-name (str (or
+                      (:name (:ns &env)) ;; cljs
+                      *ns*))             ;; clj
+        schema-name (u/make-schema-name clj-name)]
+    `(def ~clj-name
+       (schemas/make-schema :flex-map ~ns-name ~schema-name
+                            [~keys-schema ~values-schema]))))
