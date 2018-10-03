@@ -1335,3 +1335,13 @@
       (let [msg (lu/get-exception-msg e)]
         (is (re-find #"Name keywords must start with a letter and subsequently"
                      msg))))))
+
+(deftest test-duplicate-field-name
+  (try
+    (l/make-record-schema :test-schema
+                          [[:int-field l/int-schema]
+                           [:int-field l/int-schema]])
+    (is (= :should-have-thrown :but-didnt))
+    (catch #?(:clj Exception :cljs js/Error) e
+      (let [msg (lu/get-exception-msg e)]
+        (is (re-find #"Field names must be unique." msg))))))

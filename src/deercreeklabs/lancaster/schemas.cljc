@@ -134,7 +134,7 @@
                       schema-type
                       (-> (u/make-edn-schema schema-type name-kw args)
                           (fix-repeated-schemas)))]
-     (edn-schema->lancaster-schema schema-type edn-schema ))))
+     (edn-schema->lancaster-schema schema-type edn-schema))))
 
 (defn merge-record-schemas [name-kw schemas]
   (when-not (keyword? name-kw)
@@ -191,7 +191,15 @@
                  (ex-info
                   (str "Default value for field `" name-kw "` is invalid. "
                        ex-msg)
-                  (u/sym-map name-kw default ex-msg)))))))))))
+                  (u/sym-map name-kw default ex-msg))))))))))
+  (let [dups (vec (for [[field-name freq] (frequencies (map first fields))
+                        :when (> freq 1)]
+                    field-name))]
+    (when (pos? (count dups))
+      (throw
+       (ex-info
+        (str "Field names must be unique. Duplicated field-names: " dups)
+        (u/sym-map dups))))))
 
 (defmethod validate-schema-args :enum
   [schema-type symbols]
