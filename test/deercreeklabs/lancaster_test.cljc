@@ -77,6 +77,12 @@
                          [:qty-requested l/float-schema]
                          [:note l/string-schema "No note"]]))
 
+(def add-to-cart-req-v4-schema ;; :note is now called :comment
+  (l/make-record-schema ::add-to-cart-req
+                        [[:sku l/int-schema]
+                         [:qty-requested l/int-schema]
+                         [:comment l/string-schema]]))
+
 (l/def-enum-schema why-schema
   :all :stock :limit)
 
@@ -931,6 +937,20 @@
         writer-pcf (l/get-parsing-canonical-form writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)]
     (is (= (assoc data :qty-requested 10.0) decoded))))
+
+(deftest test-schema-evolution-change-field-name
+  (let [data {:sku 123
+              :qty-requested 10
+              :note "This is a nice item"}
+        writer-schema add-to-cart-req-v2-schema
+        reader-schema add-to-cart-req-v4-schema
+        encoded (l/serialize writer-schema data)
+        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        decoded (l/deserialize reader-schema writer-pcf encoded)
+        expected (-> data
+                     (dissoc :note)
+                     (assoc :comment ""))]
+    (is (= expected decoded))))
 
 (deftest test-schema-evolution-add-field-and-change-field
   (let [data {:sku 123
