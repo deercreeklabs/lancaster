@@ -151,6 +151,10 @@
 
 (defmacro def-record-schema
   [clj-name & fields]
+  (when-not (pos? (count fields))
+    (throw
+     (ex-info "Missing record fields in def-record-schema."
+              (u/sym-map clj-name fields))))
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
@@ -160,6 +164,10 @@
 
 (defmacro def-enum-schema
   [clj-name & symbols]
+  (when-not (pos? (count symbols))
+    (throw
+     (ex-info "Missing symbols sequence in def-enum-schema."
+              (u/sym-map clj-name symbols))))
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
@@ -169,6 +177,10 @@
 
 (defmacro def-fixed-schema
   [clj-name size]
+  (when-not (and (pos? size) (integer? size))
+    (throw
+     (ex-info "Second argument to def-fixed-schema must be a positive integer."
+              (u/sym-map clj-name size))))
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
@@ -178,6 +190,14 @@
 
 (defmacro def-flex-map-schema
   [clj-name keys-schema values-schema]
+  (when-not keys-schema
+    (throw
+     (ex-info "Second argument to def-flex-map-schema must be a schema object."
+              (u/sym-map clj-name keys-schema))))
+  (when-not values-schema
+    (throw
+     (ex-info "Third argument to def-flex-map-schema must be a schema object."
+              (u/sym-map clj-name values-schema))))
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
