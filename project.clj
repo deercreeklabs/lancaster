@@ -61,7 +61,7 @@
     :plugins
     [[lein-ancient "0.6.15"]
      [lein-cljsbuild "1.1.7" :exclusions [org.clojure/clojure]]
-     [lein-cloverage "1.0.11" :exclusions [fipp org.clojure/clojure]]
+     [lein-cloverage "1.0.13" :exclusions [fipp org.clojure/clojure]]
      [lein-doo "0.1.10"
       :exclusions [org.clojure/clojure org.clojure/clojurescript]]
      ;; Because of confusion with a defunct project also called
@@ -74,7 +74,7 @@
 
   :dependencies
   [[camel-snake-kebab "0.4.0"]
-   [cheshire "5.8.0"]
+   [cheshire "5.8.1"]
    [com.taoensso/timbre "4.10.0"]
    [deercreeklabs/baracus "0.1.11"]
    [deercreeklabs/log-utils "0.1.8"]
