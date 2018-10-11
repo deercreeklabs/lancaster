@@ -70,8 +70,7 @@
   (reset-to-mark! [this]))
 
 (def ^:dynamic **enclosing-namespace** nil)
-(def avro-complex-types #{:record :fixed :enum :array :map :union})
-(def avro-container-types #{:record :array :map :union})
+(def avro-container-types #{:record :array :map :union :flex-map})
 (def avro-named-types #{:record :fixed :enum :flex-map})
 (def avro-primitive-types #{:null :boolean :int :long :float :double
                             :bytes :string})
@@ -1113,15 +1112,11 @@
             (mapv (fn [field]
                     (let [field-type (:type field)
                           avro-type (get-avro-type field-type)]
-                      (cond-> field
-                        true
-                        (update :name #(csk/->camelCase (name %)))
 
-                        (avro-complex-types avro-type)
-                        (update :type edn-schema->avro-schema)
-
-                        true
-                        (update :default #(fix-default field-type %)))))
+                      (-> field
+                          (update :name #(csk/->camelCase (name %)))
+                          (update :type edn-schema->avro-schema)
+                          (update :default #(fix-default field-type %)))))
                   fields))))
 
 (defn fix-symbols [edn-schema]

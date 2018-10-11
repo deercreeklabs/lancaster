@@ -433,6 +433,17 @@
   (is (= "6159813828138522206"
          (u/long->str (l/get-fingerprint64 sku-to-qty-schema)))))
 
+(deftest test-embedded-flex-map-pcf
+  (let [fms (l/make-flex-map-schema :i-to-i l/int-schema l/int-schema)
+        rs (l/make-record-schema :r [[:fm fms]])
+        pcf (l/get-parsing-canonical-form rs)
+        expected (str "{\"name\":\"R\",\"type\":\"record\",\"fields\":[{"
+                      "\"name\":\"fm\",\"type\":{\"name\":\"IToI\",\"type\":"
+                      "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{"
+                      "\"type\":\"array\",\"items\":\"int\"}},{\"name\":\"vs\""
+                      ",\"type\":{\"type\":\"array\",\"items\":\"int\"}}]}}]}")]
+    (is (= expected pcf))))
+
 (deftest test-flex-schema-serdes
   (let [data {123 10
               456 100
