@@ -59,6 +59,7 @@
 
 (defn edn-schema->lancaster-schema [schema-type edn-schema]
   (let [name->edn-schema (u/make-name->edn-schema edn-schema)
+        schema-name (u/get-schema-name edn-schema)
         avro-schema (if (u/avro-primitive-types schema-type)
                       (name schema-type)
                       (u/edn-schema->avro-schema edn-schema))
@@ -74,8 +75,7 @@
         deserializer (u/make-deserializer edn-schema *name->deserializer)
         default-data-size (u/make-default-data-size edn-schema
                                                     name->edn-schema)
-        *pcf->resolving-deserializer (atom {})
-        schema-name (u/get-schema-name edn-schema)]
+        *pcf->resolving-deserializer (atom {})]
     (->LancasterSchema
      schema-name edn-schema json-schema parsing-canonical-form
      fingerprint64 plumatic-schema serializer deserializer default-data-size
@@ -171,6 +171,10 @@
                          "of field definitions.")
                     {:given-fields fields})))
   (doseq [field fields]
+    (when-not (sequential? field)
+      (throw (ex-info (str "Second arg to make-record-schema must be a "
+                           "sequence of field definitions.")
+                      {:given-fields fields})))
     (let [[name-kw field-schema default] field]
       (when-not (keyword? name-kw)
         (throw (ex-info "First arg in field definition must be a name keyword."
