@@ -41,7 +41,7 @@
   (to-byte-array [this]
     (.toByteArray ^ByteArrayOutputStream baos)))
 
-(defn make-output-stream
+(defn output-stream
   [initial-size]
   (let [baos (ByteArrayOutputStream. initial-size)
         ledos (LittleEndianDataOutputStream. baos)]
@@ -80,7 +80,7 @@
   (reset-to-mark! [this]
     (.reset ledis)))
 
-(defn make-input-stream [ba]
+(defn input-stream [ba]
   (let [bais (ByteArrayInputStream. ba)
         ledis (LittleEndianDataInputStream. bais)]
     (->InputStream bais ledis)))

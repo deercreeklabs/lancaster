@@ -28,7 +28,7 @@
      *name->serializer *name->deserializer *pcf->resolving-deserializer]
   u/ILancasterSchema
   (serialize [this data]
-    (let [os (impl/make-output-stream default-data-size)]
+    (let [os (impl/output-stream default-data-size)]
       (u/serialize this os data)
       (u/to-byte-array os)))
   (serialize [this os data]
@@ -38,8 +38,8 @@
       (deserializer is)
       (if-let [rd (@*pcf->resolving-deserializer writer-pcf)]
         (rd is)
-        (let [rd (resolution/make-resolving-deserializer writer-pcf this
-                                                         *name->deserializer)]
+        (let [rd (resolution/resolving-deserializer writer-pcf this
+                                                    *name->deserializer)]
           (swap! *pcf->resolving-deserializer assoc writer-pcf rd)
           (rd is)))))
   (wrap [this data]
@@ -116,14 +116,14 @@
                  "or hyphens")
             {:given-name-kw name-kw}))))
 
-(defn make-schema
+(defn schema
   ([schema-type ns-name schema-name args]
    (let [name-kw (keyword ns-name schema-name)]
-     (make-schema schema-type name-kw args)))
+     (schema schema-type name-kw args)))
   ([schema-type name-kw args]
    (when (u/avro-named-types schema-type)
      (when (not (keyword? name-kw))
-       (let [fn-name (str "make-" (name schema-type) "-schema")]
+       (let [fn-name (str (name schema-type) "-schema")]
          (throw (ex-info (str "First arg to " fn-name " must be a name keyword."
                               "The keyword can be namespaced or not.")
                          {:given-name-kw name-kw}))))
@@ -157,8 +157,8 @@
                     :fields fields}]
     (edn-schema->lancaster-schema :record edn-schema)))
 
-(defn make-primitive-schema [schema-kw]
-  (make-schema schema-kw nil nil))
+(defn primitive-schema [schema-kw]
+  (schema schema-kw nil nil))
 
 (defn schema-or-kw? [x]
   (or (instance? LancasterSchema x)
@@ -167,12 +167,12 @@
 (defmethod validate-schema-args :record
   [schema-type fields]
   (when-not (sequential? fields)
-    (throw (ex-info (str "Second arg to make-record-schema must be a sequence "
+    (throw (ex-info (str "Second arg to record-schema must be a sequence "
                          "of field definitions.")
                     {:given-fields fields})))
   (doseq [field fields]
     (when-not (sequential? field)
-      (throw (ex-info (str "Second arg to make-record-schema must be a "
+      (throw (ex-info (str "Second arg to record-schema must be a "
                            "sequence of field definitions.")
                       {:given-fields fields})))
     (let [[name-kw field-schema default] field]
@@ -187,7 +187,7 @@
                   {:given-field-schema field-schema})))
       (when default
         (try
-          (u/serialize field-schema (impl/make-output-stream 100) default)
+          (u/serialize field-schema (impl/output-stream 100) default)
           (catch #?(:clj Exception :cljs js/Error) e
             (let [ex-msg (lu/get-exception-msg e)]
               (if (str/includes? ex-msg "not a valid")
@@ -208,7 +208,7 @@
 (defmethod validate-schema-args :enum
   [schema-type symbols]
   (when-not (sequential? symbols)
-    (throw (ex-info (str "Second arg to make-enum-schema must be a sequence "
+    (throw (ex-info (str "Second arg to enum-schema must be a sequence "
                          "of keywords.")
                     {:given-symbols symbols})))
   (doseq [symbol symbols]
@@ -219,7 +219,7 @@
 (defmethod validate-schema-args :fixed
   [schema-type size]
   (when-not (integer? size)
-    (throw (ex-info (str "Second arg to make-fixed-schema (size) must be an "
+    (throw (ex-info (str "Second arg to fixed-schema (size) must be an "
                          "integer.")
                     {:given-size size}))))
 
@@ -227,7 +227,7 @@
   [schema-type items-schema]
   (when-not (schema-or-kw? items-schema)
     (throw
-     (ex-info (str "Arg to make-array-schema must be a schema object "
+     (ex-info (str "Arg to array-schema must be a schema object "
                    "or a name keyword.")
               {:given-items-schema items-schema}))))
 
@@ -235,7 +235,7 @@
   [schema-type values-schema]
   (when-not (schema-or-kw? values-schema)
     (throw
-     (ex-info (str "Arg to make-map-schema must be a schema object "
+     (ex-info (str "Arg to map-schema must be a schema object "
                    "or a name keyword.")
               {:given-values-schema values-schema}))))
 
@@ -243,13 +243,13 @@
   [schema-type [keys-schema values-schema]]
   (when-not (schema-or-kw? keys-schema)
     (throw
-     (ex-info (str "Second arg to make-flex-map-schema must be a schema object "
+     (ex-info (str "Second arg to flex-map-schema must be a schema object "
                    "or a name keyword indicating the key schema of the "
                    "flex-map.")
               {:given-values-schema values-schema})))
   (when-not (schema-or-kw? values-schema)
     (throw
-     (ex-info (str "Third arg to make-flex-map-schema must be a schema object "
+     (ex-info (str "Third arg to flex-map-schema must be a schema object "
                    "or a name keyword indicating the value schema of the "
                    "flex-map.")
               {:given-values-schema values-schema}))))
@@ -257,7 +257,7 @@
 (defmethod validate-schema-args :union
   [schema-type member-schemas]
   (when-not (sequential? member-schemas)
-    (throw (ex-info (str "Arg to make-union-schema must be a sequence "
+    (throw (ex-info (str "Arg to union-schema must be a sequence "
                          "of member schema objects or name keywords.")
                     {:given-member-schemas member-schemas})))
   (doseq [member-schema member-schemas]

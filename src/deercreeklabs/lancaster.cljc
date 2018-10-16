@@ -12,8 +12,6 @@
   #?(:cljs
      (:require-macros deercreeklabs.lancaster)))
 
-(declare make-name*)
-
 (def LancasterSchema (s/protocol u/ILancasterSchema))
 (def LancasterSchemaOrNameKW (s/if keyword?
                                s/Keyword
@@ -21,47 +19,47 @@
 #?(:cljs
    (def Long gm/Long))
 
-(def int-schema (schemas/make-primitive-schema :int))
-(def null-schema (schemas/make-primitive-schema :null))
-(def boolean-schema (schemas/make-primitive-schema :boolean))
-(def long-schema (schemas/make-primitive-schema :long))
-(def float-schema (schemas/make-primitive-schema :float))
-(def double-schema (schemas/make-primitive-schema :double))
-(def bytes-schema (schemas/make-primitive-schema :bytes))
-(def string-schema (schemas/make-primitive-schema :string))
+(def int-schema (schemas/primitive-schema :int))
+(def null-schema (schemas/primitive-schema :null))
+(def boolean-schema (schemas/primitive-schema :boolean))
+(def long-schema (schemas/primitive-schema :long))
+(def float-schema (schemas/primitive-schema :float))
+(def double-schema (schemas/primitive-schema :double))
+(def bytes-schema (schemas/primitive-schema :bytes))
+(def string-schema (schemas/primitive-schema :string))
 
-(s/defn make-record-schema :- LancasterSchema
+(s/defn record-schema :- LancasterSchema
   [name-kw :- s/Keyword
    fields :- [schemas/RecordFieldDef]]
-  (schemas/make-schema :record name-kw fields))
+  (schemas/schema :record name-kw fields))
 
-(s/defn make-enum-schema :- LancasterSchema
+(s/defn enum-schema :- LancasterSchema
   [name-kw :- s/Keyword
    symbols :- [s/Keyword]]
-  (schemas/make-schema :enum name-kw symbols))
+  (schemas/schema :enum name-kw symbols))
 
-(s/defn make-fixed-schema :- LancasterSchema
+(s/defn fixed-schema :- LancasterSchema
   [name-kw :- s/Keyword
    size :- s/Int]
-  (schemas/make-schema :fixed name-kw size))
+  (schemas/schema :fixed name-kw size))
 
-(s/defn make-flex-map-schema :- LancasterSchema
+(s/defn flex-map-schema :- LancasterSchema
   [name-kw :- s/Keyword
    keys-schema :- LancasterSchema
    values-schema :- LancasterSchema]
-  (schemas/make-schema :flex-map name-kw [keys-schema values-schema]))
+  (schemas/schema :flex-map name-kw [keys-schema values-schema]))
 
-(s/defn make-array-schema :- LancasterSchema
+(s/defn array-schema :- LancasterSchema
   [items-schema :- LancasterSchema]
-  (schemas/make-schema :array nil items-schema))
+  (schemas/schema :array nil items-schema))
 
-(s/defn make-map-schema :- LancasterSchema
+(s/defn map-schema :- LancasterSchema
   [values-schema :- LancasterSchema]
-  (schemas/make-schema :map nil values-schema))
+  (schemas/schema :map nil values-schema))
 
-(s/defn make-union-schema :- LancasterSchema
+(s/defn union-schema :- LancasterSchema
   [members :- [LancasterSchemaOrNameKW]]
-  (schemas/make-schema :union nil members))
+  (schemas/schema :union nil members))
 
 (s/defn merge-record-schemas :- LancasterSchema
   [name-kw :- s/Keyword
@@ -70,7 +68,7 @@
 
 (s/defn maybe :- LancasterSchema
   [schema :- LancasterSchemaOrNameKW]
-  (make-union-schema [null-schema schema]))
+  (union-schema [null-schema schema]))
 
 (s/defn serialize :- ba/ByteArray
   [schema-obj :- LancasterSchema
@@ -107,7 +105,7 @@
     (throw (ex-info "Third argument to deserialize must be a byte array."
                     {:ba ba
                      :ba-type (#?(:clj class :cljs type) ba)})))
-  (let [is (impl/make-input-stream ba)]
+  (let [is (impl/input-stream ba)]
     (u/deserialize reader-schema-obj writer-pcf is)))
 
 (s/defn wrap :- schemas/WrappedData
@@ -139,11 +137,11 @@
   [arg :- s/Any]
   (satisfies? u/ILancasterSchema arg))
 
-(s/defn make-default-data :- s/Any
+(s/defn default-data :- s/Any
   [schema :- LancasterSchema]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
-     (ex-info "Argument to make-default-data must be a schema object."
+     (ex-info "Argument to default-data must be a schema object."
               {:given-arg schema})))
   (u/get-default-data (get-edn-schema schema)))
 
@@ -158,9 +156,9 @@
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
-        schema-name (u/make-schema-name clj-name)]
+        schema-name (u/schema-name clj-name)]
     `(def ~clj-name
-       (schemas/make-schema :record ~ns-name ~schema-name (vector ~@fields)))))
+       (schemas/schema :record ~ns-name ~schema-name (vector ~@fields)))))
 
 (defmacro def-enum-schema
   [clj-name & symbols]
@@ -171,9 +169,9 @@
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
-        schema-name (u/make-schema-name clj-name)]
+        schema-name (u/schema-name clj-name)]
     `(def ~clj-name
-       (schemas/make-schema :enum ~ns-name ~schema-name (vector ~@symbols)))))
+       (schemas/schema :enum ~ns-name ~schema-name (vector ~@symbols)))))
 
 (defmacro def-fixed-schema
   [clj-name size]
@@ -184,9 +182,9 @@
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
-        schema-name (u/make-schema-name clj-name)]
+        schema-name (u/schema-name clj-name)]
     `(def ~clj-name
-       (schemas/make-schema :fixed ~ns-name ~schema-name ~size))))
+       (schemas/schema :fixed ~ns-name ~schema-name ~size))))
 
 (defmacro def-flex-map-schema
   [clj-name keys-schema values-schema]
@@ -201,7 +199,7 @@
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
-        schema-name (u/make-schema-name clj-name)]
+        schema-name (u/schema-name clj-name)]
     `(def ~clj-name
-       (schemas/make-schema :flex-map ~ns-name ~schema-name
-                            [~keys-schema ~values-schema]))))
+       (schemas/schema :flex-map ~ns-name ~schema-name
+                       [~keys-schema ~values-schema]))))

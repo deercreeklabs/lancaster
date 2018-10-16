@@ -66,19 +66,19 @@
   [:qty-requested l/int-schema 0])
 
 (def add-to-cart-req-v2-schema
-  (l/make-record-schema ::add-to-cart-req
+  (l/record-schema ::add-to-cart-req
                         [[:sku l/int-schema]
                          [:qty-requested l/int-schema 0]
                          [:note l/string-schema "No note"]]))
 
 (def add-to-cart-req-v3-schema ;; qtys are floats!
-  (l/make-record-schema ::add-to-cart-req
+  (l/record-schema ::add-to-cart-req
                         [[:sku l/int-schema]
                          [:qty-requested l/float-schema]
                          [:note l/string-schema "No note"]]))
 
 (def add-to-cart-req-v4-schema ;; :note is now called :comment
-  (l/make-record-schema ::add-to-cart-req
+  (l/record-schema ::add-to-cart-req
                         [[:sku l/int-schema]
                          [:qty-requested l/int-schema]
                          [:comment l/string-schema]]))
@@ -105,15 +105,15 @@
   [:data a-fixed-schema (ba/byte-array [77 88])]
   [:other-data l/bytes-schema])
 
-(def simple-array-schema (l/make-array-schema l/string-schema))
+(def simple-array-schema (l/array-schema l/string-schema))
 
-(def rsps-schema (l/make-array-schema add-to-cart-rsp-schema))
+(def rsps-schema (l/array-schema add-to-cart-rsp-schema))
 
 (l/def-record-schema rec-w-array-and-enum-schema
   [:names simple-array-schema]
   [:why why-schema])
 
-(def ages-schema (l/make-map-schema l/int-schema))
+(def ages-schema (l/map-schema l/int-schema))
 
 (l/def-record-schema rec-w-map-schema
   [:name-to-age ages-schema]
@@ -122,13 +122,13 @@
 (l/def-flex-map-schema sku-to-qty-schema
   l/int-schema l/int-schema)
 
-(def sku-to-qty-v2-schema (l/make-flex-map-schema ::sku-to-qty
+(def sku-to-qty-v2-schema (l/flex-map-schema ::sku-to-qty
                                                   l/int-schema l/long-schema))
 
-(def nested-map-schema (l/make-map-schema add-to-cart-rsp-schema))
+(def nested-map-schema (l/map-schema add-to-cart-rsp-schema))
 
 (def union-schema
-  (l/make-union-schema [l/int-schema add-to-cart-req-schema a-fixed-schema]))
+  (l/union-schema [l/int-schema add-to-cart-req-schema a-fixed-schema]))
 
 (l/def-record-schema person-schema
   [:name l/string-schema "No name"]
@@ -139,7 +139,7 @@
   [:owner l/string-schema "No owner"])
 
 (def dog-v2-schema
-  (l/make-record-schema ::dog
+  (l/record-schema ::dog
                         [[:name l/string-schema "No name"]
                          [:owner l/string-schema "No owner"]
                          [:tag-number l/int-schema]]))
@@ -149,16 +149,16 @@
   [:tank-num l/int-schema])
 
 (def person-or-dog-schema
-  (l/make-union-schema [person-schema dog-schema]))
+  (l/union-schema [person-schema dog-schema]))
 
 (def fish-or-person-or-dog-v2-schema
-  (l/make-union-schema [fish-schema person-schema dog-v2-schema]))
+  (l/union-schema [fish-schema person-schema dog-v2-schema]))
 
 (def map-or-array-schema
-  (l/make-union-schema [ages-schema simple-array-schema]))
+  (l/union-schema [ages-schema simple-array-schema]))
 
 (def mopodoa-schema
-  (l/make-union-schema [ages-schema person-schema dog-schema
+  (l/union-schema [ages-schema person-schema dog-schema
                         simple-array-schema]))
 
 (l/def-record-schema date-schema
@@ -434,8 +434,8 @@
          (u/long->str (l/get-fingerprint64 sku-to-qty-schema)))))
 
 (deftest test-embedded-flex-map-pcf
-  (let [fms (l/make-flex-map-schema :i-to-i l/int-schema l/int-schema)
-        rs (l/make-record-schema :r [[:fm fms]])
+  (let [fms (l/flex-map-schema :i-to-i l/int-schema l/int-schema)
+        rs (l/record-schema :r [[:fm fms]])
         pcf (l/get-parsing-canonical-form rs)
         expected (str "{\"name\":\"R\",\"type\":\"record\",\"fields\":[{"
                       "\"name\":\"fm\",\"type\":{\"name\":\"IToI\",\"type\":"
@@ -468,10 +468,10 @@
     (is (= expected decoded))))
 
 (deftest test-complex-key-flex-schema-serdes
-  (let [item-schema (l/make-flex-map-schema ::item
+  (let [item-schema (l/flex-map-schema ::item
                                             add-to-cart-req-schema
                                             l/boolean-schema)
-        schema (l/make-array-schema item-schema)
+        schema (l/array-schema item-schema)
         data [{{:sku 123 :qty-requested 10} true
                {:sku 999 :qty-requested 7} false}]
         encoded (l/serialize schema data)
@@ -482,14 +482,26 @@
     (is (= data decoded))))
 
 (deftest test-plumatic-flex-map
-  (let [child-schema (l/make-flex-map-schema ::child
+  (let [child-schema (l/flex-map-schema ::child
                                              add-to-cart-req-schema
                                              l/boolean-schema)
-        schema (l/make-array-schema child-schema)
+        schema (l/array-schema child-schema)
         pschema (l/get-plumatic-schema schema)
         data [{{:sku 123 :qty-requested 10} true
                {:sku 999 :qty-requested 7} false}]]
     (is (nil? (s/check pschema data)))))
+
+(deftest test-maybe-flex-map
+  (let [fms (l/flex-map-schema :i-to-i l/int-schema l/int-schema)
+        ms (l/maybe fms)
+        writer-pcf (l/get-parsing-canonical-form ms)
+        data1 {1 1}
+        data2 nil
+        rt (fn [data]
+             (->> (l/serialize ms data)
+                  (l/deserialize ms writer-pcf)))]
+    (is (= data1 (rt data1)))
+    (is (= data2 (rt data2)))))
 
 (deftest test-def-array-schema
   #?(:clj (is (fp-matches? simple-array-schema)))
@@ -511,7 +523,7 @@
     (is (= names decoded))))
 
 (deftest test-empty-array-serdes
-  (let [sch (l/make-array-schema l/int-schema)
+  (let [sch (l/array-schema l/int-schema)
         pcf (l/get-parsing-canonical-form sch)
         data []
         encoded (l/serialize sch data)
@@ -640,7 +652,7 @@
            (xf-byte-arrays decoded)))))
 
 (deftest test-empty-map-serdes
-  (let [sch (l/make-map-schema l/int-schema)
+  (let [sch (l/map-schema l/int-schema)
         pcf (l/get-parsing-canonical-form sch)
         data {}
         encoded (l/serialize sch data)
@@ -889,8 +901,8 @@
 
 (deftest test-schema-resolution-int-array-to-float-array
   (let [data [1 2 3]
-        writer-schema (l/make-array-schema l/int-schema)
-        reader-schema (l/make-array-schema l/float-schema)
+        writer-schema (l/array-schema l/int-schema)
+        reader-schema (l/array-schema l/float-schema)
         encoded (l/serialize writer-schema data)
         writer-pcf (l/get-parsing-canonical-form writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
@@ -899,8 +911,8 @@
 
 (deftest test-schema-resolution-int-map-to-float-map
   (let [data {"one" 1 "two" 2}
-        writer-schema (l/make-map-schema l/int-schema)
-        reader-schema (l/make-map-schema l/float-schema)
+        writer-schema (l/map-schema l/int-schema)
+        reader-schema (l/map-schema l/float-schema)
         encoded (l/serialize writer-schema data)
         writer-pcf (l/get-parsing-canonical-form writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
@@ -910,7 +922,7 @@
 (deftest  test-schema-resolution-enum-added-symbol
   (let [data :stock
         writer-schema why-schema
-        reader-schema (l/make-enum-schema ::why
+        reader-schema (l/enum-schema ::why
                                           [:foo :all :limit :stock])
         encoded (l/serialize writer-schema data)
         writer-pcf (l/get-parsing-canonical-form writer-schema)
@@ -1050,19 +1062,19 @@
 (deftest test-schema-evolution-named-ref
   (let [data {:players [{:first "Chad" :last "Harrington"}]
               :judges [{:first "Chibuzor" :last "Okonkwo"}]}
-        name-schema (l/make-record-schema
+        name-schema (l/record-schema
                      ::name
                      [[:first l/string-schema]
                       [:last l/string-schema]])
-        writer-schema (l/make-record-schema
+        writer-schema (l/record-schema
                        ::game
-                       [[:players (l/make-array-schema name-schema)]
-                        [:judges (l/make-array-schema name-schema)]])
-        reader-schema (l/make-record-schema
+                       [[:players (l/array-schema name-schema)]
+                        [:judges (l/array-schema name-schema)]])
+        reader-schema (l/record-schema
                        ::game
-                       [[:players (l/make-array-schema name-schema)]
-                        [:judges (l/make-array-schema name-schema)]
-                        [:audience (l/make-array-schema name-schema)]])
+                       [[:players (l/array-schema name-schema)]
+                        [:judges (l/array-schema name-schema)]
+                        [:audience (l/array-schema name-schema)]])
         encoded (l/serialize writer-schema data)
         writer-pcf (l/get-parsing-canonical-form writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
@@ -1335,22 +1347,22 @@
 
 (deftest test-field-default-validation
   (try
-    (l/make-record-schema :test-schema
-                          [[:int-field l/int-schema "a"]])
+    (l/record-schema :test-schema
+                     [[:int-field l/int-schema "a"]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/get-exception-msg e)]
         (is (re-find #"Default value for field .* is invalid" msg))))))
 
-(deftest test-make-default-data
-  (is (= :all (l/make-default-data why-schema)))
+(deftest test-default-data
+  (is (= :all (l/default-data why-schema)))
   (is (= {:sku -1, :qty-requested 0}
-         (l/make-default-data add-to-cart-req-schema))))
+         (l/default-data add-to-cart-req-schema))))
 
 (deftest test-bad-field-name
   (try
-    (l/make-record-schema :test-schema
-                          [[:bad? l/boolean-schema]])
+    (l/record-schema :test-schema
+                     [[:bad? l/boolean-schema]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/get-exception-msg e)]
@@ -1359,8 +1371,8 @@
 
 (deftest test-bad-record-name
   (try
-    (l/make-record-schema :*test-schema*
-                          [[:is-good l/boolean-schema]])
+    (l/record-schema :*test-schema*
+                     [[:is-good l/boolean-schema]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/get-exception-msg e)]
@@ -1369,9 +1381,9 @@
 
 (deftest test-duplicate-field-name
   (try
-    (l/make-record-schema :test-schema
-                          [[:int-field l/int-schema]
-                           [:int-field l/int-schema]])
+    (l/record-schema :test-schema
+                     [[:int-field l/int-schema]
+                      [:int-field l/int-schema]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/get-exception-msg e)]

@@ -63,7 +63,7 @@
       (set! buflen new-buf-len)
       (set! ba new-buf))))
 
-(defn make-output-stream
+(defn output-stream
   [initial-size]
   (->OutputStream (ba/byte-array initial-size) initial-size 0))
 
@@ -106,5 +106,5 @@
   (reset-to-mark! [this]
     (set! pos mark-pos)))
 
-(defn make-input-stream [ba]
+(defn input-stream [ba]
   (->InputStream ba 0 0))

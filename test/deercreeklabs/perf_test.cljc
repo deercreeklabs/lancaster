@@ -13,29 +13,29 @@
 (s/set-fn-validation! false)
 
 (def add-to-cart-req-schema
-  (l/make-record-schema ::add-to-cart-req
-                        [[:sku l/int-schema]
-                         [:qty-requested l/int-schema 0]]))
+  (l/record-schema ::add-to-cart-req
+                   [[:sku l/int-schema]
+                    [:qty-requested l/int-schema 0]]))
 
-(def why-schema (l/make-enum-schema ::why
-                                    [:all :stock :limit]))
+(def why-schema (l/enum-schema ::why
+                               [:all :stock :limit]))
 
-(def a-fixed-schema (l/make-fixed-schema ::a-fixed 2))
+(def a-fixed-schema (l/fixed-schema ::a-fixed 2))
 
 (def rec-w-fixed-no-default-schema
-  (l/make-record-schema ::rec-w-fixed-no-default
-                        [[:data a-fixed-schema]]))
+  (l/record-schema ::rec-w-fixed-no-default
+                   [[:data a-fixed-schema]]))
 
 (def add-to-cart-rsp-schema
-  (l/make-record-schema ::add-to-cart-rsp
-                        [[:qty-requested l/int-schema]
-                         [:qty-added l/int-schema]
-                         [:current-qty l/int-schema]
-                         [:req add-to-cart-req-schema
-                          {:sku 10 :qty-requested 1}]
-                         [:the-reason-why why-schema :stock]
-                         [:data a-fixed-schema (ba/byte-array [77 88])]
-                         [:other-data l/bytes-schema]]))
+  (l/record-schema ::add-to-cart-rsp
+                   [[:qty-requested l/int-schema]
+                    [:qty-added l/int-schema]
+                    [:current-qty l/int-schema]
+                    [:req add-to-cart-req-schema
+                     {:sku 10 :qty-requested 1}]
+                    [:the-reason-why why-schema :stock]
+                    [:data a-fixed-schema (ba/byte-array [77 88])]
+                    [:other-data l/bytes-schema]]))
 
 (defn get-ops-per-sec [f iters]
   (let [start-ms (u/get-current-time-ms)

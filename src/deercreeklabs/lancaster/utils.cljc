@@ -78,7 +78,7 @@
 
 (def Nil (s/eq nil))
 
-(defn make-schema-name [clj-name]
+(defn schema-name [clj-name]
   (-> (name clj-name)
       (clojure.string/split #"-schema")
       (first)))
@@ -783,6 +783,7 @@
    :array sequential?
    :map map?
    :record map?
+   :flex-map map?
    nil (constantly true)})
 
 (defn edn-schema->pred [edn-schema name->edn-schema]
