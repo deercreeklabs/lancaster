@@ -43,7 +43,7 @@
              :compiler compiler}
       node-test? (assoc :notify-command ["node" output-to]))))
 
-(defproject deercreeklabs/lancaster "0.4.13-SNAPSHOT"
+(defproject deercreeklabs/lancaster "0.5.0-SNAPSHOT"
   :description "Tools for working with Apache Avro"
   :url "https://github.com/deercreeklabs/lancaster"
   :license {:name "Apache License, Version 2.0"
@@ -77,7 +77,7 @@
    [cheshire "5.8.1"]
    [com.taoensso/timbre "4.10.0"]
    [deercreeklabs/baracus "0.1.12"]
-   [deercreeklabs/log-utils "0.1.9"]
+   [deercreeklabs/log-utils "0.2.0"]
    [org.clojure/clojure "1.9.0"]
    [org.clojure/clojurescript "1.10.339"]
    [primitive-math "0.1.6"]
