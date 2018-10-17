@@ -113,25 +113,25 @@
    data :- s/Any]
   (u/wrap schema data))
 
-(s/defn get-edn-schema :- s/Any
+(s/defn edn-schema :- s/Any
   [schema :- LancasterSchema]
-  (u/get-edn-schema schema))
+  (u/edn-schema schema))
 
-(s/defn get-json-schema :- s/Str
+(s/defn json-schema :- s/Str
   [schema :- LancasterSchema]
-  (u/get-json-schema schema))
+  (u/json-schema schema))
 
-(s/defn get-plumatic-schema :- s/Any
+(s/defn plumatic-schema :- s/Any
   [schema :- LancasterSchema]
-  (u/get-plumatic-schema schema))
+  (u/plumatic-schema schema))
 
-(s/defn get-parsing-canonical-form :- s/Str
+(s/defn pcf :- s/Str
   [schema :- LancasterSchema]
-  (u/get-parsing-canonical-form schema))
+  (u/parsing-canonical-form schema))
 
-(s/defn get-fingerprint64 :- Long
+(s/defn fingerprint64 :- Long
   [schema :- LancasterSchema]
-  (u/get-fingerprint64 schema))
+  (u/fingerprint64 schema))
 
 (s/defn schema? :- s/Bool
   [arg :- s/Any]
@@ -143,7 +143,7 @@
     (throw
      (ex-info "Argument to default-data must be a schema object."
               {:given-arg schema})))
-  (u/get-default-data (get-edn-schema schema)))
+  (u/default-data (edn-schema schema)))
 
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 

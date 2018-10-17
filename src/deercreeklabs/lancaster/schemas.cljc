@@ -44,22 +44,22 @@
           (rd is)))))
   (wrap [this data]
     [schema-name data])
-  (get-edn-schema [this]
+  (edn-schema [this]
     edn-schema)
-  (get-json-schema [this]
+  (json-schema [this]
     json-schema)
-  (get-parsing-canonical-form [this]
+  (parsing-canonical-form [this]
     parsing-canonical-form)
-  (get-fingerprint64 [this]
+  (fingerprint64 [this]
     fingerprint64)
-  (get-plumatic-schema [this]
+  (plumatic-schema [this]
     plumatic-schema))
 
 (defmulti validate-schema-args u/first-arg-dispatch)
 
 (defn edn-schema->lancaster-schema [schema-type edn-schema]
   (let [name->edn-schema (u/make-name->edn-schema edn-schema)
-        schema-name (u/get-schema-name edn-schema)
+        schema-name (u/edn-schema->name-kw edn-schema)
         avro-schema (if (u/avro-primitive-types schema-type)
                       (name schema-type)
                       (u/edn-schema->avro-schema edn-schema))
@@ -81,8 +81,8 @@
      fingerprint64 plumatic-schema serializer deserializer default-data-size
      *name->serializer *name->deserializer *pcf->resolving-deserializer)))
 
-(defn get-name-or-schema [edn-schema *names]
-  (let [schema-name (u/get-schema-name edn-schema)]
+(defn name-or-schema [edn-schema *names]
+  (let [schema-name (u/edn-schema->name-kw edn-schema)]
     (if (@*names schema-name)
       schema-name
       (do
@@ -94,12 +94,12 @@
    (fix-repeated-schemas edn-schema (atom #{})))
   ([edn-schema *names]
    (case (u/get-avro-type edn-schema)
-     :enum (get-name-or-schema edn-schema *names)
-     :fixed (get-name-or-schema edn-schema *names)
+     :enum (name-or-schema edn-schema *names)
+     :fixed (name-or-schema edn-schema *names)
      :array (update edn-schema :items #(fix-repeated-schemas % *names))
      :map (update edn-schema :values #(fix-repeated-schemas % *names))
      :union (mapv #(fix-repeated-schemas % *names) edn-schema)
-     :record (let [name-or-schema (get-name-or-schema edn-schema *names)
+     :record (let [name-or-schema (name-or-schema edn-schema *names)
                    fix-field (fn [field]
                                (update field :type
                                        #(fix-repeated-schemas % *names)))]
@@ -147,11 +147,11 @@
                     {:given-schemas schemas})))
   (doseq [schema schemas]
     (when (or (not (instance? LancasterSchema schema))
-              (not (= :record (:type (u/get-edn-schema schema)))))
+              (not (= :record (:type (u/edn-schema schema)))))
       (throw (ex-info (str "Second arg to merge-record-schemas must be a "
                            "sequence of record schema objects.")
                       {:bad-schema schema}))))
-  (let [fields (mapcat #(:fields (u/get-edn-schema %)) schemas)
+  (let [fields (mapcat #(:fields (u/edn-schema %)) schemas)
         edn-schema {:name name-kw
                     :type :record
                     :fields fields}]
@@ -266,7 +266,7 @@
        (ex-info (str "All member schemas in a union must be schema objects "
                      "or name keywords.")
                 {:bad-member-schema member-schema}))))
-  (when (u/illegal-union? (map u/get-edn-schema
+  (when (u/illegal-union? (map u/edn-schema
                                ;; Name keywords & named schemas are always okay
                                (remove keyword? member-schemas)))
     (throw (ex-info "Illegal union schema." {:schema member-schemas}))))

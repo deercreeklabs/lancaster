@@ -38,16 +38,16 @@
                     [:other-data l/bytes-schema]]))
 
 (defn get-ops-per-sec [f iters]
-  (let [start-ms (u/get-current-time-ms)
+  (let [start-ms (u/current-time-ms)
         _ (dotimes [_ iters]
             (f))
-        ms (- (u/get-current-time-ms) start-ms)]
+        ms (- (u/current-time-ms) start-ms)]
     (/ (* 1000 iters) ms)))
 
 (defn deserialize-same
   "Deserialize with the same reader and writer schemas. Use for testing only."
   [schema encoded]
-  (l/deserialize schema (l/get-parsing-canonical-form schema) encoded))
+  (l/deserialize schema (l/pcf schema) encoded))
 
 (deftest ^:perf test-serdes-speed
   (let [data {:qty-requested 123

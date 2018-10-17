@@ -26,16 +26,16 @@
 (defn deserialize-same
   "Deserialize with the same reader and writer schemas. Use for testing only."
   [schema encoded]
-  (l/deserialize schema (l/get-parsing-canonical-form schema) encoded))
+  (l/deserialize schema (l/pcf schema) encoded))
 
-(defn get-abs-err [expected actual]
+(defn abs-err [expected actual]
   (let [err (- expected actual)]
     (if (neg? err)
       (- err)
       err)))
 
-(defn get-rel-err [expected actual]
-  (/ (get-abs-err expected actual) expected))
+(defn rel-err [expected actual]
+  (/ (abs-err expected actual) expected))
 
 (defn xf-byte-arrays
   [edn-schema]
@@ -46,14 +46,14 @@
 
 #?(:clj
    (defn fp-matches? [schema]
-     (let [json-schema (l/get-json-schema schema)
+     (let [json-schema (l/json-schema schema)
            parser (Schema$Parser.)
            java-schema (.parse parser ^String json-schema)
            java-fp (SchemaNormalization/parsingFingerprint64 java-schema)
-           clj-fp (l/get-fingerprint64 schema)]
+           clj-fp (l/fingerprint64 schema)]
        (or (= java-fp clj-fp)
            (let [java-pcf (SchemaNormalization/toParsingForm java-schema)
-                 clj-pcf (l/get-parsing-canonical-form schema)
+                 clj-pcf (l/pcf schema)
                  err-str (str "Fingerprints do not match!\n"
                               "java-fp: " java-fp "\n"
                               "clj-fp: " clj-fp "\n"
@@ -203,9 +203,9 @@
                                :default 0}]}]
     #?(:clj (is (fp-matches? add-to-cart-req-schema)))
     (is (= "5027717767048351978"
-           (u/long->str (l/get-fingerprint64 add-to-cart-req-schema))))
-    (is (= expected-edn-schema (l/get-edn-schema add-to-cart-req-schema)))
-    (is (= expected-pcf (l/get-parsing-canonical-form
+           (u/long->str (l/fingerprint64 add-to-cart-req-schema))))
+    (is (= expected-edn-schema (l/edn-schema add-to-cart-req-schema)))
+    (is (= expected-pcf (l/pcf
                          add-to-cart-req-schema)))))
 
 (deftest test-def-record-schema-serdes
@@ -220,13 +220,13 @@
   (is (= {:name :deercreeklabs.lancaster-test/why
           :type :enum
           :symbols [:all :stock :limit]}
-         (l/get-edn-schema why-schema)))
+         (l/edn-schema why-schema)))
   #?(:clj (is (fp-matches? why-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.Why\",\"type\":"
               "\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}")
-         (l/get-parsing-canonical-form why-schema)))
+         (l/pcf why-schema)))
   (is (= "7071400091851593822"
-         (u/long->str (l/get-fingerprint64 why-schema)))))
+         (u/long->str (l/fingerprint64 why-schema)))))
 
 (deftest test-def-enum-schema-serdes
   (let [data :stock
@@ -239,13 +239,13 @@
   (is (= {:name :deercreeklabs.lancaster-test/a-fixed
           :type :fixed
           :size 2}
-         (l/get-edn-schema a-fixed-schema)))
+         (l/edn-schema a-fixed-schema)))
   #?(:clj (is (fp-matches? a-fixed-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.AFixed\",\"type\":"
               "\"fixed\",\"size\":2}")
-         (l/get-parsing-canonical-form a-fixed-schema)))
+         (l/pcf a-fixed-schema)))
   (is (= "7921008586133908967"
-         (u/long->str (l/get-fingerprint64 a-fixed-schema)))))
+         (u/long->str (l/fingerprint64 a-fixed-schema)))))
 
 (deftest test-def-fixed-schema-serdes
   (let [data (ba/byte-array [12 24])
@@ -299,10 +299,10 @@
                 "\"data\",\"type\":{\"name\":\"deercreeklabs.lancaster_test."
                 "AFixed\",\"type\":\"fixed\",\"size\":2}},{\"name\":"
                 "\"otherData\",\"type\":\"bytes\"}]}")
-           (l/get-parsing-canonical-form add-to-cart-rsp-schema)))
-    (is (= expected (l/get-edn-schema add-to-cart-rsp-schema))))
+           (l/pcf add-to-cart-rsp-schema)))
+    (is (= expected (l/edn-schema add-to-cart-rsp-schema))))
   (is (= "-5582445743513220891"
-         (u/long->str (l/get-fingerprint64 add-to-cart-rsp-schema)))))
+         (u/long->str (l/fingerprint64 add-to-cart-rsp-schema)))))
 
 (deftest test-nested-record-serdes
   (let [data {:qty-requested 123
@@ -362,7 +362,7 @@
   (let [data (float 3.14159)
         encoded (l/serialize l/float-schema data)
         decoded (deserialize-same l/float-schema encoded)
-        abs-err (get-abs-err data decoded)]
+        abs-err (abs-err data decoded)]
     #?(:clj (is (fp-matches? l/float-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-48 15 73 64]) encoded))
     (is (< abs-err 0.000001))))
@@ -371,7 +371,7 @@
   (let [data (double 3.14159265359)
         encoded (l/serialize l/double-schema data)
         decoded (deserialize-same l/double-schema encoded)
-        abs-err (get-abs-err data decoded)]
+        abs-err (abs-err data decoded)]
     #?(:clj (is (fp-matches? l/double-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-22 46 68 84 -5 33 9 64])
                                     encoded))
@@ -398,12 +398,12 @@
 
 (deftest test-def-map-schema
   (is (= {:type :map :values :int}
-         (l/get-edn-schema ages-schema)))
+         (l/edn-schema ages-schema)))
   #?(:clj (is (fp-matches? ages-schema)))
   (is (= "{\"type\":\"map\",\"values\":\"int\"}"
-         (l/get-parsing-canonical-form ages-schema)))
+         (l/pcf ages-schema)))
   (is (= "-2649837581481768589"
-         (u/long->str (l/get-fingerprint64 ages-schema)))))
+         (u/long->str (l/fingerprint64 ages-schema)))))
 
 (deftest test-map-schema-serdes
   (let [data {"Alice" 50
@@ -422,21 +422,21 @@
           :type :flex-map,
           :keys :int,
           :values :int}
-         (l/get-edn-schema sku-to-qty-schema)))
+         (l/edn-schema sku-to-qty-schema)))
   #?(:clj (is (fp-matches? sku-to-qty-schema)))
   (is (= (str
           "{\"name\":\"deercreeklabs.lancaster_test.SkuToQty\",\"type\":"
           "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\":"
           "\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":{\"type\":"
           "\"array\",\"items\":\"int\"}}]}")
-         (l/get-parsing-canonical-form sku-to-qty-schema)))
+         (l/pcf sku-to-qty-schema)))
   (is (= "6159813828138522206"
-         (u/long->str (l/get-fingerprint64 sku-to-qty-schema)))))
+         (u/long->str (l/fingerprint64 sku-to-qty-schema)))))
 
 (deftest test-embedded-flex-map-pcf
   (let [fms (l/flex-map-schema :i-to-i l/int-schema l/int-schema)
         rs (l/record-schema :r [[:fm fms]])
-        pcf (l/get-parsing-canonical-form rs)
+        pcf (l/pcf rs)
         expected (str "{\"name\":\"R\",\"type\":\"record\",\"fields\":[{"
                       "\"name\":\"fm\",\"type\":{\"name\":\"IToI\",\"type\":"
                       "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{"
@@ -460,7 +460,7 @@
               456 100
               789 2}
         encoded (l/serialize sku-to-qty-schema data)
-        writer-pcf (l/get-parsing-canonical-form sku-to-qty-schema)
+        writer-pcf (l/pcf sku-to-qty-schema)
         decoded (l/deserialize sku-to-qty-v2-schema writer-pcf encoded)
         expected (reduce-kv (fn [acc k v]
                               (assoc acc k (u/int->long v)))
@@ -486,7 +486,7 @@
                                              add-to-cart-req-schema
                                              l/boolean-schema)
         schema (l/array-schema child-schema)
-        pschema (l/get-plumatic-schema schema)
+        pschema (l/plumatic-schema schema)
         data [{{:sku 123 :qty-requested 10} true
                {:sku 999 :qty-requested 7} false}]]
     (is (nil? (s/check pschema data)))))
@@ -494,7 +494,7 @@
 (deftest test-maybe-flex-map
   (let [fms (l/flex-map-schema :i-to-i l/int-schema l/int-schema)
         ms (l/maybe fms)
-        writer-pcf (l/get-parsing-canonical-form ms)
+        writer-pcf (l/pcf ms)
         data1 {1 1}
         data2 nil
         rt (fn [data]
@@ -506,11 +506,11 @@
 (deftest test-def-array-schema
   #?(:clj (is (fp-matches? simple-array-schema)))
   (is (= {:type :array :items :string}
-         (l/get-edn-schema simple-array-schema)))
+         (l/edn-schema simple-array-schema)))
   (is (= "{\"type\":\"array\",\"items\":\"string\"}"
-         (l/get-parsing-canonical-form simple-array-schema)))
+         (l/pcf simple-array-schema)))
   (is (= "-3577210133426481249"
-         (u/long->str (l/get-fingerprint64 simple-array-schema)))))
+         (u/long->str (l/fingerprint64 simple-array-schema)))))
 
 (deftest test-array-schema-serdes
   (let [names ["Ferdinand" "Omar" "Lin"]
@@ -524,7 +524,7 @@
 
 (deftest test-empty-array-serdes
   (let [sch (l/array-schema l/int-schema)
-        pcf (l/get-parsing-canonical-form sch)
+        pcf (l/pcf sch)
         data []
         encoded (l/serialize sch data)
         _ (is (ba/equivalent-byte-arrays?
@@ -564,9 +564,9 @@
               :size 2}
              :default "MX"}
             {:name :other-data :type :bytes :default ""}]}}
-         (l/get-edn-schema rsps-schema)))
+         (l/edn-schema rsps-schema)))
   (is (= "6045089564094799287"
-         (u/long->str (l/get-fingerprint64 rsps-schema)))))
+         (u/long->str (l/fingerprint64 rsps-schema)))))
 
 (deftest test-nested-array-schema-serdes
   (let [data [{:qty-requested 123
@@ -623,9 +623,9 @@
               :size 2}
              :default "MX"}
             {:name :other-data :type :bytes :default ""}]}}
-         (l/get-edn-schema nested-map-schema)))
+         (l/edn-schema nested-map-schema)))
   (is (= "-6943064080000840455"
-         (u/long->str (l/get-fingerprint64 nested-map-schema)))))
+         (u/long->str (l/fingerprint64 nested-map-schema)))))
 
 (deftest test-nested-map-schema-serdes
   (let [data {"A" {:qty-requested 123
@@ -653,7 +653,7 @@
 
 (deftest test-empty-map-serdes
   (let [sch (l/map-schema l/int-schema)
-        pcf (l/get-parsing-canonical-form sch)
+        pcf (l/pcf sch)
         data {}
         encoded (l/serialize sch data)
         _ (is (ba/equivalent-byte-arrays?
@@ -673,9 +673,9 @@
           {:name :deercreeklabs.lancaster-test/a-fixed
            :type :fixed
            :size 2}]
-         (l/get-edn-schema union-schema)))
+         (l/edn-schema union-schema)))
   (is (= "-1215721474899338988"
-         (u/long->str (l/get-fingerprint64 union-schema)))))
+         (u/long->str (l/fingerprint64 union-schema)))))
 
 (deftest test-union-schema-serdes
   (let [data {:sku 123 :qty-requested 4}
@@ -703,9 +703,9 @@
            :fields
            [{:name :name :type :string :default "No name"}
             {:name :owner :type :string :default "No owner"}]}]
-         (l/get-edn-schema person-or-dog-schema)))
+         (l/edn-schema person-or-dog-schema)))
   (is (= "8229597085629138324"
-         (u/long->str (l/get-fingerprint64 person-or-dog-schema)))))
+         (u/long->str (l/fingerprint64 person-or-dog-schema)))))
 
 (deftest test-wrapped-union-schema-serdes
   (let [data (l/wrap dog-schema {:name "Fido" :owner "Zach"})
@@ -736,9 +736,9 @@
   #?(:clj (is (fp-matches? map-or-array-schema)))
   (is (= [{:type :map :values :int}
           {:type :array :items :string}]
-         (l/get-edn-schema map-or-array-schema)))
+         (l/edn-schema map-or-array-schema)))
   (is (= "4441440791563688855"
-         (u/long->str (l/get-fingerprint64 map-or-array-schema)))))
+         (u/long->str (l/fingerprint64 map-or-array-schema)))))
 
 (deftest test-map-or-array-schema-serdes
   (let [data {"Zeke" 22 "Adeline" 88}
@@ -770,9 +770,9 @@
            :fields [{:name :name :type :string :default "No name"}
                     {:name :owner :type :string :default "No owner"}]}
           {:type :array :items :string}]
-         (l/get-edn-schema mopodoa-schema)))
+         (l/edn-schema mopodoa-schema)))
   (is (= "-2159799032016380061"
-         (u/long->str (l/get-fingerprint64 mopodoa-schema)))))
+         (u/long->str (l/fingerprint64 mopodoa-schema)))))
 
 (deftest test-mopodoa-schema-serdes
   (let [data (l/wrap ages-schema {"Zeke" 22 "Adeline" 88})
@@ -803,10 +803,10 @@
            {:name :left
             :type [:null :tree]
             :default nil}]}
-         (l/get-edn-schema tree-schema)))
+         (l/edn-schema tree-schema)))
   #?(:clj (is (fp-matches? tree-schema)))
   (is (= "1955448859740230833"
-         (u/long->str (l/get-fingerprint64 tree-schema)))))
+         (u/long->str (l/fingerprint64 tree-schema)))))
 
 (deftest test-recursive-schema-serdes
   (let [data {:value 5
@@ -834,7 +834,7 @@
         writer-schema l/int-schema
         reader-schema l/long-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
     (is (= "10" (u/long->str decoded-new)))))
 
@@ -843,7 +843,7 @@
         writer-schema l/int-schema
         reader-schema l/float-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
     (is (= (float data) decoded-new))))
 
@@ -852,7 +852,7 @@
         writer-schema l/int-schema
         reader-schema l/float-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
     (is (= (double data) decoded-new))))
 
@@ -861,10 +861,10 @@
         writer-schema l/long-schema
         reader-schema l/float-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded-orig)
         expected 5.3021371E13
-        rel-err (get-rel-err expected decoded)]
+        rel-err (rel-err expected decoded)]
     (is (> 0.00000001 rel-err))))
 
 (deftest test-schema-resolution-long-to-double
@@ -872,10 +872,10 @@
         writer-schema l/long-schema
         reader-schema l/double-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded-orig)
         expected (double -53017076308613)
-        rel-err (get-rel-err expected decoded)]
+        rel-err (rel-err expected decoded)]
     (is (> 0.00000001 rel-err))))
 
 (deftest test-schema-resolution-float-to-double
@@ -883,9 +883,9 @@
         writer-schema l/float-schema
         reader-schema l/double-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded-orig)
-        rel-err (get-rel-err data decoded)]
+        rel-err (rel-err data decoded)]
     (is (> 0.0000001 rel-err))))
 
 (deftest test-schema-resolution-string-to-bytes
@@ -893,7 +893,7 @@
         writer-schema l/string-schema
         reader-schema l/bytes-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
         expected (ba/byte-array [72 101 108 108 111 44
                                  32 87 111 114 108 100 33])]
@@ -904,7 +904,7 @@
         writer-schema (l/array-schema l/int-schema)
         reader-schema (l/array-schema l/float-schema)
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
         expected [1.0 2.0 3.0]]
     (is (= expected decoded))))
@@ -914,7 +914,7 @@
         writer-schema (l/map-schema l/int-schema)
         reader-schema (l/map-schema l/float-schema)
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
         expected {"one" 1.0 "two" 2.0}]
     (is (= expected decoded))))
@@ -925,7 +925,7 @@
         reader-schema (l/enum-schema ::why
                                           [:foo :all :limit :stock])
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)]
     (is (= data decoded))))
 
@@ -935,7 +935,7 @@
         writer-schema add-to-cart-req-schema
         reader-schema add-to-cart-req-v2-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)]
     (is (= (assoc data :note "No note") decoded))))
 
@@ -946,7 +946,7 @@
         writer-schema add-to-cart-req-v2-schema
         reader-schema add-to-cart-req-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)]
     (is (= (dissoc data :note) decoded))))
 
@@ -957,7 +957,7 @@
         writer-schema add-to-cart-req-v2-schema
         reader-schema add-to-cart-req-v3-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)]
     (is (= (assoc data :qty-requested 10.0) decoded))))
 
@@ -968,7 +968,7 @@
         writer-schema add-to-cart-req-v2-schema
         reader-schema add-to-cart-req-v4-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
         expected (-> data
                      (dissoc :note)
@@ -981,7 +981,7 @@
         writer-schema add-to-cart-req-schema
         reader-schema add-to-cart-req-v3-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)]
     (is (= (assoc data :qty-requested 10.0 :note "No note") decoded))))
 
@@ -990,7 +990,7 @@
         writer-schema person-or-dog-schema
         reader-schema fish-or-person-or-dog-v2-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
         [dec-sch-name dec-data] decoded
         [orig-sch-name orig-data] data]
@@ -1004,7 +1004,7 @@
         writer-schema person-or-dog-schema
         reader-schema dog-v2-schema
         encoded (l/serialize writer-schema wrapped-data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)]
     (is (= (assoc data :tag-number -1) decoded))))
 
@@ -1014,7 +1014,7 @@
         writer-schema dog-v2-schema
         reader-schema person-or-dog-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
         expected (l/wrap dog-schema (dissoc data :tag-number))]
     (is (= expected decoded))))
@@ -1025,7 +1025,7 @@
         writer-schema fish-or-person-or-dog-v2-schema
         reader-schema person-or-dog-schema
         encoded (l/serialize writer-schema wrapped-data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
         [schema-name decoded-data] decoded
         expected (dissoc data :tag-number)]
@@ -1037,7 +1037,7 @@
         writer-schema fish-or-person-or-dog-v2-schema
         reader-schema person-or-dog-schema
         encoded (l/serialize writer-schema wrapped-data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)]
+        writer-pcf (l/pcf writer-schema)]
     (try
       (l/deserialize reader-schema writer-pcf encoded)
       (is (= :did-not-throw :but-should-have))
@@ -1051,7 +1051,7 @@
         writer-schema add-to-cart-req-schema
         reader-schema l/int-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)]
+        writer-pcf (l/pcf writer-schema)]
     (try
       (l/deserialize reader-schema writer-pcf encoded)
       (is (= :did-not-throw :but-should-have))
@@ -1076,7 +1076,7 @@
                         [:judges (l/array-schema name-schema)]
                         [:audience (l/array-schema name-schema)]])
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/get-parsing-canonical-form writer-schema)
+        writer-pcf (l/pcf writer-schema)
         decoded (l/deserialize reader-schema writer-pcf encoded)
         expected (assoc data :audience [])]
     (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.Game\",\"type\":"
@@ -1104,9 +1104,9 @@
              :type :enum
              :symbols [:all :stock :limit]}
             :default :all}]}
-         (l/get-edn-schema rec-w-array-and-enum-schema)))
+         (l/edn-schema rec-w-array-and-enum-schema)))
   (is (= "-7927992739929321638"
-         (u/long->str (l/get-fingerprint64
+         (u/long->str (l/fingerprint64
                        rec-w-array-and-enum-schema)))))
 
 (deftest test-rec-w-array-and-enum-serdes
@@ -1129,9 +1129,9 @@
             :type {:type :map :values :int}
             :default {}}
            {:name :what :type :string :default ""}]}
-         (l/get-edn-schema rec-w-map-schema)))
+         (l/edn-schema rec-w-map-schema)))
   (is (= "-6323129018147636525"
-         (u/long->str (l/get-fingerprint64
+         (u/long->str (l/fingerprint64
                        rec-w-map-schema)))))
 
 (deftest test-rec-w-map-serdes
@@ -1158,9 +1158,9 @@
              :type :fixed
              :size 2}
             :default "\0\0"}]}
-         (l/get-edn-schema rec-w-fixed-no-default-schema)))
+         (l/edn-schema rec-w-fixed-no-default-schema)))
   (is (= "-4442885480253568244"
-         (u/long->str (l/get-fingerprint64
+         (u/long->str (l/fingerprint64
                        rec-w-fixed-no-default-schema)))))
 
 (deftest test-rec-w-fixed-no-default-serdes
@@ -1180,9 +1180,9 @@
           :fields
           [{:name :name, :type :string, :default ""}
            {:name :age, :type [:null :int], :default nil}]}
-         (l/get-edn-schema rec-w-maybe-field-schema)))
+         (l/edn-schema rec-w-maybe-field-schema)))
   (is (= "7746454544656991807"
-         (u/long->str (l/get-fingerprint64 rec-w-maybe-field-schema)))))
+         (u/long->str (l/fingerprint64 rec-w-maybe-field-schema)))))
 
 (deftest test-record-serdes-missing-field
   (let [data {:sku 100}]
@@ -1201,35 +1201,35 @@
     (is (= (assoc data :age nil) decoded))))
 
 (deftest test-plumatic-primitives
-  (is (= u/Nil (l/get-plumatic-schema l/null-schema)))
-  (is (= s/Bool (l/get-plumatic-schema l/boolean-schema)))
-  (is (= s/Int (l/get-plumatic-schema l/int-schema)))
-  (is (= u/LongOrInt (l/get-plumatic-schema l/long-schema)))
-  (is (= s/Num (l/get-plumatic-schema l/float-schema)))
-  (is (= s/Num (l/get-plumatic-schema l/double-schema)))
-  (is (= u/StringOrBytes (l/get-plumatic-schema l/string-schema)))
-  (is (= u/StringOrBytes (l/get-plumatic-schema l/bytes-schema))))
+  (is (= u/Nil (l/plumatic-schema l/null-schema)))
+  (is (= s/Bool (l/plumatic-schema l/boolean-schema)))
+  (is (= s/Int (l/plumatic-schema l/int-schema)))
+  (is (= u/LongOrInt (l/plumatic-schema l/long-schema)))
+  (is (= s/Num (l/plumatic-schema l/float-schema)))
+  (is (= s/Num (l/plumatic-schema l/double-schema)))
+  (is (= u/StringOrBytes (l/plumatic-schema l/string-schema)))
+  (is (= u/StringOrBytes (l/plumatic-schema l/bytes-schema))))
 
 (deftest test-plumatic-records
   (let [expected {s/Any s/Any
                   (s/required-key :sku) s/Int
                   (s/required-key :qty-requested) s/Int}
-        _ (is (= expected (l/get-plumatic-schema add-to-cart-req-schema)))
+        _ (is (= expected (l/plumatic-schema add-to-cart-req-schema)))
         expected {s/Any s/Any
                   :names [u/StringOrBytes]
                   :why (s/enum :all :stock :limit)}
         _ (is (= expected
-                 (l/get-plumatic-schema rec-w-array-and-enum-schema)))]))
+                 (l/plumatic-schema rec-w-array-and-enum-schema)))]))
 
 (deftest test-plumatic-union-unwrapped
   (let [expected (s/conditional
                   int? s/Int
-                  map? (l/get-plumatic-schema add-to-cart-req-schema)
+                  map? (l/plumatic-schema add-to-cart-req-schema)
                   u/valid-bytes-or-string? u/StringOrBytes)]
-    (is (= expected (l/get-plumatic-schema union-schema)))))
+    (is (= expected (l/plumatic-schema union-schema)))))
 
 (deftest test-plumatic-union-wrapped
-  (let [pl-sch (l/get-plumatic-schema person-or-dog-schema)
+  (let [pl-sch (l/plumatic-schema person-or-dog-schema)
         wrapped-data (l/wrap person-schema {:name "Apollo"
                                             :age 30})
         bad-wrapped-data (l/wrap person-schema {:name "Apollo"
@@ -1249,19 +1249,19 @@
                    {:name :minute :type :int :default -1}
                    {:name :second :type [:null :int] :default nil}]}
         merged-name (:name
-                     (l/get-edn-schema merged-date-time-schema))
+                     (l/edn-schema merged-date-time-schema))
         normal-name (:name
-                     (l/get-edn-schema date-time-schema))]
+                     (l/edn-schema date-time-schema))]
     (is (= merged-name normal-name))
-    (is (= expected (l/get-edn-schema merged-date-time-schema)))))
+    (is (= expected (l/edn-schema merged-date-time-schema)))))
 
 (deftest test-plumatic-maybe-missing-key
-  (let [ps (l/get-plumatic-schema rec-w-maybe-field-schema)
+  (let [ps (l/plumatic-schema rec-w-maybe-field-schema)
         data {:name "Boomer"}]
     (is (= nil (s/check ps data)))))
 
 (deftest test-plumatic-maybe-nil-value
-  (let [ps (l/get-plumatic-schema rec-w-maybe-field-schema)
+  (let [ps (l/plumatic-schema rec-w-maybe-field-schema)
         data {:name "Boomer"
               :age nil}]
     (is (= nil (s/check ps data)))))
@@ -1281,7 +1281,7 @@
   (is (not (l/schema? :foo))))
 
 (deftest test-deserialize-from-pcf
-  (let [pcf (l/get-parsing-canonical-form add-to-cart-rsp-schema)
+  (let [pcf (l/pcf add-to-cart-rsp-schema)
         data {:qty-requested 123
               :qty-added 10
               :current-qty 10
@@ -1313,7 +1313,7 @@
          (is (str/includes?
               msg "parsing canonical form")))))
    (try
-     (l/deserialize why-schema (l/get-parsing-canonical-form why-schema) [])
+     (l/deserialize why-schema (l/pcf why-schema) [])
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
        (let [msg (lu/get-exception-msg e)]
@@ -1323,7 +1323,7 @@
 (deftest test-bad-deserialize-args
   (s/without-fn-validation ;; Allow built-in handlers to throw
    (try
-     (l/deserialize nil (l/get-parsing-canonical-form why-schema)
+     (l/deserialize nil (l/pcf why-schema)
                     (ba/byte-array []))
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
@@ -1338,7 +1338,7 @@
          (is (str/includes?
               msg "parsing canonical form")))))
    (try
-     (l/deserialize why-schema (l/get-parsing-canonical-form why-schema) [])
+     (l/deserialize why-schema (l/pcf why-schema) [])
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
        (let [msg (lu/get-exception-msg e)]

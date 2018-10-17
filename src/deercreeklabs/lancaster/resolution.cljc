@@ -298,7 +298,7 @@
     (let [branch->deserializer (mapv
                                 #(u/make-deserializer % *name->deserializer)
                                 writer-edn-schema)
-          branch->schema-name (mapv u/get-schema-name writer-edn-schema)
+          branch->schema-name (mapv u/edn-schema->name-kw writer-edn-schema)
           branch->xf (mapv #(make-union-xf % (vec reader-edn-schema))
                            writer-edn-schema)]
       (if (u/wrapping-required? reader-edn-schema)
@@ -317,9 +317,10 @@
             data))))
 
     (= :union writer-type)
-    (let [branch->deserializer (mapv #(u/make-deserializer % *name->deserializer)
+    (let [branch->deserializer (mapv #(u/make-deserializer
+                                       % *name->deserializer)
                                      writer-edn-schema)
-          branch->schema-name (mapv u/get-schema-name writer-edn-schema)
+          branch->schema-name (mapv u/edn-schema->name-kw writer-edn-schema)
           branch->xf (mapv #(make-union-xf % [reader-edn-schema])
                            writer-edn-schema)]
       (if (u/wrapping-required? reader-edn-schema)
@@ -341,7 +342,7 @@
     (let [xf (make-union-xf writer-edn-schema reader-edn-schema)
           deserializer (u/make-deserializer writer-edn-schema
                                             *name->deserializer)
-          schema-name (u/get-schema-name writer-edn-schema)]
+          schema-name (u/edn-schema->name-kw writer-edn-schema)]
       (if (u/wrapping-required? reader-edn-schema)
         (fn deserialize [is]
           (let [data (xf (deserializer is))]
@@ -351,7 +352,7 @@
 
 (defn resolving-deserializer [writer-pcf reader-schema *name->deserializer]
   (let [writer-edn-schema (pcf/pcf->edn-schema writer-pcf)
-        reader-edn-schema (u/get-edn-schema reader-schema)
+        reader-edn-schema (u/edn-schema reader-schema)
         writer-type (u/get-avro-type writer-edn-schema)
         reader-type (u/get-avro-type reader-edn-schema)]
     (try

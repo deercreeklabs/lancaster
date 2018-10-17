@@ -28,7 +28,7 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-(declare get-default-data)
+(declare default-data)
 
 (defmacro sym-map
   "Builds a map from symbols.
@@ -44,11 +44,11 @@
   (serialize [this data] [this os data])
   (deserialize [this writer-pcf is])
   (wrap [this data])
-  (get-edn-schema [this])
-  (get-json-schema [this])
-  (get-parsing-canonical-form [this])
-  (get-fingerprint64 [this])
-  (get-plumatic-schema [this]))
+  (edn-schema [this])
+  (json-schema [this])
+  (parsing-canonical-form [this])
+  (fingerprint64 [this])
+  (plumatic-schema [this]))
 
 (defprotocol IOutputStream
   (write-byte [this b])
@@ -158,7 +158,7 @@
                                edn-schema)
                           (sym-map edn-schema)))))
 
-(s/defn get-schema-name :- s/Keyword
+(s/defn edn-schema->name-kw :- s/Keyword
   [edn-schema]
   (cond
     (avro-named-types (:type edn-schema))
@@ -195,7 +195,7 @@
 (defn ensure-edn-schema [schema]
   (cond
     (satisfies? ILancasterSchema schema)
-    (get-edn-schema schema)
+    (edn-schema schema)
 
     (sequential? schema)
     (mapv ensure-edn-schema schema) ;; union
@@ -214,22 +214,22 @@
                    field-default :default} field
                   field-schema (ensure-edn-schema field-type)
                   v (if default-record
-                      (get-default-data field-schema
-                                        (field-name default-record))
+                      (default-data field-schema
+                                    (field-name default-record))
                       field-default)]
               (assoc acc field-name v)))
           {} (:fields record-edn-schema)))
 
-(defn get-default-data
+(defn default-data
   ([edn-schema]
-   (get-default-data edn-schema nil {}))
+   (default-data edn-schema nil {}))
   ([edn-schema field-default]
-   (get-default-data edn-schema field-default {}))
+   (default-data edn-schema field-default {}))
   ([edn-schema field-default name->edn-schema]
    (let [avro-type (get-avro-type edn-schema)]
      (case avro-type
        :record (make-default-record edn-schema field-default)
-       :union (get-default-data (first edn-schema) field-default)
+       :union (default-data (first edn-schema) field-default)
        :fixed (make-default-fixed-or-bytes (:size edn-schema) field-default)
        :bytes (make-default-fixed-or-bytes 0 field-default)
        (or field-default
@@ -245,9 +245,9 @@
              :array []
              :map {}
              :flex-map {}
-             :name-keyword (get-default-data (name->edn-schema edn-schema)
-                                             field-default
-                                             name->edn-schema)))))))
+             :name-keyword (default-data (name->edn-schema edn-schema)
+                                         field-default
+                                         name->edn-schema)))))))
 
 (defn first-arg-dispatch [first-arg & rest-of-args]
   first-arg)
@@ -705,16 +705,6 @@
                                (assoc! acc k v)))
                            m (range count)))))))))
 
-(defn get-hash [edn-schema]
-  (let [schema-type (get-avro-type edn-schema)
-        avro-schema (if (avro-primitive-types schema-type)
-                      (name schema-type)
-                      (edn-schema->avro-schema edn-schema))]
-    (-> (edn->json-string avro-schema)
-        (ba/utf8->byte-array)
-        (ba/sha256)
-        (ba/byte-array->hex-str))))
-
 (defn flex-map-edn-schema->record-edn-schema [fm-edn-schema]
   (let [keys-schema (:keys fm-edn-schema)
         values-schema (:values fm-edn-schema)
@@ -812,7 +802,7 @@
             (let [sch (nth edn-schema i)
                   serializer (make-serializer sch name->edn-schema
                                               *name->serializer)]
-              (assoc acc (get-schema-name sch) [i serializer])))
+              (assoc acc (edn-schema->name-kw sch) [i serializer])))
           {} (range (count edn-schema))))
 
 (defmethod make-serializer :union
@@ -854,7 +844,7 @@
   [edn-schema *name->deserializer]
   (let [branch->deserializer (mapv #(make-deserializer % *name->deserializer)
                                    edn-schema)
-        branch->schema-name (mapv get-schema-name edn-schema)]
+        branch->schema-name (mapv edn-schema->name-kw edn-schema)]
     (fn deserialize [is]
       (let [branch (read-long-varint-zz is)
             deserializer (branch->deserializer branch)
@@ -930,7 +920,7 @@
    {:level :debug
     :output-fn lu/short-log-output-fn}))
 
-(s/defn get-current-time-ms :- s/Num
+(s/defn current-time-ms :- s/Num
   []
   #?(:clj (System/currentTimeMillis)
      :cljs (.getTime (js/Date.))))
@@ -1012,7 +1002,7 @@
     s/Any))
 
 (defn make-wrapped-union-pred [edn-schema]
-  (let [schema-name (get-schema-name edn-schema)]
+  (let [schema-name (edn-schema->name-kw edn-schema)]
     (fn [[data-name data]]
       (= schema-name data-name))))
 
@@ -1255,7 +1245,7 @@
               {:bad-field-def field})))
   (let [[field-name field-schema field-default] field
         field-edn-schema (if (satisfies? ILancasterSchema field-schema)
-                           (get-edn-schema field-schema)
+                           (edn-schema field-schema)
                            field-schema)]
     (when-not (keyword? field-name)
       (throw
@@ -1264,7 +1254,7 @@
                 (sym-map field-name field-schema field-default field))))
     {:name field-name
      :type field-edn-schema
-     :default (get-default-data field-edn-schema field-default)}))
+     :default (default-data field-edn-schema field-default)}))
 
 (defmethod make-edn-schema :record
   [schema-type name-kw fields]

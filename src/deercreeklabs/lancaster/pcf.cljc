@@ -253,7 +253,7 @@
             (mapv
              (fn [field]
                (let [{:keys [type]} field
-                     default (u/get-default-data type nil name->edn-schema)
+                     default (u/default-data type nil name->edn-schema)
                      new-type (add-defaults type name->edn-schema)
                      field-type (u/get-avro-type type)
                      new-field (-> field
