@@ -6,7 +6,7 @@
    [deercreeklabs.lancaster.fingerprint :as fingerprint]
    [deercreeklabs.lancaster.impl :as impl]
    [deercreeklabs.lancaster.resolution :as resolution]
-   [deercreeklabs.lancaster.pcf :as pcf]
+   [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    #?(:clj [primitive-math :as pm])
@@ -64,7 +64,7 @@
                       (name schema-type)
                       (u/edn-schema->avro-schema edn-schema))
         json-schema (u/edn->json-string avro-schema)
-        parsing-canonical-form (pcf/avro-schema->pcf avro-schema)
+        parsing-canonical-form (pcf-utils/avro-schema->pcf avro-schema)
         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
         plumatic-schema (u/edn-schema->plumatic-schema edn-schema
                                                        name->edn-schema)
@@ -189,7 +189,7 @@
         (try
           (u/serialize field-schema (impl/output-stream 100) default)
           (catch #?(:clj Exception :cljs js/Error) e
-            (let [ex-msg (lu/get-exception-msg e)]
+            (let [ex-msg (lu/ex-msg e)]
               (if (str/includes? ex-msg "not a valid")
                 (throw
                  (ex-info

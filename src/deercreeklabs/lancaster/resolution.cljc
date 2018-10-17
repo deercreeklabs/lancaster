@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
-   [deercreeklabs.lancaster.pcf :as pcf]
+   [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    #?(:clj [primitive-math :as pm])
@@ -129,7 +129,7 @@
 (defn edn-schema->pcf [edn-schema]
   (-> edn-schema
       (u/edn-schema->avro-schema)
-      (pcf/avro-schema->pcf)))
+      (pcf-utils/avro-schema->pcf)))
 
 (defn equivalent-schemas? [edn-schema1 edn-schema2]
   (= (edn-schema->pcf edn-schema1)
@@ -273,7 +273,7 @@
   (try
     [true (make-xf writer-item-schema reader-item-schema)]
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
+      (let [msg (lu/ex-msg e)]
         (if-not (str/includes? msg "do not match.")
           (throw e)
           [false nil]
@@ -351,7 +351,7 @@
           (xf (deserializer is)))))))
 
 (defn resolving-deserializer [writer-pcf reader-schema *name->deserializer]
-  (let [writer-edn-schema (pcf/pcf->edn-schema writer-pcf)
+  (let [writer-edn-schema (pcf-utils/pcf->edn-schema writer-pcf)
         reader-edn-schema (u/edn-schema reader-schema)
         writer-type (u/get-avro-type writer-edn-schema)
         reader-type (u/get-avro-type reader-edn-schema)]
@@ -366,7 +366,7 @@
           (fn deserialize [is]
             (xf (writer-deserializer is)))))
       (catch #?(:clj IllegalArgumentException :cljs js/Error) e
-        (let [msg (lu/get-exception-msg e)]
+        (let [msg (lu/ex-msg e)]
           (if (str/includes?
                msg
                #?(:clj "No method in multimethod 'make-xf'"

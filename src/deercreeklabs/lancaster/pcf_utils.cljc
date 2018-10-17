@@ -1,4 +1,4 @@
-(ns deercreeklabs.lancaster.pcf
+(ns deercreeklabs.lancaster.pcf-utils
   (:require
    [camel-snake-kebab.core :as csk]
    #?(:clj [cheshire.core :as json])

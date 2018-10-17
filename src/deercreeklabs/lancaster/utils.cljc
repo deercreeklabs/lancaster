@@ -825,7 +825,7 @@
             (serializer os data path))
           (catch #?(:clj UnsupportedOperationException :cljs js/Error) e
             (throw
-             (if-not (str/includes? (lu/get-exception-msg e)
+             (if-not (str/includes? (lu/ex-msg e)
                                     "nth not supported")
                e
                (ex-info "Union requires wrapping, but data is not wrapped."

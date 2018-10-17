@@ -5,7 +5,7 @@
    [clojure.walk :as walk]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
-   [deercreeklabs.lancaster.pcf :as pcf]
+   [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
    [deercreeklabs.lancaster.resolution :as reso]
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]
@@ -728,7 +728,7 @@
     (l/serialize person-or-dog-schema [:non-existent-schema-name {}])
     (is (= :did-not-throw :but-should-have))
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
+      (let [msg (lu/ex-msg e)]
         (is (str/includes?
              msg "`:non-existent-schema-name` is not in the union schema"))))))
 
@@ -1042,7 +1042,7 @@
       (l/deserialize reader-schema writer-pcf encoded)
       (is (= :did-not-throw :but-should-have))
       (catch #?(:clj Exception :cljs js/Error) e
-        (let [msg (lu/get-exception-msg e)]
+        (let [msg (lu/ex-msg e)]
           (is (str/includes? msg "do not match.")))))))
 
 (deftest test-schema-evolution-no-match
@@ -1056,7 +1056,7 @@
       (l/deserialize reader-schema writer-pcf encoded)
       (is (= :did-not-throw :but-should-have))
       (catch #?(:clj Exception :cljs js/Error) e
-        (let [msg (lu/get-exception-msg e)]
+        (let [msg (lu/ex-msg e)]
           (is (str/includes? msg "do not match.")))))))
 
 (deftest test-schema-evolution-named-ref
@@ -1191,7 +1191,7 @@
       (is (= :did-not-throw :but-should-have))
       (catch #?(:cljs js/Error :clj Exception) e
         (is (str/includes?
-             (lu/get-exception-msg e)
+             (lu/ex-msg e)
              (str "is not a valid :int. Path: [:qty-requested]")))))))
 
 (deftest test-record-serdes-missing-maybe-field
@@ -1273,7 +1273,7 @@
       (l/serialize person-or-dog-schema data)
       (is (= :should-have-thrown :but-didnt))
       (catch #?(:clj Exception :cljs js/Error) e
-        (is (str/includes? (lu/get-exception-msg e)
+        (is (str/includes? (lu/ex-msg e)
                            "Union requires wrapping"))))))
 
 (deftest test-schema?
@@ -1290,7 +1290,7 @@
               :data (ba/byte-array [66 67])
               :other-data (ba/byte-array [123 123])}
         encoded (l/serialize add-to-cart-rsp-schema data)
-        sch (->> (pcf/pcf->edn-schema pcf)
+        sch (->> (pcf-utils/pcf->edn-schema pcf)
                  (schemas/edn-schema->lancaster-schema :record))
         decoded (l/deserialize sch pcf encoded)]
     (is (= (dissoc data :data :other-data)
@@ -1302,21 +1302,21 @@
      (l/serialize nil nil)
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/get-exception-msg e)]
+       (let [msg (lu/ex-msg e)]
          (is (str/includes?
               msg "First argument to serialize must be a schema object")))))
    (try
      (l/deserialize why-schema nil (ba/byte-array []))
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/get-exception-msg e)]
+       (let [msg (lu/ex-msg e)]
          (is (str/includes?
               msg "parsing canonical form")))))
    (try
      (l/deserialize why-schema (l/pcf why-schema) [])
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/get-exception-msg e)]
+       (let [msg (lu/ex-msg e)]
          (is (str/includes?
               msg "Third argument to deserialize must be a byte array")))))))
 
@@ -1327,21 +1327,21 @@
                     (ba/byte-array []))
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/get-exception-msg e)]
+       (let [msg (lu/ex-msg e)]
          (is (str/includes?
               msg "First argument to deserialize must be a schema object")))))
    (try
      (l/deserialize why-schema nil (ba/byte-array []))
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/get-exception-msg e)]
+       (let [msg (lu/ex-msg e)]
          (is (str/includes?
               msg "parsing canonical form")))))
    (try
      (l/deserialize why-schema (l/pcf why-schema) [])
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/get-exception-msg e)]
+       (let [msg (lu/ex-msg e)]
          (is (str/includes?
               msg "Third argument to deserialize must be a byte array")))))))
 
@@ -1351,7 +1351,7 @@
                      [[:int-field l/int-schema "a"]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
+      (let [msg (lu/ex-msg e)]
         (is (re-find #"Default value for field .* is invalid" msg))))))
 
 (deftest test-default-data
@@ -1365,7 +1365,7 @@
                      [[:bad? l/boolean-schema]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
+      (let [msg (lu/ex-msg e)]
         (is (re-find #"Name keywords must start with a letter and subsequently"
                      msg))))))
 
@@ -1375,7 +1375,7 @@
                      [[:is-good l/boolean-schema]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
+      (let [msg (lu/ex-msg e)]
         (is (re-find #"Name keywords must start with a letter and subsequently"
                      msg))))))
 
@@ -1386,5 +1386,5 @@
                       [:int-field l/int-schema]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/get-exception-msg e)]
+      (let [msg (lu/ex-msg e)]
         (is (re-find #"Field names must be unique." msg))))))
