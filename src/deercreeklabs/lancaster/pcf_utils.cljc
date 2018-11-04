@@ -157,7 +157,7 @@
 
     (string? avro-schema)
     (if (u/avro-primitive-type-strings avro-schema)
-      :primitive
+      :primitive-string
       :name-string)
 
     (sequential? avro-schema)
@@ -183,6 +183,10 @@
 (defmulti avro-schema->edn-schema pcf-type-dispatch)
 
 (defmethod avro-schema->edn-schema :primitive
+  [avro-schema]
+  (keyword (:type avro-schema)))
+
+(defmethod avro-schema->edn-schema :primitive-string
   [avro-schema]
   (keyword avro-schema))
 
