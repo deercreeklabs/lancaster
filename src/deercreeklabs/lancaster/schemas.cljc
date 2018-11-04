@@ -10,6 +10,8 @@
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.log-utils :as lu :refer [debugs]]
    #?(:clj [primitive-math :as pm])
+   #?(:clj [clojure.spec.alpha :as spec]
+      :cljs [cljs.spec.alpha :as spec])
    [schema.core :as s :include-macros true]
    [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
 
@@ -24,8 +26,9 @@
 
 (defrecord LancasterSchema
     [schema-name edn-schema json-schema parsing-canonical-form
-     fingerprint64 plumatic-schema serializer deserializer default-data-size
-     *name->serializer *name->deserializer *pcf->resolving-deserializer]
+     fingerprint64 schema-spec plumatic-schema serializer deserializer
+     default-data-size *name->serializer *name->deserializer
+     *pcf->resolving-deserializer]
   u/ILancasterSchema
   (serialize [this data]
     (let [os (impl/output-stream default-data-size)]
@@ -53,7 +56,9 @@
   (fingerprint64 [this]
     fingerprint64)
   (plumatic-schema [this]
-    plumatic-schema))
+    plumatic-schema)
+  (schema-spec [this]
+    schema-spec))
 
 (defmulti validate-schema-args u/first-arg-dispatch)
 
@@ -68,6 +73,7 @@
         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
         plumatic-schema (u/edn-schema->plumatic-schema edn-schema
                                                        name->edn-schema)
+        schema-spec (u/edn-schema->schema-spec edn-schema name->edn-schema)
         *name->serializer (atom {})
         *name->deserializer (atom {})
         serializer (u/make-serializer edn-schema name->edn-schema
@@ -77,9 +83,10 @@
                                                     name->edn-schema)
         *pcf->resolving-deserializer (atom {})]
     (->LancasterSchema
-     schema-name edn-schema json-schema parsing-canonical-form
-     fingerprint64 plumatic-schema serializer deserializer default-data-size
-     *name->serializer *name->deserializer *pcf->resolving-deserializer)))
+      schema-name edn-schema json-schema parsing-canonical-form
+      fingerprint64 schema-spec plumatic-schema serializer deserializer
+      default-data-size *name->serializer *name->deserializer
+      *pcf->resolving-deserializer)))
 
 (defn name-or-schema [edn-schema *names]
   (let [schema-name (u/edn-schema->name-kw edn-schema)]
