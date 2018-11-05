@@ -514,10 +514,10 @@
               (sym-map expected data type path edn-schema)))))
 
 (defn edn->json-string [edn]
-  #?(:clj (json/generate-string edn {:pretty true})
+  #?(:clj (json/generate-string edn)
      :cljs (js/JSON.stringify (clj->js edn))))
 
-(defn json-string->edn [json-str]
+(defn json-schema->avro-schema [json-str]
   #?(:clj (json/parse-string json-str true)
      :cljs (js->clj (js/JSON.parse json-str) :keywordize-keys true)))
 
@@ -1302,3 +1302,125 @@
 (defmethod make-edn-schema :union
   [schema-type name-kw member-schemas]
   (mapv ensure-edn-schema member-schemas))
+
+(defn avro-schema-type-dispatch [avro-schema]
+  (cond
+    (map? avro-schema)
+    (let [{:keys [type]} avro-schema
+          type-kw (keyword type)]
+      (if (avro-primitive-types type-kw)
+        :primitive
+        type-kw))
+
+    (string? avro-schema)
+    (if (avro-primitive-type-strings avro-schema)
+      :primitive
+      :name-string)
+
+    (sequential? avro-schema)
+    :union))
+
+(defn avro-name-str->edn-name-kw [name-str]
+  (if (fullname? name-str)
+    (let [ns (java-namespace->clj-namespace (fullname->ns name-str))
+          name (csk/->kebab-case (fullname->name name-str))]
+      (keyword ns name))
+    (csk/->kebab-case-keyword name-str)))
+
+(defn avro-name->edn-name [schema]
+  (let [schema-name-str (:name schema)]
+    (if-not (fullname? schema-name-str)
+      (assoc schema :name (csk/->kebab-case-keyword schema-name-str))
+      (let [schema-ns (-> (fullname->ns schema-name-str)
+                          (java-namespace->clj-namespace))
+            schema-name (-> (fullname->name schema-name-str)
+                            (csk/->kebab-case))]
+        (assoc schema :name (keyword schema-ns schema-name))))))
+
+(defmulti add-defaults avro-type-dispatch)
+
+(defmethod add-defaults :default
+  [edn-schema name->edn-schema]
+  edn-schema)
+
+(defmethod add-defaults :array
+  [edn-schema name->edn-schema]
+  (update edn-schema :items #(add-defaults % name->edn-schema)))
+
+(defmethod add-defaults :map
+  [edn-schema name->edn-schema]
+  (update edn-schema :values #(add-defaults % name->edn-schema)))
+
+(defmethod add-defaults :union
+  [edn-schema name->edn-schema]
+  (mapv #(add-defaults % name->edn-schema) edn-schema))
+
+(defmethod add-defaults :record
+  [edn-schema name->edn-schema]
+  (update edn-schema :fields
+          (fn [fields]
+            (mapv
+             (fn [field]
+               (let [{:keys [type]} field
+                     default (default-data type nil name->edn-schema)
+                     new-type (add-defaults type name->edn-schema)
+                     field-type (get-avro-type type)
+                     new-field (-> field
+                                   (assoc :default default)
+                                   (assoc :type new-type))]
+                 new-field))
+             fields))))
+
+(defmulti avro-schema->edn-schema avro-schema-type-dispatch)
+
+(defmethod avro-schema->edn-schema :primitive
+  [avro-schema]
+  (cond
+    (map? avro-schema) (keyword (:type avro-schema))
+    (string? avro-schema) (keyword avro-schema)
+    :else (throw (ex-info (str "Unknown primitive schema: " avro-schema)
+                          (sym-map avro-schema)))))
+
+(defmethod avro-schema->edn-schema :name-string
+  [avro-schema]
+  (avro-name-str->edn-name-kw avro-schema))
+
+(defmethod avro-schema->edn-schema :array
+  [avro-schema]
+  (-> avro-schema
+      (update :type keyword)
+      (update :items avro-schema->edn-schema)))
+
+(defmethod avro-schema->edn-schema :map
+  [avro-schema]
+  (-> avro-schema
+      (update :type keyword)
+      (update :values avro-schema->edn-schema)))
+
+(defmethod avro-schema->edn-schema :enum
+  [avro-schema]
+  (-> (avro-name->edn-name avro-schema)
+      (update :type keyword)
+      (update :symbols #(mapv csk/->kebab-case-keyword %))))
+
+(defmethod avro-schema->edn-schema :fixed
+  [avro-schema]
+  (-> (avro-name->edn-name avro-schema)
+      (update :type keyword)))
+
+(defn avro-field->edn-field [field]
+  (-> field
+      (update :type avro-schema->edn-schema)
+      (update :name avro-name-str->edn-name-kw)))
+
+(defmethod avro-schema->edn-schema :record
+  [avro-schema]
+  (let [edn-schema (-> (avro-name->edn-name avro-schema)
+                       (update :type keyword)
+                       (update :fields #(mapv avro-field->edn-field %)))
+        name->edn-schema (make-name->edn-schema edn-schema)]
+    (add-defaults edn-schema name->edn-schema)))
+
+(defmethod avro-schema->edn-schema :union
+  [avro-union-schema]
+  (mapv avro-schema->edn-schema avro-union-schema))

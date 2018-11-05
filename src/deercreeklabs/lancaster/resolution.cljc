@@ -351,7 +351,9 @@
           (xf (deserializer is)))))))
 
 (defn resolving-deserializer [writer-pcf reader-schema *name->deserializer]
-  (let [writer-edn-schema (pcf-utils/pcf->edn-schema writer-pcf)
+  (let [writer-edn-schema (-> writer-pcf
+                              (u/json-schema->avro-schema)
+                              (u/avro-schema->edn-schema))
         reader-edn-schema (u/edn-schema reader-schema)
         writer-type (u/get-avro-type writer-edn-schema)
         reader-type (u/get-avro-type reader-edn-schema)]

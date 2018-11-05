@@ -19,6 +19,10 @@
 #?(:cljs
    (def Long gm/Long))
 
+(s/defn json-schema->schema :- LancasterSchema
+  [json-schema :- s/Str]
+  (schemas/json-schema->lancaster-schema json-schema))
+
 (def int-schema (schemas/primitive-schema :int))
 (def null-schema (schemas/primitive-schema :null))
 (def boolean-schema (schemas/primitive-schema :boolean))

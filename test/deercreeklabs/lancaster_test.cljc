@@ -1290,8 +1290,7 @@
               :data (ba/byte-array [66 67])
               :other-data (ba/byte-array [123 123])}
         encoded (l/serialize add-to-cart-rsp-schema data)
-        sch (->> (pcf-utils/pcf->edn-schema pcf)
-                 (schemas/edn-schema->lancaster-schema :record))
+        sch (l/json-schema->schema pcf)
         decoded (l/deserialize sch pcf encoded)]
     (is (= (dissoc data :data :other-data)
            (dissoc decoded :data :other-data)))))
@@ -1388,3 +1387,28 @@
     (catch #?(:clj Exception :cljs js/Error) e
       (let [msg (lu/ex-msg e)]
         (is (re-find #"Field names must be unique." msg))))))
+
+(deftest test-round-trip-json-schema
+  (let [json-schema (str "{\"type\":\"record\",\"name\":"
+                         "\"StringMinimalExample\",\"namespace\":"
+                         "\"com.piotr-yuxuan\",\"fields\":[{\"name\":"
+                         "\"someOtherField\",\"type\":[\"null\",\"long\"]},"
+                         "{\"name\":\"url\",\"type\":{\"type\":\"string\","
+                         "\"avro.java.string\":\"String\"}}]}")
+        schema (l/json-schema->schema json-schema)
+        rt-json-schema (l/json-schema schema)]
+    (is (= json-schema rt-json-schema))))
+
+(deftest test-json-schema-w-evolution-no-default
+  (let [data {:a 1}
+        writer-schema (l/record-schema ::test-rec [[:a l/int-schema]])
+        reader-json (str "{\"name\":\"deercreeklabs.lancaster_test.TestRec\","
+                         "\"type\":\"record\",\"fields\":["
+                         "{\"name\":\"a\",\"type\":\"int\"},"
+                         "{\"name\":\"b\",\"type\":\"string\"}]}")
+        reader-schema (l/json-schema->schema reader-json)
+        encoded (l/serialize writer-schema data)
+        writer-pcf (l/pcf writer-schema)
+        decoded (l/deserialize reader-schema writer-pcf encoded)
+        expected (assoc data :b "")]
+    (is (= expected decoded))))

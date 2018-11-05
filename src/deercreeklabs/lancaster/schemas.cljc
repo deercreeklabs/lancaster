@@ -57,13 +57,12 @@
 
 (defmulti validate-schema-args u/first-arg-dispatch)
 
-(defn edn-schema->lancaster-schema [schema-type edn-schema]
+(defn lancaster-schema* [schema-type edn-schema json-schema]
   (let [name->edn-schema (u/make-name->edn-schema edn-schema)
         schema-name (u/edn-schema->name-kw edn-schema)
         avro-schema (if (u/avro-primitive-types schema-type)
                       (name schema-type)
                       (u/edn-schema->avro-schema edn-schema))
-        json-schema (u/edn->json-string avro-schema)
         parsing-canonical-form (pcf-utils/avro-schema->pcf avro-schema)
         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
         plumatic-schema (u/edn-schema->plumatic-schema edn-schema
@@ -80,6 +79,20 @@
      schema-name edn-schema json-schema parsing-canonical-form
      fingerprint64 plumatic-schema serializer deserializer default-data-size
      *name->serializer *name->deserializer *pcf->resolving-deserializer)))
+
+(defn edn-schema->lancaster-schema [schema-type edn-schema]
+  (let [avro-schema (if (u/avro-primitive-types schema-type)
+                      (name schema-type)
+                      (u/edn-schema->avro-schema edn-schema))
+        json-schema (u/edn->json-string avro-schema)]
+    (lancaster-schema* schema-type edn-schema json-schema)))
+
+(defn json-schema->lancaster-schema [json-schema]
+  (let [edn-schema (-> json-schema
+                       (u/json-schema->avro-schema)
+                       (u/avro-schema->edn-schema))
+        schema-type (u/get-avro-type edn-schema)]
+    (lancaster-schema* schema-type edn-schema json-schema)))
 
 (defn name-or-schema [edn-schema *names]
   (let [schema-name (u/edn-schema->name-kw edn-schema)]
