@@ -41,7 +41,7 @@
 
 #?(:clj
    (defn fp-matches? [schema]
-     (let [json-schema (l/json-schema schema)
+     (let [json-schema (l/json schema)
            parser (Schema$Parser.)
            java-schema (.parse parser ^String json-schema)
            java-fp (SchemaNormalization/parsingFingerprint64 java-schema)
@@ -1352,8 +1352,8 @@
                          "\"someOtherField\",\"type\":[\"null\",\"long\"]},"
                          "{\"name\":\"url\",\"type\":{\"type\":\"string\","
                          "\"avro.java.string\":\"String\"}}]}")
-        schema (l/json-schema->schema json-schema)
-        rt-json-schema (l/json-schema schema)]
+        schema (l/json->schema json-schema)
+        rt-json-schema (l/json schema)]
     (is (= json-schema rt-json-schema))))
 
 (deftest test-json-schema-w-evolution-no-default
@@ -1363,7 +1363,7 @@
                          "\"type\":\"record\",\"fields\":["
                          "{\"name\":\"a\",\"type\":\"int\"},"
                          "{\"name\":\"b\",\"type\":\"string\"}]}")
-        reader-schema (l/json-schema->schema reader-json)
+        reader-schema (l/json->schema reader-json)
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)
         expected (assoc data :b "")]

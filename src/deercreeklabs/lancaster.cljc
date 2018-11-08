@@ -12,16 +12,16 @@
   #?(:cljs
      (:require-macros deercreeklabs.lancaster)))
 
-(def LancasterSchema (s/protocol u/ILancasterSchema))
-(def LancasterSchemaOrNameKW (s/if keyword?
-                               s/Keyword
-                               LancasterSchema))
+(def ^:no-doc LancasterSchema (s/protocol u/ILancasterSchema))
+(def ^:no-doc LancasterSchemaOrNameKW (s/if keyword?
+                                        s/Keyword
+                                        LancasterSchema))
 #?(:cljs
-   (def Long gm/Long))
+   (def Long ^:no-doc gm/Long))
 
-(s/defn json-schema->schema :- LancasterSchema
-  [json-schema :- s/Str]
-  (schemas/json-schema->lancaster-schema json-schema))
+(s/defn json->schema :- LancasterSchema
+  [json :- s/Str]
+  (schemas/json-schema->lancaster-schema json))
 
 (def int-schema (schemas/primitive-schema :int))
 (def null-schema (schemas/primitive-schema :null))
@@ -128,7 +128,7 @@
   [schema :- LancasterSchema]
   (u/edn-schema schema))
 
-(s/defn json-schema :- s/Str
+(s/defn json :- s/Str
   [schema :- LancasterSchema]
   (u/json-schema schema))
 
