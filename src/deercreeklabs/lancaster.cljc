@@ -87,33 +87,37 @@
   (u/serialize schema-obj data))
 
 (s/defn deserialize :- s/Any
-  [reader-schema :- LancasterSchema
-   writer-schema :- LancasterSchema
-   ba :- ba/ByteArray]
-  (when-not (satisfies? u/ILancasterSchema reader-schema)
-    (throw
-     (ex-info (str "First argument to deserialize must be a schema "
-                   "object representing the reader's schema. The object "
-                   "must satisfy the ILancasterSchema protocol.")
-              {:reader-schema reader-schema
-               :reader-schema-type
-               (#?(:clj class :cljs type) reader-schema)})))
-  (when-not (satisfies? u/ILancasterSchema writer-schema)
-    (throw
-     (ex-info (str "Second argument to deserialize must be a schema "
-                   "object representing the writer's schema. The object "
-                   "must satisfy the ILancasterSchema protocol.")
-              {:writer-schema writer-schema
-               :writer-schema-type
-               (#?(:clj class :cljs type) writer-schema)})))
-  (when-not (instance? ba/ByteArray ba)
-    (throw (ex-info (str "Third argument to deserialize must be a byte array. "
-                         "The byte array must include the binary data to "
-                         "be deserialized.")
-                    {:ba ba
-                     :ba-type (#?(:clj class :cljs type) ba)})))
-  (let [is (impl/input-stream ba)]
-    (u/deserialize reader-schema writer-schema is)))
+  ([schema :- LancasterSchema
+    ba :- ba/ByteArray]
+   (deserialize schema schema ba))
+
+  ([reader-schema :- LancasterSchema
+    writer-schema :- LancasterSchema
+    ba :- ba/ByteArray]
+   (when-not (satisfies? u/ILancasterSchema reader-schema)
+     (throw
+      (ex-info (str "First argument to deserialize must be a schema "
+                    "object representing the reader's schema. The object "
+                    "must satisfy the ILancasterSchema protocol.")
+               {:reader-schema reader-schema
+                :reader-schema-type
+                (#?(:clj class :cljs type) reader-schema)})))
+   (when-not (satisfies? u/ILancasterSchema writer-schema)
+     (throw
+      (ex-info (str "Second argument to deserialize must be a schema "
+                    "object representing the writer's schema. The object "
+                    "must satisfy the ILancasterSchema protocol.")
+               {:writer-schema writer-schema
+                :writer-schema-type
+                (#?(:clj class :cljs type) writer-schema)})))
+   (when-not (instance? ba/ByteArray ba)
+     (throw (ex-info (str "Final argument to deserialize must be a byte array. "
+                          "The byte array must include the binary data to "
+                          "be deserialized.")
+                     {:ba ba
+                      :ba-type (#?(:clj class :cljs type) ba)})))
+   (let [is (impl/input-stream ba)]
+     (u/deserialize reader-schema writer-schema is))))
 
 (s/defn wrap :- schemas/WrappedData
   [schema :- LancasterSchema
