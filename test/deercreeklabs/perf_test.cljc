@@ -47,7 +47,7 @@
 (defn deserialize-same
   "Deserialize with the same reader and writer schemas. Use for testing only."
   [schema encoded]
-  (l/deserialize schema (l/pcf schema) encoded))
+  (l/deserialize schema encoded))
 
 (deftest ^:perf test-serdes-speed
   (let [data {:qty-requested 123
