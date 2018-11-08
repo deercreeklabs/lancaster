@@ -26,7 +26,7 @@
 (defn deserialize-same
   "Deserialize with the same reader and writer schemas. Use for testing only."
   [schema encoded]
-  (l/deserialize schema (l/pcf schema) encoded))
+  (l/deserialize schema schema encoded))
 
 (defn abs-err [expected actual]
   (let [err (- expected actual)]
@@ -460,8 +460,8 @@
               456 100
               789 2}
         encoded (l/serialize sku-to-qty-schema data)
-        writer-pcf (l/pcf sku-to-qty-schema)
-        decoded (l/deserialize sku-to-qty-v2-schema writer-pcf encoded)
+        decoded (l/deserialize sku-to-qty-v2-schema
+                               sku-to-qty-schema encoded)
         expected (reduce-kv (fn [acc k v]
                               (assoc acc k (u/int->long v)))
                             {} data)]
@@ -494,12 +494,11 @@
 (deftest test-maybe-flex-map
   (let [fms (l/flex-map-schema :i-to-i l/int-schema l/int-schema)
         ms (l/maybe fms)
-        writer-pcf (l/pcf ms)
         data1 {1 1}
         data2 nil
         rt (fn [data]
              (->> (l/serialize ms data)
-                  (l/deserialize ms writer-pcf)))]
+                  (deserialize-same ms)))]
     (is (= data1 (rt data1)))
     (is (= data2 (rt data2)))))
 
@@ -524,13 +523,12 @@
 
 (deftest test-empty-array-serdes
   (let [sch (l/array-schema l/int-schema)
-        pcf (l/pcf sch)
         data []
         encoded (l/serialize sch data)
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [0])
                encoded))
-        decoded (l/deserialize sch pcf encoded)]
+        decoded (deserialize-same sch encoded)]
     (is (= data decoded))))
 
 (deftest test-nested-array-schema
@@ -653,13 +651,12 @@
 
 (deftest test-empty-map-serdes
   (let [sch (l/map-schema l/int-schema)
-        pcf (l/pcf sch)
         data {}
         encoded (l/serialize sch data)
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [0])
                encoded))
-        decoded (l/deserialize sch pcf encoded)]
+        decoded (deserialize-same sch encoded)]
     (is (= data decoded))))
 
 (deftest test-union-schema
@@ -834,8 +831,7 @@
         writer-schema l/int-schema
         reader-schema l/long-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
+        decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
     (is (= "10" (u/long->str decoded-new)))))
 
 (deftest test-schema-resolution-int-to-float
@@ -843,8 +839,7 @@
         writer-schema l/int-schema
         reader-schema l/float-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
+        decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
     (is (= (float data) decoded-new))))
 
 (deftest test-schema-resolution-int-to-double
@@ -852,8 +847,7 @@
         writer-schema l/int-schema
         reader-schema l/float-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded-new (l/deserialize reader-schema writer-pcf encoded-orig)]
+        decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
     (is (= (double data) decoded-new))))
 
 (deftest test-schema-resolution-long-to-float
@@ -861,8 +855,7 @@
         writer-schema l/long-schema
         reader-schema l/float-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded-orig)
+        decoded (l/deserialize reader-schema writer-schema encoded-orig)
         expected 5.3021371E13
         rel-err (rel-err expected decoded)]
     (is (> 0.00000001 rel-err))))
@@ -872,8 +865,7 @@
         writer-schema l/long-schema
         reader-schema l/double-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded-orig)
+        decoded (l/deserialize reader-schema writer-schema encoded-orig)
         expected (double -53017076308613)
         rel-err (rel-err expected decoded)]
     (is (> 0.00000001 rel-err))))
@@ -883,8 +875,7 @@
         writer-schema l/float-schema
         reader-schema l/double-schema
         encoded-orig (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded-orig)
+        decoded (l/deserialize reader-schema writer-schema encoded-orig)
         rel-err (rel-err data decoded)]
     (is (> 0.0000001 rel-err))))
 
@@ -893,8 +884,7 @@
         writer-schema l/string-schema
         reader-schema l/bytes-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)
+        decoded (l/deserialize reader-schema writer-schema encoded)
         expected (ba/byte-array [72 101 108 108 111 44
                                  32 87 111 114 108 100 33])]
     (is (ba/equivalent-byte-arrays? expected decoded))))
@@ -904,8 +894,7 @@
         writer-schema (l/array-schema l/int-schema)
         reader-schema (l/array-schema l/float-schema)
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)
+        decoded (l/deserialize reader-schema writer-schema encoded)
         expected [1.0 2.0 3.0]]
     (is (= expected decoded))))
 
@@ -914,8 +903,7 @@
         writer-schema (l/map-schema l/int-schema)
         reader-schema (l/map-schema l/float-schema)
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)
+        decoded (l/deserialize reader-schema writer-schema encoded)
         expected {"one" 1.0 "two" 2.0}]
     (is (= expected decoded))))
 
@@ -923,10 +911,9 @@
   (let [data :stock
         writer-schema why-schema
         reader-schema (l/enum-schema ::why
-                                          [:foo :all :limit :stock])
+                                     [:foo :all :limit :stock])
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)]
+        decoded (l/deserialize reader-schema writer-schema encoded)]
     (is (= data decoded))))
 
 (deftest test-record-schema-evolution-add-field
@@ -935,8 +922,7 @@
         writer-schema add-to-cart-req-schema
         reader-schema add-to-cart-req-v2-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)]
+        decoded (l/deserialize reader-schema writer-schema encoded)]
     (is (= (assoc data :note "No note") decoded))))
 
 (deftest test-schema-evolution-remove-field
@@ -946,8 +932,7 @@
         writer-schema add-to-cart-req-v2-schema
         reader-schema add-to-cart-req-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)]
+        decoded (l/deserialize reader-schema writer-schema encoded)]
     (is (= (dissoc data :note) decoded))))
 
 (deftest test-schema-evolution-change-field
@@ -957,8 +942,7 @@
         writer-schema add-to-cart-req-v2-schema
         reader-schema add-to-cart-req-v3-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)]
+        decoded (l/deserialize reader-schema writer-schema encoded)]
     (is (= (assoc data :qty-requested 10.0) decoded))))
 
 (deftest test-schema-evolution-change-field-name
@@ -968,8 +952,7 @@
         writer-schema add-to-cart-req-v2-schema
         reader-schema add-to-cart-req-v4-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)
+        decoded (l/deserialize reader-schema writer-schema encoded)
         expected (-> data
                      (dissoc :note)
                      (assoc :comment ""))]
@@ -981,8 +964,7 @@
         writer-schema add-to-cart-req-schema
         reader-schema add-to-cart-req-v3-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)]
+        decoded (l/deserialize reader-schema writer-schema encoded)]
     (is (= (assoc data :qty-requested 10.0 :note "No note") decoded))))
 
 (deftest test-schema-evolution-union-add-member
@@ -990,8 +972,7 @@
         writer-schema person-or-dog-schema
         reader-schema fish-or-person-or-dog-v2-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)
+        decoded (l/deserialize reader-schema writer-schema encoded)
         [dec-sch-name dec-data] decoded
         [orig-sch-name orig-data] data]
     (is (= orig-sch-name dec-sch-name))
@@ -1004,8 +985,7 @@
         writer-schema person-or-dog-schema
         reader-schema dog-v2-schema
         encoded (l/serialize writer-schema wrapped-data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)]
+        decoded (l/deserialize reader-schema writer-schema encoded)]
     (is (= (assoc data :tag-number -1) decoded))))
 
 (deftest test-schema-evolution-non-union-to-union
@@ -1014,8 +994,7 @@
         writer-schema dog-v2-schema
         reader-schema person-or-dog-schema
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)
+        decoded (l/deserialize reader-schema writer-schema encoded)
         expected (l/wrap dog-schema (dissoc data :tag-number))]
     (is (= expected decoded))))
 
@@ -1025,8 +1004,7 @@
         writer-schema fish-or-person-or-dog-v2-schema
         reader-schema person-or-dog-schema
         encoded (l/serialize writer-schema wrapped-data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)
+        decoded (l/deserialize reader-schema writer-schema encoded)
         [schema-name decoded-data] decoded
         expected (dissoc data :tag-number)]
     (is (= expected decoded-data))))
@@ -1036,10 +1014,9 @@
         wrapped-data (l/wrap fish-schema data)
         writer-schema fish-or-person-or-dog-v2-schema
         reader-schema person-or-dog-schema
-        encoded (l/serialize writer-schema wrapped-data)
-        writer-pcf (l/pcf writer-schema)]
+        encoded (l/serialize writer-schema wrapped-data)]
     (try
-      (l/deserialize reader-schema writer-pcf encoded)
+      (l/deserialize reader-schema writer-schema encoded)
       (is (= :did-not-throw :but-should-have))
       (catch #?(:clj Exception :cljs js/Error) e
         (let [msg (lu/ex-msg e)]
@@ -1050,10 +1027,9 @@
               :qty-requested 10}
         writer-schema add-to-cart-req-schema
         reader-schema l/int-schema
-        encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)]
+        encoded (l/serialize writer-schema data)]
     (try
-      (l/deserialize reader-schema writer-pcf encoded)
+      (l/deserialize reader-schema writer-schema encoded)
       (is (= :did-not-throw :but-should-have))
       (catch #?(:clj Exception :cljs js/Error) e
         (let [msg (lu/ex-msg e)]
@@ -1076,8 +1052,7 @@
                         [:judges (l/array-schema name-schema)]
                         [:audience (l/array-schema name-schema)]])
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)
+        decoded (l/deserialize reader-schema writer-schema encoded)
         expected (assoc data :audience [])]
     (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.Game\",\"type\":"
                 "\"record\",\"fields\":[{\"name\":\"players\",\"type\":"
@@ -1087,7 +1062,7 @@
                 "{\"name\":\"last\",\"type\":\"string\"}]}}},{\"name\":"
                 "\"judges\",\"type\":{\"type\":\"array\",\"items\":"
                 "\"deercreeklabs.lancaster_test.Name\"}}]}")
-           writer-pcf))
+           (l/pcf writer-schema)))
     (is (= expected decoded))))
 
 (deftest test-rec-w-array-and-enum-schema
@@ -1280,21 +1255,6 @@
   (is (l/schema? person-or-dog-schema))
   (is (not (l/schema? :foo))))
 
-(deftest test-deserialize-from-pcf
-  (let [pcf (l/pcf add-to-cart-rsp-schema)
-        data {:qty-requested 123
-              :qty-added 10
-              :current-qty 10
-              :req {:sku 123 :qty-requested 123}
-              :the-reason-why :limit
-              :data (ba/byte-array [66 67])
-              :other-data (ba/byte-array [123 123])}
-        encoded (l/serialize add-to-cart-rsp-schema data)
-        sch (l/json-schema->schema pcf)
-        decoded (l/deserialize sch pcf encoded)]
-    (is (= (dissoc data :data :other-data)
-           (dissoc decoded :data :other-data)))))
-
 (deftest test-bad-serialize-arg
   (s/without-fn-validation ;; Allow built-in handlers to throw
    (try
@@ -1310,9 +1270,10 @@
      (catch #?(:clj Exception :cljs js/Error) e
        (let [msg (lu/ex-msg e)]
          (is (str/includes?
-              msg "parsing canonical form")))))
+              msg (str "Second argument to deserialize must be a "
+                       "schema object representing the writer's schema"))))))
    (try
-     (l/deserialize why-schema (l/pcf why-schema) [])
+     (l/deserialize why-schema why-schema [])
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
        (let [msg (lu/ex-msg e)]
@@ -1335,9 +1296,10 @@
      (catch #?(:clj Exception :cljs js/Error) e
        (let [msg (lu/ex-msg e)]
          (is (str/includes?
-              msg "parsing canonical form")))))
+              msg (str "Second argument to deserialize must be a "
+                       "schema object representing the writer's schema"))))))
    (try
-     (l/deserialize why-schema (l/pcf why-schema) [])
+     (l/deserialize why-schema why-schema [])
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
        (let [msg (lu/ex-msg e)]
@@ -1408,7 +1370,6 @@
                          "{\"name\":\"b\",\"type\":\"string\"}]}")
         reader-schema (l/json-schema->schema reader-json)
         encoded (l/serialize writer-schema data)
-        writer-pcf (l/pcf writer-schema)
-        decoded (l/deserialize reader-schema writer-pcf encoded)
+        decoded (l/deserialize reader-schema writer-schema encoded)
         expected (assoc data :b "")]
     (is (= expected decoded))))

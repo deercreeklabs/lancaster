@@ -87,30 +87,33 @@
   (u/serialize schema-obj data))
 
 (s/defn deserialize :- s/Any
-  [reader-schema-obj :- LancasterSchema
-   writer-pcf :- s/Str
+  [reader-schema :- LancasterSchema
+   writer-schema :- LancasterSchema
    ba :- ba/ByteArray]
-  (when-not (satisfies? u/ILancasterSchema reader-schema-obj)
+  (when-not (satisfies? u/ILancasterSchema reader-schema)
     (throw
      (ex-info (str "First argument to deserialize must be a schema "
                    "object representing the reader's schema. The object "
                    "must satisfy the ILancasterSchema protocol.")
-              {:reader-schema-obj reader-schema-obj
-               :reader-schema-obj-type
-               (#?(:clj class :cljs type) reader-schema-obj)})))
-  (when-not (string? writer-pcf)
+              {:reader-schema reader-schema
+               :reader-schema-type
+               (#?(:clj class :cljs type) reader-schema)})))
+  (when-not (satisfies? u/ILancasterSchema writer-schema)
     (throw
-     (ex-info (str "Second argument to deserialize must be a string "
-                   "representing the parsing canonical form of the "
-                   "writer's schema.")
-              {:writer-pcf writer-pcf
-               :writer-pcf-type (#?(:clj class :cljs type) writer-pcf)})))
+     (ex-info (str "Second argument to deserialize must be a schema "
+                   "object representing the writer's schema. The object "
+                   "must satisfy the ILancasterSchema protocol.")
+              {:writer-schema writer-schema
+               :writer-schema-type
+               (#?(:clj class :cljs type) writer-schema)})))
   (when-not (instance? ba/ByteArray ba)
-    (throw (ex-info "Third argument to deserialize must be a byte array."
+    (throw (ex-info (str "Third argument to deserialize must be a byte array. "
+                         "The byte array must include the binary data to "
+                         "be deserialized.")
                     {:ba ba
                      :ba-type (#?(:clj class :cljs type) ba)})))
   (let [is (impl/input-stream ba)]
-    (u/deserialize reader-schema-obj writer-pcf is)))
+    (u/deserialize reader-schema writer-schema is)))
 
 (s/defn wrap :- schemas/WrappedData
   [schema :- LancasterSchema

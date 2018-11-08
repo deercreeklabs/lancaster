@@ -33,15 +33,16 @@
       (u/to-byte-array os)))
   (serialize [this os data]
     (serializer os data []))
-  (deserialize [this writer-pcf is]
-    (if (= writer-pcf parsing-canonical-form)
-      (deserializer is)
-      (if-let [rd (@*pcf->resolving-deserializer writer-pcf)]
-        (rd is)
-        (let [rd (resolution/resolving-deserializer writer-pcf this
-                                                    *name->deserializer)]
-          (swap! *pcf->resolving-deserializer assoc writer-pcf rd)
-          (rd is)))))
+  (deserialize [this writer-schema is]
+    (let [writer-pcf (u/parsing-canonical-form writer-schema)]
+      (if (= writer-pcf parsing-canonical-form)
+        (deserializer is)
+        (if-let [rd (@*pcf->resolving-deserializer writer-pcf)]
+          (rd is)
+          (let [rd (resolution/resolving-deserializer writer-pcf this
+                                                      *name->deserializer)]
+            (swap! *pcf->resolving-deserializer assoc writer-pcf rd)
+            (rd is))))))
   (wrap [this data]
     [schema-name data])
   (edn-schema [this]
