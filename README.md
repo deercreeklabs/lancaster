@@ -35,28 +35,30 @@ The output of an unscientific run of the microbenchmark in
 `deercreeklabs.perf-test` is pasted in below. Your mileage may vary.
 
 *Clojure 1.9 on JVM 1.8*
-Parameter | Value
---------- | ---------------------------------
-Avro encode ops per sec |          228833
-Avro decode ops per sec |          380228
-JSON encode ops per sec |          160000
-JSON decode ops per sec |          234742
-Deflated JSON encode ops per sec | 30120
-Avro encoded size |                14
-JSON encoded size |                142
-Deflated JSON encoded size |       105
 
-*ClojureScript on Node.js*
 Parameter | Value
---------- | ----------------------------
-Avro encode ops per sec |          35211
-Avro decode ops per sec |          62112
-JSON encode ops per sec |          36765
-JSON decode ops per sec |          11211
-Deflated JSON encode ops per sec | 2890
-Avro encoded size |                14
-JSON encoded size |                162
-Deflated JSON encoded size |       109
+:-------- | -----:
+Avro encode ops per sec |          239,808
+Avro decode ops per sec |          380,228
+JSON encode ops per sec |          141,844
+JSON decode ops per sec |          231,481
+Deflated JSON encode ops per sec |  30,488
+Avro encoded size |                     14
+JSON encoded size |                    142
+Deflated JSON encoded size |           105
+
+*ClojureScript on Node.js 8.10*
+
+Parameter | Value
+:-------- | -----:
+Avro encode ops per sec |          35,211
+Avro decode ops per sec |          62,112
+JSON encode ops per sec |          36,765
+JSON decode ops per sec |          11,211
+Deflated JSON encode ops per sec |  2,890
+Avro encoded size |                    14
+JSON encoded size |                   162
+Deflated JSON encoded size |          109
 
 ## Project Name
 The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an
