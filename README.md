@@ -17,7 +17,8 @@ before proceeding.
 Lancaster provides functions for:
 * Schema creation and manipulation
 * Serialization to a byte array
-* Deserialization from a byte array, including schema evolution
+* Deserialization from a byte array, including
+[schema resolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution)
 * Conversion from Lancaster schemas to
 [Plumatic schemas](https://github.com/plumatic/schema) (spec support is
 planned).
@@ -34,7 +35,6 @@ The output of an unscientific run of the microbenchmark in
 `deercreeklabs.perf-test` is pasted in below. Your mileage may vary.
 
 **Clojure**
-----------------------------------------
 Avro encode ops per sec:          228833
 Avro decode ops per sec:          380228
 JSON encode ops per sec:          160000
@@ -45,7 +45,6 @@ JSON encoded size:                142
 Deflated JSON encoded size:       105
 
 **ClojureScript on Node.js**
-----------------------------------------
 Avro encode ops per sec:          35211
 Avro decode ops per sec:          62112
 JSON encode ops per sec:          36765
