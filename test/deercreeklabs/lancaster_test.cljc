@@ -207,7 +207,7 @@
   (let [data {:sku 123
               :qty-requested 5}
         encoded (l/serialize add-to-cart-req-schema data)
-        decoded (l/deserialize add-to-cart-req-schema encoded)]
+        decoded (l/deserialize-same add-to-cart-req-schema encoded)]
     (is (= "9gEK" (ba/byte-array->b64 encoded)))
     (is (= data decoded))))
 
@@ -226,7 +226,7 @@
 (deftest test-def-enum-schema-serdes
   (let [data :stock
         encoded (l/serialize why-schema data)
-        decoded (l/deserialize why-schema encoded)]
+        decoded (l/deserialize-same why-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [2]) encoded))
     (is (= data decoded))))
 
@@ -245,7 +245,7 @@
 (deftest test-def-fixed-schema-serdes
   (let [data (ba/byte-array [12 24])
         encoded (l/serialize a-fixed-schema data)
-        decoded (l/deserialize a-fixed-schema encoded)]
+        decoded (l/deserialize-same a-fixed-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          data encoded))
     (is (ba/equivalent-byte-arrays? data decoded))))
@@ -308,7 +308,7 @@
               :data (ba/byte-array [66 67])
               :other-data (ba/byte-array [123 123])}
         encoded (l/serialize add-to-cart-rsp-schema data)
-        decoded (l/deserialize add-to-cart-rsp-schema
+        decoded (l/deserialize-same add-to-cart-rsp-schema
                                   encoded)]
     (is (= "9gEUFPYB9gEEQkMEe3s=" (ba/byte-array->b64 encoded)))
     (is (= (xf-byte-arrays data)
@@ -317,7 +317,7 @@
 (deftest test-null-schema
   (let [data nil
         encoded (l/serialize l/null-schema data)
-        decoded (l/deserialize l/null-schema encoded)]
+        decoded (l/deserialize-same l/null-schema encoded)]
     #?(:clj (is (fp-matches? l/null-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array []) encoded))
     (is (= data decoded))))
@@ -325,7 +325,7 @@
 (deftest test-boolean-schema
   (let [data true
         encoded (l/serialize l/boolean-schema data)
-        decoded (l/deserialize l/boolean-schema encoded)]
+        decoded (l/deserialize-same l/boolean-schema encoded)]
     #?(:clj (is (fp-matches? l/boolean-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [1]) encoded))
     (is (= data decoded))))
@@ -333,7 +333,7 @@
 (deftest test-int-schema-serdes
   (let [data 7890
         encoded (l/serialize l/int-schema data)
-        decoded (l/deserialize l/int-schema encoded)]
+        decoded (l/deserialize-same l/int-schema encoded)]
     #?(:clj (is (fp-matches? l/int-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-92 123]) encoded))
     (is (= data decoded))))
@@ -341,7 +341,7 @@
 (deftest test-long-schema-serdes
   (let [data (u/ints->long 2147483647 -1)
         encoded (l/serialize l/long-schema data)
-        decoded (l/deserialize l/long-schema encoded)]
+        decoded (l/deserialize-same l/long-schema encoded)]
     #?(:clj (is (fp-matches? l/long-schema)))
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [-2 -1 -1 -1 -1 -1 -1 -1 -1 1])
@@ -356,7 +356,7 @@
 (deftest test-float-schema
   (let [data (float 3.14159)
         encoded (l/serialize l/float-schema data)
-        decoded (l/deserialize l/float-schema encoded)
+        decoded (l/deserialize-same l/float-schema encoded)
         abs-err (abs-err data decoded)]
     #?(:clj (is (fp-matches? l/float-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-48 15 73 64]) encoded))
@@ -365,7 +365,7 @@
 (deftest test-double-schema
   (let [data (double 3.14159265359)
         encoded (l/serialize l/double-schema data)
-        decoded (l/deserialize l/double-schema encoded)
+        decoded (l/deserialize-same l/double-schema encoded)
         abs-err (abs-err data decoded)]
     #?(:clj (is (fp-matches? l/double-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [-22 46 68 84 -5 33 9 64])
@@ -375,7 +375,7 @@
 (deftest test-bytes-schema
   (let [data (ba/byte-array [1 1 2 3 5 8 13 21])
         encoded (l/serialize l/bytes-schema data)
-        decoded (l/deserialize l/bytes-schema encoded)]
+        decoded (l/deserialize-same l/bytes-schema encoded)]
     #?(:clj (is (fp-matches? l/bytes-schema)))
     (is (ba/equivalent-byte-arrays? (ba/byte-array [16 1 1 2 3 5 8 13 21])
                                     encoded))
@@ -384,7 +384,7 @@
 (deftest test-string-schema
   (let [data "Hello world!"
         encoded (l/serialize l/string-schema data)
-        decoded (l/deserialize l/string-schema encoded)]
+        decoded (l/deserialize-same l/string-schema encoded)]
     #?(:clj (is (fp-matches? l/string-schema)))
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [24 72 101 108 108 111 32 119 111 114 108 100 33])
@@ -405,7 +405,7 @@
               "Bob" 55
               "Chad" 89}
         encoded (l/serialize ages-schema data)
-        decoded (l/deserialize ages-schema encoded)]
+        decoded (l/deserialize-same ages-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [6 10 65 108 105 99 101 100 6 66 111 98 110 8
                          67 104 97 100 -78 1 0])
@@ -444,7 +444,7 @@
               456 100
               789 2}
         encoded (l/serialize sku-to-qty-schema data)
-        decoded (l/deserialize sku-to-qty-schema encoded)]
+        decoded (l/deserialize-same sku-to-qty-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [6 -10 1 -112 7 -86 12 0 6 20 -56 1 4 0])
          encoded))
@@ -470,7 +470,7 @@
         data [{{:sku 123 :qty-requested 10} true
                {:sku 999 :qty-requested 7} false}]
         encoded (l/serialize schema data)
-        decoded (l/deserialize schema encoded)]
+        decoded (l/deserialize-same schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [2 4 -10 1 20 -50 15 14 0 4 1 0 0 0])
          encoded))
@@ -493,7 +493,7 @@
         data2 nil
         rt (fn [data]
              (->> (l/serialize ms data)
-                  (l/deserialize ms)))]
+                  (l/deserialize-same ms)))]
     (is (= data1 (rt data1)))
     (is (= data2 (rt data2)))))
 
@@ -509,7 +509,7 @@
 (deftest test-array-schema-serdes
   (let [names ["Ferdinand" "Omar" "Lin"]
         encoded (l/serialize simple-array-schema names)
-        decoded (l/deserialize simple-array-schema encoded)]
+        decoded (l/deserialize-same simple-array-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [6 18 70 101 114 100 105 110 97 110 100 8 79
                          109 97 114 6 76 105 110 0])
@@ -523,7 +523,7 @@
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [0])
                encoded))
-        decoded (l/deserialize sch encoded)]
+        decoded (l/deserialize-same sch encoded)]
     (is (= data decoded))))
 
 (deftest test-nested-array-schema
@@ -577,7 +577,7 @@
                :data (ba/byte-array [100 110])
                :other-data (ba/byte-array [64 74])}]
         encoded (l/serialize rsps-schema data)
-        decoded (l/deserialize rsps-schema encoded)]
+        decoded (l/deserialize-same rsps-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [4 -10 1 8 20 -10 1 -10 1 4 66 67 4 123 123
                          8 8 8 20 8 0 100 110 4 64 74 0])
@@ -636,7 +636,7 @@
                    :data (ba/byte-array [100 110])
                    :other-data (ba/byte-array [64 74])}}
         encoded (l/serialize nested-map-schema data)
-        decoded (l/deserialize nested-map-schema encoded)]
+        decoded (l/deserialize-same nested-map-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [4 2 65 -10 1 8 20 -10 1 -10 1 4 66 67 4
                          123 123 2 66 8 8 8 20 8 0 100 110 4 64 74 0])
@@ -651,7 +651,7 @@
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [0])
                encoded))
-        decoded (l/deserialize sch encoded)]
+        decoded (l/deserialize-same sch encoded)]
     (is (= data decoded))))
 
 (deftest test-union-schema
@@ -672,13 +672,13 @@
 (deftest test-union-schema-serdes
   (let [data {:sku 123 :qty-requested 4}
         encoded (l/serialize union-schema data)
-        decoded (l/deserialize union-schema encoded)
+        decoded (l/deserialize-same union-schema encoded)
         _ (is (ba/equivalent-byte-arrays? (ba/byte-array [2 -10 1 8])
                                           encoded))
         _ (is (= data decoded))
         data 5
         encoded (l/serialize union-schema data)
-        decoded (l/deserialize union-schema encoded)]
+        decoded (l/deserialize-same union-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [0 10])
                                     encoded))
     (is (= data decoded))))
@@ -702,14 +702,14 @@
 (deftest test-wrapped-union-schema-serdes
   (let [data (l/wrap dog-schema {:name "Fido" :owner "Zach"})
         encoded (l/serialize person-or-dog-schema data)
-        decoded (l/deserialize person-or-dog-schema encoded)
+        decoded (l/deserialize-same person-or-dog-schema encoded)
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [2 8 70 105 100 111 8 90 97 99 104])
                encoded))
         _ (is (= data decoded))
         data (l/wrap person-schema {:name "Bill" :age 50})
         encoded (l/serialize person-or-dog-schema data)
-        decoded (l/deserialize person-or-dog-schema encoded)]
+        decoded (l/deserialize-same person-or-dog-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [0 8 66 105 108 108 100])
          encoded))
@@ -735,7 +735,7 @@
 (deftest test-map-or-array-schema-serdes
   (let [data {"Zeke" 22 "Adeline" 88}
         encoded (l/serialize map-or-array-schema data)
-        decoded (l/deserialize map-or-array-schema encoded)
+        decoded (l/deserialize-same map-or-array-schema encoded)
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [0 4 8 90 101 107 101 44 14 65 100 101 108 105
                                110 101 -80 1 0])
@@ -743,7 +743,7 @@
         _ (is (= data decoded))
         data ["a thing" "another thing"]
         encoded (l/serialize map-or-array-schema data)
-        decoded (l/deserialize map-or-array-schema encoded)]
+        decoded (l/deserialize-same map-or-array-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [2 4 14 97 32 116 104 105 110 103 26 97 110
                          111 116 104 101 114 32 116 104 105 110 103 0])
@@ -769,7 +769,7 @@
 (deftest test-mopodoa-schema-serdes
   (let [data (l/wrap ages-schema {"Zeke" 22 "Adeline" 88})
         encoded (l/serialize mopodoa-schema data)
-        decoded (l/deserialize mopodoa-schema encoded)
+        decoded (l/deserialize-same mopodoa-schema encoded)
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [0 4 8 90 101 107 101 44 14 65 100 101 108 105
                                110 101 -80 1 0])
@@ -777,7 +777,7 @@
         _ (is (= data decoded))
         data (l/wrap simple-array-schema ["a thing" "another thing"])
         encoded (l/serialize mopodoa-schema data)
-        decoded (l/deserialize mopodoa-schema encoded)]
+        decoded (l/deserialize-same mopodoa-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [6 4 14 97 32 116 104 105 110 103 26 97 110
                          111 116 104 101 114 32 116 104 105 110 103 0])
@@ -815,7 +815,7 @@
                                    :right nil
                                    :left nil}}}}
         encoded (l/serialize tree-schema data)
-        decoded (l/deserialize tree-schema encoded)
+        decoded (l/deserialize-same tree-schema encoded)
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [10 2 19 2 39 0 0 0 2 20 0 2 40 0 2 80 0 0])
                encoded))
@@ -1083,7 +1083,7 @@
   (let [data {:names ["Aria" "Beth" "Cindy"]
               :why :stock}
         encoded (l/serialize rec-w-array-and-enum-schema data)
-        decoded (l/deserialize rec-w-array-and-enum-schema encoded)]
+        decoded (l/deserialize-same rec-w-array-and-enum-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [6 8 65 114 105 97 8 66 101 116 104 10 67 105
                          110 100 121 0 2])
@@ -1110,7 +1110,7 @@
                             "Cindy" 44}
               :what "yo"}
         encoded (l/serialize rec-w-map-schema data)
-        decoded (l/deserialize rec-w-map-schema encoded)]
+        decoded (l/deserialize-same rec-w-map-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [6 8 65 114 105 97 44 8 66 101 116 104 66 10
                          67 105 110 100 121 88 0 4 121 111])
@@ -1136,7 +1136,7 @@
 (deftest test-rec-w-fixed-no-default-serdes
   (let [data {:data (ba/byte-array [1 2])}
         encoded (l/serialize rec-w-fixed-no-default-schema data)
-        decoded (l/deserialize rec-w-fixed-no-default-schema encoded)]
+        decoded (l/deserialize-same rec-w-fixed-no-default-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [1 2])
          encoded))
@@ -1167,7 +1167,7 @@
 (deftest test-record-serdes-missing-maybe-field
   (let [data {:name "Sharon"}
         encoded (l/serialize rec-w-maybe-field-schema data)
-        decoded (l/deserialize rec-w-maybe-field-schema encoded)]
+        decoded (l/deserialize-same rec-w-maybe-field-schema encoded)]
     (is (= (assoc data :age nil) decoded))))
 
 (deftest test-plumatic-primitives
@@ -1278,8 +1278,7 @@
 (deftest test-bad-deserialize-args
   (s/without-fn-validation ;; Allow built-in handlers to throw
    (try
-     (l/deserialize nil (l/pcf why-schema)
-                    (ba/byte-array []))
+     (l/deserialize nil nil nil)
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
        (let [msg (lu/ex-msg e)]
