@@ -68,12 +68,12 @@
 
         dec-ops (get-ops-per-sec dec-fn num-ops)
         json-dec-ops (get-ops-per-sec json-dec-fn num-ops)]
-    (infof "Avro encode ops per sec:          %.0f" enc-ops)
-    (infof "Avro decode ops per sec:          %.0f" dec-ops)
+    (infof "Lancaster encode ops per sec:     %.0f" enc-ops)
+    (infof "Lancaster decode ops per sec:     %.0f" dec-ops)
     (infof "JSON encode ops per sec:          %.0f" json-enc-ops)
     (infof "JSON decode ops per sec:          %.0f" json-dec-ops)
     (infof "Deflated JSON encode ops per sec: %.0f" deflated-json-enc-ops)
-    (infof "Avro encoded size:                %d" (count encoded))
+    (infof "Lancaster encoded size:           %d" (count encoded))
     (infof "JSON encoded size:                %d" (count json-encoded))
     (infof "Deflated JSON encoded size:       %d" (count deflated-json-encoded))
     (is (< #?(:cljs 20000 :clj 200000) enc-ops))

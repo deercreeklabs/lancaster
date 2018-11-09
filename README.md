@@ -38,25 +38,25 @@ The output of an unscientific run of the microbenchmark in
 
 Parameter | Value
 :-------- | -----:
-Avro encode ops per sec |          239,808
-Avro decode ops per sec |          380,228
+Lancaster encode ops per sec |     239,808
+Lancaster decode ops per sec |     380,228
 JSON encode ops per sec |          141,844
 JSON decode ops per sec |          231,481
 Deflated JSON encode ops per sec |  30,488
-Avro encoded size |                     14
+Lancaster encoded size |                14
 JSON encoded size |                    142
 Deflated JSON encoded size |           105
 
-*ClojureScript on Node.js 8.10*
+*ClojureScript 1.10.339 on Node.js 8.10*
 
 Parameter | Value
 :-------- | -----:
-Avro encode ops per sec |          35,211
-Avro decode ops per sec |          62,112
+Lancaster encode ops per sec |     35,211
+Lancaster decode ops per sec |     62,112
 JSON encode ops per sec |          36,765
 JSON decode ops per sec |          11,211
 Deflated JSON encode ops per sec |  2,890
-Avro encoded size |                    14
+Lancaster encoded size |               14
 JSON encoded size |                   162
 Deflated JSON encoded size |          109
 
@@ -485,6 +485,185 @@ The wrapped data.
 ;; This works now
 (l/serialize person-or-dog-schema wrapped-fido)
 ;; #object["[B" 0x2cc2072e "[B@2cc2072e"]
+```
+
+-------------------------------------------------------------------------------
+### edn
+```clojure
+(edn schema)
+```
+Returns an EDN representation of the given Lancaster schema.
+
+#### Parameters:
+* `schema`: The Lancaster schema
+
+#### Return Value
+EDN representation of the given Lancaster schema
+
+#### Example
+```clojure
+(l/def-enum-schema suite-schema
+  :clubs :diamonds :hearts :spades)
+
+(l/edn suite-schema)
+;; {:name :suite, :type :enum, :symbols [:clubs :diamonds :hearts :spades]}
+```
+
+-------------------------------------------------------------------------------
+### json
+```clojure
+(json schema)
+```
+Returns an Avro-compliant JSON representation of the given Lancaster schema.
+
+#### Parameters:
+* `schema`: The Lancaster schema
+
+#### Return Value
+JSON representation of the given Lancaster schema
+
+#### Example
+```clojure
+(l/def-enum-schema suite-schema
+  :clubs :diamonds :hearts :spades)
+
+(l/json suite-schema)
+;; "{\"name\":\"Suite\",\"type\":\"enum\",\"symbols\":[\"CLUBS\",\"DIAMONDS\",\"HEARTS\",\"SPADES\"]}"
+```
+
+-------------------------------------------------------------------------------
+### plumatic-schema
+```clojure
+(plumatic-schema schema)
+```
+Returns a [Plumatic schema](https://github.com/plumatic/schema)
+for the given Lancaster schema
+
+#### Parameters:
+* `schema`: The Lancaster schema
+
+#### Return Value
+A Plumatic schema that matches the Lancaster schema
+
+#### Example
+```clojure
+(l/def-enum-schema suite-schema
+  :clubs :diamonds :hearts :spades)
+
+(l/plumatic-schema suite-schema)
+;; (enum :spades :diamonds :clubs :hearts)
+```
+
+-------------------------------------------------------------------------------
+### pcf
+```clojure
+(pcf schema)
+```
+Returns a JSON string containing the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+for the given Lancaster schema.
+
+#### Parameters:
+* `schema`: The Lancaster schema
+
+#### Return Value
+A JSON string
+
+#### Example
+```clojure
+(l/def-enum-schema suite-schema
+  :clubs :diamonds :hearts :spades)
+
+(l/pcf suite-schema)
+;; "{\"name\":\"Suite\",\"type\":\"enum\",\"symbols\":[\"CLUBS\",\"DIAMONDS\",\"HEARTS\",\"SPADES\"]}"
+;; Note that this happens to be the same as (l/json suite-schema) for this
+;; particular schema. That is not generally the case.
+```
+
+-------------------------------------------------------------------------------
+### fingerprint-64
+```clojure
+(fingerprint64 schema)
+```
+Returns the 64-bit
+[Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+for the given Lancaster schema.
+
+#### Parameters:
+* `schema`: The Lancaster schema
+
+#### Return Value
+A 64-bit Long representing the fingerprint. For JVM Clojure, this is a
+java.lang.Long. For ClojureScript, it is a goog.math.Long.
+
+#### Example
+```clojure
+(l/def-enum-schema suite-schema
+  :clubs :diamonds :hearts :spades)
+
+(l/fingerprint64 suite-schema)
+;; 5882396032713186004
+```
+
+-------------------------------------------------------------------------------
+### schema?
+```clojure
+(schema? arg)
+```
+Returns a boolean indicating whether or not the argument is a
+Lancaster schema object.
+
+#### Parameters:
+* `arg`: The argument to be tested
+
+#### Return Value
+A boolean indicating whether or not the argument is a
+Lancaster schema object
+
+#### Example
+```clojure
+(l/def-enum-schema suite-schema
+  :clubs :diamonds :hearts :spades)
+
+(l/schema? suite-schema)
+;; true
+
+(l/schema? :clubs)
+;; false
+```
+
+-------------------------------------------------------------------------------
+### default-data
+```clojure
+(default-data schema)
+```
+Creates default data that conforms to the given Lancaster schema. The following
+values are used for the primitive data types:
+* `null`: `nil`
+* `boolean`: `false`
+* `int`: `-1`
+* `long`: `-1`
+* `float`: `-1.0`
+* `double`: `-1.0`
+* `string`: `""`
+* `enum`: first symbol in the schema's symbols list
+
+Default data for complex schemas are built up from the primitives.
+
+#### Parameters:
+* `schema`: The Lancaster schema
+
+#### Return Value
+Data that matches the given schema
+
+#### Example
+```clojure
+(l/def-enum-schema suite-schema
+  :clubs :diamonds :hearts :spades)
+
+(l/default-data suite-schema)
+;; :clubs
 ```
 
 # License

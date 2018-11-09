@@ -177,27 +177,35 @@
   (u/edn-schema schema))
 
 (s/defn json :- s/Str
-  "Returns an Avro-compliant JSon representation of the given Lancaster schema."
+  "Returns an Avro-compliant JSON representation of the given Lancaster schema."
   [schema :- LancasterSchema]
   (u/json-schema schema))
 
 (s/defn plumatic-schema :- s/Any
+  "Returns a Plumatic schema for the given Lancaster schema."
   [schema :- LancasterSchema]
   (u/plumatic-schema schema))
 
 (s/defn pcf :- s/Str
+  "Returns a JSON string containing the Avro Parsing Canonical Form of
+  the given Lancaster schema."
   [schema :- LancasterSchema]
   (u/parsing-canonical-form schema))
 
 (s/defn fingerprint64 :- Long
+  "Returns the 64-bit Rabin fingerprint of the Parsing Canonical Form
+   of the given Lancaster schema."
   [schema :- LancasterSchema]
   (u/fingerprint64 schema))
 
 (s/defn schema? :- s/Bool
+  "Returns a boolean indicating whether or not the argument is a
+   Lancaster schema object."
   [arg :- s/Any]
   (satisfies? u/ILancasterSchema arg))
 
 (s/defn default-data :- s/Any
+  "Creates default data that conforms to the given Lancaster schema."
   [schema :- LancasterSchema]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
