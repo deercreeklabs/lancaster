@@ -44,11 +44,6 @@
         ms (- (u/current-time-ms) start-ms)]
     (/ (* 1000 iters) ms)))
 
-(defn deserialize-same
-  "Deserialize with the same reader and writer schemas. Use for testing only."
-  [schema encoded]
-  (l/deserialize schema encoded))
-
 (deftest ^:perf test-serdes-speed
   (let [data {:qty-requested 123
               :qty-added 10
@@ -72,8 +67,8 @@
         encoded (enc-fn)
         json-encoded (json-enc-fn)
         deflated-json-encoded (deflated-json-enc-fn)
-        dec-fn #(deserialize-same add-to-cart-rsp-schema
-                                  encoded)
+        dec-fn #(l/deserialize-same add-to-cart-rsp-schema
+                                    encoded)
         json-dec-fn (fn []
                       #?(:clj (json/parse-string json-encoded true)
                          :cljs (js->clj (js/JSON.parse json-encoded))))

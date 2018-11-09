@@ -81,106 +81,33 @@
   (schemas/schema :flex-map name-kw [keys-schema values-schema]))
 
 (s/defn array-schema :- LancasterSchema
-  "Creates a Lancaster schema object representing an Avro
- [```array```](http://avro.apache.org/docs/current/spec.html#Arrays)
-   with the given items schema.
-
-#### Parameters:
-* `items`: A Lancaster schema object describing the items in the array.
-
-#### Return Value:
-The new Lancaster array schema.
-
-#### Example
-```clojure
-(def numbers-schema (l/array-schema l/int-schema))
-```"
+  "Creates a Lancaster schema object representing an Avro array
+   with the given items schema."
   [items-schema :- LancasterSchema]
   (schemas/schema :array nil items-schema))
 
 (s/defn map-schema :- LancasterSchema
-  "Creates a Lancaster schema object representing an Avro
- [```map```](http://avro.apache.org/docs/current/spec.html#Maps)
-   with the given values schema.
-
-#### Parameters:
-* `values`: A Lancaster schema object describing the values in the map. Map
-   keys are always strings.
-
-#### Return Value:
-The new Lancaster map schema.
-
-#### Examples
-```clojure
-(def name->age-schema (l/map-schema l/int-schema))
-```"
+  "Creates a Lancaster schema object representing an Avro map
+   with the given values schema."
   [values-schema :- LancasterSchema]
   (schemas/schema :map nil values-schema))
 
 (s/defn union-schema :- LancasterSchema
-  "Creates a Lancaster schema object representing an Avro
- [```union```](http://avro.apache.org/docs/current/spec.html#Unions)
-   with the given member schemas.
-
-#### Parameters:
-* `members`: A sequence of Lancaster schema objects that are the members
-   of the union.
-
-#### Return Value:
-The new Lancaster union schema.
-
-#### Examples
-```clojure
-(def maybe-name-schema
-  (l/union-schema [l/null-schema l/string-schema]))
-```"
-  [members :- [LancasterSchemaOrNameKW]]
-  (schemas/schema :union nil members))
+  "Creates a Lancaster schema object representing an Avro union
+   with the given member schemas."
+  [member-schemas :- [LancasterSchemaOrNameKW]]
+  (schemas/schema :union nil member-schemas))
 
 (s/defn merge-record-schemas :- LancasterSchema
   "Creates a Lancaster record schema which contains all the fields
-   of all record schemas passed in.
-
-#### Parameters:
-* `name-kw`: A keyword naming the new combined record schema. May or may not be
-             namespaced. The name-kw must start with a letter and subsequently
-             only contain letters, numbers, or hyphens.
-* `schemas`: A sequence of Lancaster schema record objects to be merged.
-
-#### Return Value:
-The new Lancaster record schema.
-
-#### Example
-```clojure
-(l/def-record-schema person-schema
-  [:name l/string-schema]
-  [:age l/int-schema])
-
-(l/def-record-schema location-schema
-  [:latitude l/double-schema]
-  [:longitude l/double-schema])
-
-(def person-w-location-schema
-  (l/merge-record-schemas [person-schema location-schema]))
-```"
+   of all record schemas passed in."
   [name-kw :- s/Keyword
    schemas :- [LancasterSchema]]
   (schemas/merge-record-schemas name-kw schemas))
 
 (s/defn maybe :- LancasterSchema
   "Creates a Lancaster union schema whose members are l/null-schema
-   and the given schema. Makes a schema nillable.
-
-#### Parameters:
-* `schema`: The Lancaster schema to be made nillable.
-
-#### Return Value:
-The new Lancaster union schema.
-
-#### Example
-```clojure
-(def int-or-nil-schema (l/maybe l/int-schema))
-```"
+   and the given schema. Makes a schema nillable."
   [schema :- LancasterSchemaOrNameKW]
   (union-schema [null-schema schema]))
 
