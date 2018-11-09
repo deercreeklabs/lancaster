@@ -52,84 +52,29 @@
 (s/defn record-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro record
    with the given name keyword and field definitions. For a more
-   concise way to declare a record schema, see def-record-schema.
-
-#### Parameters:
-* `name-kw`: A keyword naming this ```record```. May or may not be
-             namespaced. The name-kw must start with a letter and subsequently
-             only contain letters, numbers, or hyphens.
-* `fields`: A sequence of field definitions. Field definitions are sequences
-            of this form [field-name-kw field-schema default-value].
-    * `field-name-kw`: A keyword naming this field.
-    * `field-schema`: A Lancaster schema object representing the field's schema.
-    * `default-value`: Optional. The default data value for
-               this field.
-
-#### Return Value:
-The new Lancaster record schema.
-
-#### Example
-```clojure
-(def person-schema
-  (l/record-schema :person
-                   [[:name l/string-schema \"no name\"]
-                    [:age l/int-schema]]))
-```"
+   concise way to declare a record schema, see def-record-schema."
   [name-kw :- s/Keyword
    fields :- [schemas/RecordFieldDef]]
   (schemas/schema :record name-kw fields))
 
 (s/defn enum-schema :- LancasterSchema
-  "Creates a Lancaster schema object representing an Avro
-  [```enum```](http://avro.apache.org/docs/current/spec.html#Enums),
+  "Creates a Lancaster schema object representing an Avro enum
    with the given name and symbols. For a more
-   concise way to declare an enum schema, see [[def-enum-schema]].
-
-#### Parameters:
-* `name-kw`: A keyword naming this ```enum```. May or may not be
-             namespaced. The name-kw must start with a letter and subsequently
-             only contain letters, numbers, or hyphens.
-* `symbols`: A sequence of keywords, representing the symbols in
-             the enum
-
-#### Return Value:
-The new Lancaster enum schema.
-
-#### Example
-```clojure
-(def suite-schema
-  (l/enum-schema :suite [:clubs :diamonds :hearts :spades]))
-```"
+   concise way to declare an enum schema, see def-enum-schema."
   [name-kw :- s/Keyword
    symbols :- [s/Keyword]]
   (schemas/schema :enum name-kw symbols))
 
 (s/defn fixed-schema :- LancasterSchema
-  "Creates a Lancaster schema object representing an Avro
- [```fixed```](http://avro.apache.org/docs/current/spec.html#Fixed),
+  "Creates a Lancaster schema object representing an Avro fixed
    with the given name and size. For a more
-   concise way to declare a fixed schema, see [[def-fixed-schema]].
-
-#### Parameters:
-* `name-kw`: A keyword naming this ```fixed```. May or may not be
-             namespaced. The name-kw must start with a letter and subsequently
-             only contain letters, numbers, or hyphens.
-* `size`: An integer representing the size of this fixed in bytes.
-
-#### Return Value:
-The new Lancaster fixed schema.
-
-#### Example
-```clojure
-(def md5-schema
-  (l/fixed-schema :md5 16))
-```"
+   concise way to declare a fixed schema, see def-fixed-schema."
   [name-kw :- s/Keyword
    size :- s/Int]
   (schemas/schema :fixed name-kw size))
 
 ;; TODO: Document this
-(s/defn ^:no-doc flex-map-schema :- LancasterSchema
+(s/defn flex-map-schema :- LancasterSchema
   [name-kw :- s/Keyword
    keys-schema :- LancasterSchema
    values-schema :- LancasterSchema]
