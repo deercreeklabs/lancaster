@@ -18,7 +18,8 @@ Lancaster provides functions for:
 * Schema creation and manipulation
 * Serialization to a byte array
 * Deserialization from a byte array, including schema evolution
-* Conversion from Lancaster schemas to Plumatic schemas (spec support is
+* Conversion from Lancaster schemas to
+[Plumatic schemas](https://github.com/plumatic/schema) (spec support is
 planned).
 
 Lancaster does not support:
@@ -56,7 +57,7 @@ They can be created in two ways:
 with externally defined schemas from another system or language.
 2. By using Lancaster schema functions. If you want to define Avro schemas
 using Clojure(script), Lancaster lets you concisely create and combine
-schemas in arbitrarily complex ways.
+schemas in arbitrarily complex ways, as explained below.
 
 ## Predefined Primitive Schemas
 Lancaster provides predefined schema objects for all the
@@ -70,10 +71,11 @@ The following vars are defined in the `deercreeklabs.lancaster` namespace:
 * `double-schema`
 * `bytes-schema`
 * `string-schema`
+
 These schemas can be used directly or combined into complex schemas.
 
 ## Creating Complex Schemas
-Lancaster provides functions and macros to create
+Lancaster provides the following functions and macros to create
 [complex Avro schemas](http://avro.apache.org/docs/current/spec.html#schema_complex):
 * [record-schema](#record-schema)
 * [enum-schema](#enum-schema)
@@ -110,7 +112,7 @@ The new Lancaster record schema.
 ```clojure
 (def person-schema
   (l/record-schema :person
-                   [[:name l/string-schema \"no name\"]
+                   [[:name l/string-schema "no name"]
                     [:age l/int-schema]]))
 ```
 
@@ -280,6 +282,116 @@ The new Lancaster union schema.
 ```
 
 -------------------------------------------------------------------------------
+### serialize
+```clojure
+(serialize writer-schema data)
+```
+Serializes data to a byte array, using the given Lancaster schema.
+
+#### Parameters:
+* `writer-schema`: The Lancaster schema that describes the data to be written.
+* `data`: The data to be written.
+
+#### Return Value:
+A byte array containing the Avro-encoded data.
+
+#### Example
+```clojure
+(l/def-record-schema person-schema
+  [:name l/string-schema]
+  [:age l/int-schema])
+
+(def encoded (l/serialize person-schema {:name "Arnold"
+                                         :age 22}))
+```
+
+### deserialize
+```clojure
+(deserialize reader-schema writer-schema ba)
+```
+Deserializes Avro-encoded data from a byte array, using the given reader and
+writer schemas. The writer schema must be resolvable to the reader schema. See
+[Avro Schema Resolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution).
+If the reader schema contains
+record fields that are not in the writer's schema, the fields' default values
+will be used. If no default was explicitly specified in the schema, Lancaster
+uses the following default values, depending on the field type:
+* `null`: `nil`
+* `boolean`: `false`
+* `int`: `-1`
+* `long`: `-1`
+* `float`: `-1.0`
+* `double`: `-1.0`
+* `string`: `""`
+* `enum`: first symbol in the schema's symbols list
+* `array`: `[]`
+* `map`: `{}`
+* `flex-map`: `{}`
+
+#### Parameters:
+* `reader-schema`: The reader's Lancaster schema for the data
+* `writer-schema`: The writer's Lancaster schema for the data
+* `ba`: A byte array containing the encoded data
+
+#### Return Value
+The deserialized data.
+
+#### Example
+```clojure
+(def person-schema
+  (l/record-schema :person
+                   [[:name l/string-schema "no name"]
+                    [:age l/int-schema]]))
+
+(def person-w-nick-schema
+  (l/record-schema :person
+                   [[:name l/string-schema "no name"]
+                    [:age l/int-schema]
+                    [:nickname l/string-schema "no nick"]
+                    [:favorite-number l/int-schema]]))
+
+(def encoded (l/serialize person-schema {:name "Alice"
+                                         :age 20}))
+
+(l/deserialize person-w-nick-schema person-schema encoded)
+;; {:name "Alice", :age 20, :nickname "no nick", :favorite-number -1}
+```
+
+### deserialize-same
+```clojure
+(deserialize-same schema ba)
+```
+Deserializes Avro-encoded data from a byte array, using the given schema
+as both the reader and writer schema.
+
+**Note that this is not recommended**, since the original writer's schema
+should always be used to deserialize. The writer's schema
+(in [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas))
+should always be stored or transmitted with encoded data.
+
+See also [deserialize](#deserialize).
+
+#### Parameters:
+* `schema`: The reader's and writer's Lancaster schema for the data
+* `ba`: A byte array containing the encoded data
+
+#### Return Value
+The deserialized data.
+
+#### Example
+```clojure
+(l/def-record-schema dog-schema
+  [:name l/string-schema]
+  [:owner l/string-schema])
+
+(def encoded (l/serialize dog-schema {:name "Fido"
+                                      :owner "Roger"}))
+
+(l/deserialize-same dog-schema encoded)
+;; {:name "Fido :owner "Roger"}
+```
+
+-------------------------------------------------------------------------------
 ### json->schema
 ```clojure
 (json->schema json)
@@ -304,7 +416,7 @@ The new Lancaster schema.
 ```
 -------------------------------------------------------------------------------
 
-## Serializaion and Deserialization
+## Serialization and Deserialization
 
 # License
 

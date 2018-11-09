@@ -112,65 +112,55 @@
   (union-schema [null-schema schema]))
 
 (s/defn serialize :- ba/ByteArray
-  "Serializes data to a byte array, using the given Lancaster schema.
-
-#### Parameters:
-* `schema`: The Lancaster schema that describes the data.
-* `data`: The data to be serialized.
-
-#### Return Value:
-A byte array containing the Avro-encoded data.
-
-#### Example
-```clojure
-(l/def-record-schema person-schema
-  [:name l/string-schema]
-  [:age l/int-schema])
-
-(def encoded (l/serialize person-schema {:name \"Arnold\"
-                                    :age \"22\"}))
-```"
-  [schema :- LancasterSchema
+  "Serializes data to a byte array, using the given Lancaster schema."
+  [writer-schema :- LancasterSchema
    data :- s/Any]
-  (when-not (satisfies? u/ILancasterSchema schema)
+  (when-not (satisfies? u/ILancasterSchema writer-schema)
     (throw
      (ex-info (str "First argument to serialize must be a schema "
                    "object. The object must satisfy the ILancasterSchema "
                    "protocol.")
-              {:schema schema
-               :schema-type (#?(:clj class :cljs type) schema)})))
-  (u/serialize schema data))
+              {:schema writer-schema
+               :schema-type (#?(:clj class :cljs type) writer-schema)})))
+  (u/serialize writer-schema data))
 
 (s/defn deserialize :- s/Any
-  ([reader-schema :- LancasterSchema
-    writer-schema :- LancasterSchema
-    ba :- ba/ByteArray]
-   (when-not (satisfies? u/ILancasterSchema reader-schema)
-     (throw
-      (ex-info (str "First argument to deserialize must be a schema "
-                    "object representing the reader's schema. The object "
-                    "must satisfy the ILancasterSchema protocol.")
-               {:reader-schema reader-schema
-                :reader-schema-type
-                (#?(:clj class :cljs type) reader-schema)})))
-   (when-not (satisfies? u/ILancasterSchema writer-schema)
-     (throw
-      (ex-info (str "Second argument to deserialize must be a schema "
-                    "object representing the writer's schema. The object "
-                    "must satisfy the ILancasterSchema protocol.")
-               {:writer-schema writer-schema
-                :writer-schema-type
-                (#?(:clj class :cljs type) writer-schema)})))
-   (when-not (instance? ba/ByteArray ba)
-     (throw (ex-info (str "Final argument to deserialize must be a byte array. "
-                          "The byte array must include the binary data to "
-                          "be deserialized.")
-                     {:ba ba
-                      :ba-type (#?(:clj class :cljs type) ba)})))
-   (let [is (impl/input-stream ba)]
-     (u/deserialize reader-schema writer-schema is))))
+  "Deserializes Avro-encoded data from a byte array, using the given reader and
+   writer schemas."
+  [reader-schema :- LancasterSchema
+   writer-schema :- LancasterSchema
+   ba :- ba/ByteArray]
+  (when-not (satisfies? u/ILancasterSchema reader-schema)
+    (throw
+     (ex-info (str "First argument to deserialize must be a schema "
+                   "object representing the reader's schema. The object "
+                   "must satisfy the ILancasterSchema protocol.")
+              {:reader-schema reader-schema
+               :reader-schema-type
+               (#?(:clj class :cljs type) reader-schema)})))
+  (when-not (satisfies? u/ILancasterSchema writer-schema)
+    (throw
+     (ex-info (str "Second argument to deserialize must be a schema "
+                   "object representing the writer's schema. The object "
+                   "must satisfy the ILancasterSchema protocol.")
+              {:writer-schema writer-schema
+               :writer-schema-type
+               (#?(:clj class :cljs type) writer-schema)})))
+  (when-not (instance? ba/ByteArray ba)
+    (throw (ex-info (str "Final argument to deserialize must be a byte array. "
+                         "The byte array must include the binary data to "
+                         "be deserialized.")
+                    {:ba ba
+                     :ba-type (#?(:clj class :cljs type) ba)})))
+  (let [is (impl/input-stream ba)]
+    (u/deserialize reader-schema writer-schema is)))
 
 (s/defn deserialize-same :- s/Any
+  "Deserializes Avro-encoded data from a byte array, using the given schema
+   as both the reader and writer schema. Note that this is not recommended,
+   since the original writer's schema should always be used to deserialize.
+   The writer's schema (in Parsing Canonical Form) should always be stored
+   or transmitted with encoded data."
   [schema :- LancasterSchema
    ba :- ba/ByteArray]
   (deserialize schema schema ba))
