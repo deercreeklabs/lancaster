@@ -34,25 +34,25 @@ than JSON encoding while producing output that is much more compact.
 The output of an unscientific run of the microbenchmark in
 `deercreeklabs.perf-test` is pasted in below. Your mileage may vary.
 
-**Clojure**
-Avro encode ops per sec:          228833
-Avro decode ops per sec:          380228
-JSON encode ops per sec:          160000
-JSON decode ops per sec:          234742
-Deflated JSON encode ops per sec: 30120
-Avro encoded size:                14
-JSON encoded size:                142
-Deflated JSON encoded size:       105
+Clojure | Value
+Avro encode ops per sec |          228833
+Avro decode ops per sec |          380228
+JSON encode ops per sec |          160000
+JSON decode ops per sec |          234742
+Deflated JSON encode ops per sec | 30120
+Avro encoded size |                14
+JSON encoded size |                142
+Deflated JSON encoded size |       105
 
-**ClojureScript on Node.js**
-Avro encode ops per sec:          35211
-Avro decode ops per sec:          62112
-JSON encode ops per sec:          36765
-JSON decode ops per sec:          11211
-Deflated JSON encode ops per sec: 2890
-Avro encoded size:                14
-JSON encoded size:                162
-Deflated JSON encoded size:       109
+ClojureScript on Node.js |
+Avro encode ops per sec |          35211
+Avro decode ops per sec |          62112
+JSON encode ops per sec |          36765
+JSON decode ops per sec |          11211
+Deflated JSON encode ops per sec | 2890
+Avro encoded size |                14
+JSON encoded size |                162
+Deflated JSON encoded size |       109
 
 ## Project Name
 The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an
