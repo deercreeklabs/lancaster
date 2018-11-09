@@ -35,6 +35,7 @@ The output of an unscientific run of the microbenchmark in
 `deercreeklabs.perf-test` is pasted in below. Your mileage may vary.
 
 Clojure | Value
+-----------------------------------------
 Avro encode ops per sec |          228833
 Avro decode ops per sec |          380228
 JSON encode ops per sec |          160000
@@ -45,7 +46,8 @@ JSON encoded size |                142
 Deflated JSON encoded size |       105
 
 ClojureScript on Node.js |
-Avro encode ops per sec |          35211
+-----------------------------------------
+gAvro encode ops per sec |          35211
 Avro decode ops per sec |          62112
 JSON encode ops per sec |          36765
 JSON decode ops per sec |          11211
