@@ -166,9 +166,10 @@
   (deserialize schema schema ba))
 
 (s/defn wrap :- schemas/WrappedData
-  [schema :- LancasterSchema
+  "Wraps data for use in an ambiguous union."
+  [data-schema :- LancasterSchema
    data :- s/Any]
-  (u/wrap schema data))
+  (u/wrap data-schema data))
 
 (s/defn edn-schema :- s/Any
   [schema :- LancasterSchema]

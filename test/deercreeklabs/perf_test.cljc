@@ -12,30 +12,23 @@
 ;; Use this instead of fixtures, which are hard to make work w/ async testing.
 (s/set-fn-validation! false)
 
-(def add-to-cart-req-schema
-  (l/record-schema ::add-to-cart-req
-                   [[:sku l/int-schema]
-                    [:qty-requested l/int-schema 0]]))
+(l/def-record-schema add-to-cart-req-schema
+  [:sku l/int-schema]
+  [:qty-requested l/int-schema 0])
 
-(def why-schema (l/enum-schema ::why
-                               [:all :stock :limit]))
+(l/def-enum-schema why-schema
+  :all :stock :limit)
 
-(def a-fixed-schema (l/fixed-schema ::a-fixed 2))
+(l/def-fixed-schema a-fixed-schema 2)
 
-(def rec-w-fixed-no-default-schema
-  (l/record-schema ::rec-w-fixed-no-default
-                   [[:data a-fixed-schema]]))
-
-(def add-to-cart-rsp-schema
-  (l/record-schema ::add-to-cart-rsp
-                   [[:qty-requested l/int-schema]
-                    [:qty-added l/int-schema]
-                    [:current-qty l/int-schema]
-                    [:req add-to-cart-req-schema
-                     {:sku 10 :qty-requested 1}]
-                    [:the-reason-why why-schema :stock]
-                    [:data a-fixed-schema (ba/byte-array [77 88])]
-                    [:other-data l/bytes-schema]]))
+(l/def-record-schema add-to-cart-rsp-schema
+  [:qty-requested l/int-schema]
+  [:qty-added l/int-schema]
+  [:current-qty l/int-schema]
+  [:req add-to-cart-req-schema]
+  [:reason why-schema :stock]
+  [:data a-fixed-schema]
+  [:other-data l/bytes-schema])
 
 (defn get-ops-per-sec [f iters]
   (let [start-ms (u/current-time-ms)
@@ -49,7 +42,7 @@
               :qty-added 10
               :current-qty 10
               :req {:sku 123 :qty-requested 123}
-              :the-reason-why :limit
+              :reason :limit
               :data (ba/byte-array [66 67])
               :other-data (ba/byte-array [123 123])}
         num-ops #?(:cljs 1e4 :clj 1e5)

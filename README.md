@@ -6,7 +6,7 @@
 
 # About
 Lancaster is an [Apache Avro](http://avro.apache.org/docs/current/)
-library for Clojure and Clojurescript. It aims to be fully compliant
+library for Clojure and ClojureScript. It aims to be fully compliant
 with the [Avro Specification](http://avro.apache.org/docs/current/spec.html).
 It is assumed that the reader of this documentation is familiar with
 Avro and Avro terminology. If this is your first exposure to Avro,
@@ -23,14 +23,37 @@ Lancaster provides functions for:
 planned).
 
 Lancaster does not support:
-* Avro RPC & Protocols (though similar / better functionality is available
+* Avro RPC and Protocols (RPC and messaging functionality is available
 in [Capsule](https://github.com/deercreeklabs/capsule))
 * Avro container files (may be supported in the future).
 
 ## Performance
 Lancaster aims to be fast. Microbenchmarks show that it is generally faster
-than JSON encoding while producing output that is much more compact. See the
-`deercreeklabs.perf-test` namespace for benchmarks.
+than JSON encoding while producing output that is much more compact.
+The output of an unscientific run of the microbenchmark in
+`deercreeklabs.perf-test` is pasted in below. Your mileage may vary.
+
+**Clojure**
+----------------------------------------
+Avro encode ops per sec:          228833
+Avro decode ops per sec:          380228
+JSON encode ops per sec:          160000
+JSON decode ops per sec:          234742
+Deflated JSON encode ops per sec: 30120
+Avro encoded size:                14
+JSON encoded size:                142
+Deflated JSON encoded size:       105
+
+**ClojureScript on Node.js**
+----------------------------------------
+Avro encode ops per sec:          35211
+Avro decode ops per sec:          62112
+JSON encode ops per sec:          36765
+JSON decode ops per sec:          11211
+Deflated JSON encode ops per sec: 2890
+Avro encoded size:                14
+JSON encoded size:                162
+Deflated JSON encoded size:       109
 
 ## Project Name
 The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an
@@ -56,7 +79,7 @@ They can be created in two ways:
 [json->schema](#json-schema) function. This is best if you are working
 with externally defined schemas from another system or language.
 2. By using Lancaster schema functions. If you want to define Avro schemas
-using Clojure(script), Lancaster lets you concisely create and combine
+using Clojure/ClojureScript, Lancaster lets you concisely create and combine
 schemas in arbitrarily complex ways, as explained below.
 
 ## Predefined Primitive Schemas
@@ -357,6 +380,7 @@ The deserialized data.
 ;; {:name "Alice", :age 20, :nickname "no nick", :favorite-number -1}
 ```
 
+-------------------------------------------------------------------------------
 ### deserialize-same
 ```clojure
 (deserialize-same schema ba)
@@ -414,9 +438,49 @@ The new Lancaster schema.
               "[{\"name\":\"name\",\"type\":\"string\",\"default\":\"no name\"},"
               "{\"name\":\"age\",\"type\":\"int\",\"default\":-1}]}")))
 ```
--------------------------------------------------------------------------------
 
-## Serialization and Deserialization
+-------------------------------------------------------------------------------
+### wrap
+```clojure
+(wrap data-schema data)
+```
+Wraps the given data for use in an ambigous union. See
+[Special Notes About Unions](#special-notes-about-unions) for more information.
+
+#### Parameters:
+* `data-schema`: The Lancaster schema of the data to be wrapped
+* `data`: The data to be wrapped.
+
+#### Return Value
+The wrapped data.
+
+#### Example
+```clojure
+(l/def-record-schema person-schema
+  [:name l/string-schema "No name"]
+  [:age l/int-schema 0])
+
+(l/def-record-schema dog-schema
+  [:name l/string-schema]
+  [:owner l/string-schema])
+
+(def person-or-dog-schema
+  (l/union-schema [person-schema dog-schema]))
+
+(def fido {:name "Fido" :owner "Roger"})
+
+;; Serializing without wrapping fails because the union is ambiguous:
+(l/serialize person-or-dog-schema fido)
+;; ExceptionInfo Union requires wrapping, but data is not wrapped.
+
+;; Wrapping the data before serialization tells the union which type
+;; to use when serializing.
+(def wrapped-fido (l/wrap dog-schema fido))
+
+;; This works now
+(l/serialize person-or-dog-schema wrapped-fido)
+;; #object["[B" 0x2cc2072e "[B@2cc2072e"]
+```
 
 # License
 
