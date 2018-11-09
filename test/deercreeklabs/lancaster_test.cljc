@@ -33,11 +33,11 @@
   (/ (abs-err expected actual) expected))
 
 (defn xf-byte-arrays
-  [edn-schema]
+  [edn]
   (walk/postwalk #(if (ba/byte-array? %)
                     (u/byte-array->byte-str %)
                     %)
-                 edn-schema))
+                 edn))
 
 #?(:clj
    (defn fp-matches? [schema]
@@ -187,7 +187,7 @@
                           "AddToCartReq\",\"type\":\"record\",\"fields\":"
                           "[{\"name\":\"sku\",\"type\":\"int\"},{\"name\":"
                           "\"qtyRequested\",\"type\":\"int\"}]}")
-        expected-edn-schema {:name :deercreeklabs.lancaster-test/add-to-cart-req
+        expected-edn {:name :deercreeklabs.lancaster-test/add-to-cart-req
                              :type :record
                              :fields
                              [{:name :sku
@@ -199,7 +199,7 @@
     #?(:clj (is (fp-matches? add-to-cart-req-schema)))
     (is (= "5027717767048351978"
            (u/long->str (l/fingerprint64 add-to-cart-req-schema))))
-    (is (= expected-edn-schema (l/edn-schema add-to-cart-req-schema)))
+    (is (= expected-edn (l/edn add-to-cart-req-schema)))
     (is (= expected-pcf (l/pcf
                          add-to-cart-req-schema)))))
 
@@ -215,7 +215,7 @@
   (is (= {:name :deercreeklabs.lancaster-test/why
           :type :enum
           :symbols [:all :stock :limit]}
-         (l/edn-schema why-schema)))
+         (l/edn why-schema)))
   #?(:clj (is (fp-matches? why-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.Why\",\"type\":"
               "\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}")
@@ -234,7 +234,7 @@
   (is (= {:name :deercreeklabs.lancaster-test/a-fixed
           :type :fixed
           :size 2}
-         (l/edn-schema a-fixed-schema)))
+         (l/edn a-fixed-schema)))
   #?(:clj (is (fp-matches? a-fixed-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.AFixed\",\"type\":"
               "\"fixed\",\"size\":2}")
@@ -295,7 +295,7 @@
                 "AFixed\",\"type\":\"fixed\",\"size\":2}},{\"name\":"
                 "\"otherData\",\"type\":\"bytes\"}]}")
            (l/pcf add-to-cart-rsp-schema)))
-    (is (= expected (l/edn-schema add-to-cart-rsp-schema))))
+    (is (= expected (l/edn add-to-cart-rsp-schema))))
   (is (= "-5582445743513220891"
          (u/long->str (l/fingerprint64 add-to-cart-rsp-schema)))))
 
@@ -393,7 +393,7 @@
 
 (deftest test-def-map-schema
   (is (= {:type :map :values :int}
-         (l/edn-schema ages-schema)))
+         (l/edn ages-schema)))
   #?(:clj (is (fp-matches? ages-schema)))
   (is (= "{\"type\":\"map\",\"values\":\"int\"}"
          (l/pcf ages-schema)))
@@ -417,7 +417,7 @@
           :type :flex-map,
           :keys :int,
           :values :int}
-         (l/edn-schema sku-to-qty-schema)))
+         (l/edn sku-to-qty-schema)))
   #?(:clj (is (fp-matches? sku-to-qty-schema)))
   (is (= (str
           "{\"name\":\"deercreeklabs.lancaster_test.SkuToQty\",\"type\":"
@@ -500,7 +500,7 @@
 (deftest test-def-array-schema
   #?(:clj (is (fp-matches? simple-array-schema)))
   (is (= {:type :array :items :string}
-         (l/edn-schema simple-array-schema)))
+         (l/edn simple-array-schema)))
   (is (= "{\"type\":\"array\",\"items\":\"string\"}"
          (l/pcf simple-array-schema)))
   (is (= "-3577210133426481249"
@@ -557,7 +557,7 @@
               :size 2}
              :default "MX"}
             {:name :other-data :type :bytes :default ""}]}}
-         (l/edn-schema rsps-schema)))
+         (l/edn rsps-schema)))
   (is (= "6045089564094799287"
          (u/long->str (l/fingerprint64 rsps-schema)))))
 
@@ -616,7 +616,7 @@
               :size 2}
              :default "MX"}
             {:name :other-data :type :bytes :default ""}]}}
-         (l/edn-schema nested-map-schema)))
+         (l/edn nested-map-schema)))
   (is (= "-6943064080000840455"
          (u/long->str (l/fingerprint64 nested-map-schema)))))
 
@@ -665,7 +665,7 @@
           {:name :deercreeklabs.lancaster-test/a-fixed
            :type :fixed
            :size 2}]
-         (l/edn-schema union-schema)))
+         (l/edn union-schema)))
   (is (= "-1215721474899338988"
          (u/long->str (l/fingerprint64 union-schema)))))
 
@@ -695,7 +695,7 @@
            :fields
            [{:name :name :type :string :default "No name"}
             {:name :owner :type :string :default "No owner"}]}]
-         (l/edn-schema person-or-dog-schema)))
+         (l/edn person-or-dog-schema)))
   (is (= "8229597085629138324"
          (u/long->str (l/fingerprint64 person-or-dog-schema)))))
 
@@ -728,7 +728,7 @@
   #?(:clj (is (fp-matches? map-or-array-schema)))
   (is (= [{:type :map :values :int}
           {:type :array :items :string}]
-         (l/edn-schema map-or-array-schema)))
+         (l/edn map-or-array-schema)))
   (is (= "4441440791563688855"
          (u/long->str (l/fingerprint64 map-or-array-schema)))))
 
@@ -762,7 +762,7 @@
            :fields [{:name :name :type :string :default "No name"}
                     {:name :owner :type :string :default "No owner"}]}
           {:type :array :items :string}]
-         (l/edn-schema mopodoa-schema)))
+         (l/edn mopodoa-schema)))
   (is (= "-2159799032016380061"
          (u/long->str (l/fingerprint64 mopodoa-schema)))))
 
@@ -795,7 +795,7 @@
            {:name :left
             :type [:null :tree]
             :default nil}]}
-         (l/edn-schema tree-schema)))
+         (l/edn tree-schema)))
   #?(:clj (is (fp-matches? tree-schema)))
   (is (= "1955448859740230833"
          (u/long->str (l/fingerprint64 tree-schema)))))
@@ -1074,7 +1074,7 @@
              :type :enum
              :symbols [:all :stock :limit]}
             :default :all}]}
-         (l/edn-schema rec-w-array-and-enum-schema)))
+         (l/edn rec-w-array-and-enum-schema)))
   (is (= "-7927992739929321638"
          (u/long->str (l/fingerprint64
                        rec-w-array-and-enum-schema)))))
@@ -1099,7 +1099,7 @@
             :type {:type :map :values :int}
             :default {}}
            {:name :what :type :string :default ""}]}
-         (l/edn-schema rec-w-map-schema)))
+         (l/edn rec-w-map-schema)))
   (is (= "-6323129018147636525"
          (u/long->str (l/fingerprint64
                        rec-w-map-schema)))))
@@ -1128,7 +1128,7 @@
              :type :fixed
              :size 2}
             :default "\0\0"}]}
-         (l/edn-schema rec-w-fixed-no-default-schema)))
+         (l/edn rec-w-fixed-no-default-schema)))
   (is (= "-4442885480253568244"
          (u/long->str (l/fingerprint64
                        rec-w-fixed-no-default-schema)))))
@@ -1150,7 +1150,7 @@
           :fields
           [{:name :name, :type :string, :default ""}
            {:name :age, :type [:null :int], :default nil}]}
-         (l/edn-schema rec-w-maybe-field-schema)))
+         (l/edn rec-w-maybe-field-schema)))
   (is (= "7746454544656991807"
          (u/long->str (l/fingerprint64 rec-w-maybe-field-schema)))))
 
@@ -1219,11 +1219,11 @@
                    {:name :minute :type :int :default -1}
                    {:name :second :type [:null :int] :default nil}]}
         merged-name (:name
-                     (l/edn-schema merged-date-time-schema))
+                     (l/edn merged-date-time-schema))
         normal-name (:name
-                     (l/edn-schema date-time-schema))]
+                     (l/edn date-time-schema))]
     (is (= merged-name normal-name))
-    (is (= expected (l/edn-schema merged-date-time-schema)))))
+    (is (= expected (l/edn merged-date-time-schema)))))
 
 (deftest test-plumatic-maybe-missing-key
   (let [ps (l/plumatic-schema rec-w-maybe-field-schema)

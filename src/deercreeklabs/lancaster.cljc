@@ -171,11 +171,13 @@
    data :- s/Any]
   (u/wrap data-schema data))
 
-(s/defn edn-schema :- s/Any
+(s/defn edn :- s/Any
+  "Returns an EDN representation of the given Lancaster schema."
   [schema :- LancasterSchema]
   (u/edn-schema schema))
 
 (s/defn json :- s/Str
+  "Returns an Avro-compliant JSon representation of the given Lancaster schema."
   [schema :- LancasterSchema]
   (u/json-schema schema))
 
@@ -201,7 +203,7 @@
     (throw
      (ex-info "Argument to default-data must be a schema object."
               {:given-arg schema})))
-  (u/default-data (edn-schema schema)))
+  (u/default-data (edn schema)))
 
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 
