@@ -34,8 +34,9 @@ than JSON encoding while producing output that is much more compact.
 The output of an unscientific run of the microbenchmark in
 `deercreeklabs.perf-test` is pasted in below. Your mileage may vary.
 
-Clojure | Value
-------- | ---------------------------------
+*Clojure 1.9 on JVM 1.8*
+Parameter | Value
+--------- | ---------------------------------
 Avro encode ops per sec |          228833
 Avro decode ops per sec |          380228
 JSON encode ops per sec |          160000
@@ -45,8 +46,9 @@ Avro encoded size |                14
 JSON encoded size |                142
 Deflated JSON encoded size |       105
 
-ClojureScript on Node.js |
------------------------- | ---------------
+*ClojureScript on Node.js*
+Parameter | Value
+--------- | ----------------------------
 Avro encode ops per sec |          35211
 Avro decode ops per sec |          62112
 JSON encode ops per sec |          36765
