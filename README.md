@@ -38,27 +38,27 @@ The output of an unscientific run of the microbenchmark in
 
 Parameter | Value
 :-------- | -----:
-Lancaster encode ops per sec |     239,808
-Lancaster decode ops per sec |     380,228
-JSON encode ops per sec |          141,844
-JSON decode ops per sec |          231,481
-Deflated JSON encode ops per sec |  30,488
-Lancaster encoded size |                14
-JSON encoded size |                    142
-Deflated JSON encoded size |           105
+Lancaster encode ops per sec |     `239,808`
+Lancaster decode ops per sec |     `380,228`
+JSON encode ops per sec |          `141,844`
+JSON decode ops per sec |          `231,481`
+Deflated JSON encode ops per sec |  `30,488`
+Lancaster encoded size |                `14`
+JSON encoded size |                    `142`
+Deflated JSON encoded size |           `105`
 
 *ClojureScript 1.10.339 on Node.js 8.10*
 
 Parameter | Value
 :-------- | -----:
-Lancaster encode ops per sec |     35,211
-Lancaster decode ops per sec |     62,112
-JSON encode ops per sec |          36,765
-JSON decode ops per sec |          11,211
-Deflated JSON encode ops per sec |  2,890
-Lancaster encoded size |               14
-JSON encoded size |                   162
-Deflated JSON encoded size |          109
+Lancaster encode ops per sec |    `35,211`
+Lancaster decode ops per sec |    `62,112`
+JSON encode ops per sec |         `36,765`
+JSON decode ops per sec |         `11,211`
+Deflated JSON encode ops per sec | `2,890`
+Lancaster encoded size |              `14`
+JSON encoded size |                  `162`
+Deflated JSON encoded size |         `109`
 
 ## Project Name
 The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an
@@ -78,14 +78,15 @@ other namespaces should be considered private implementation details that
 may change.
 
 ## Creating and Manipulating Schema objects
-Schema objects are required for Lancaster serialization and deserialization.
-They can be created in two ways:
-1. From an existing Avro schema in JSON format. To do this, use the
-[json->schema](#json-schema) function. This is best if you are working
-with externally defined schemas from another system or language.
-2. By using Lancaster schema functions. If you want to define Avro schemas
-using Clojure/ClojureScript, Lancaster lets you concisely create and combine
-schemas in arbitrarily complex ways, as explained below.
+Lancaster schema objects are required for serialization and deserialization.
+They can be done in two ways:
+1. Create schema objects from an existing Avro schema in JSON format.
+To do this, use the [json->schema](#json-schema) function. This is best if
+you are working with externally defined schemas from another system or language.
+2. Create schema objects using Lancaster schema functions and/or macros.
+If you want to define Avro schemas using Clojure/ClojureScript, Lancaster
+lets you concisely create and combine schemas in arbitrarily complex ways,
+as explained below.
 
 ## Predefined Primitive Schemas
 Lancaster provides predefined schema objects for all the
@@ -323,6 +324,10 @@ Serializes data to a byte array, using the given Lancaster schema.
 #### Return Value:
 A byte array containing the Avro-encoded data.
 
+#### See also
+* [deserialize-same](#deserialize-same)
+* [deserialize](#deserialize)
+
 #### Example
 ```clojure
 (l/def-record-schema person-schema
@@ -354,7 +359,6 @@ uses the following default values, depending on the field type:
 * `enum`: first symbol in the schema's symbols list
 * `array`: `[]`
 * `map`: `{}`
-* `flex-map`: `{}`
 
 #### Parameters:
 * `reader-schema`: The reader's Lancaster schema for the data
@@ -363,6 +367,10 @@ uses the following default values, depending on the field type:
 
 #### Return Value
 The deserialized data.
+
+#### See also
+* [deserialize-same](#deserialize-same)
+* [serialize](#serialize)
 
 #### Example
 ```clojure
@@ -398,14 +406,16 @@ should always be used to deserialize. The writer's schema
 (in [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas))
 should always be stored or transmitted with encoded data.
 
-See also [deserialize](#deserialize).
-
 #### Parameters:
 * `schema`: The reader's and writer's Lancaster schema for the data
 * `ba`: A byte array containing the encoded data
 
 #### Return Value
 The deserialized data.
+
+#### See also
+* [deserialize](#deserialize)
+* [serialize](#serialize)
 
 #### Example
 ```clojure
@@ -669,6 +679,7 @@ Data that matches the given schema
 # License
 
 Copyright (c) 2017-2019 Deer Creek Labs, LLC
+
 *Apache Avro, Avro, Apache, and the Avro and Apache logos are trademarks of The Apache Software Foundation.*
 
 Distributed under the Apache Software License, Version 2.0
