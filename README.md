@@ -62,8 +62,7 @@ Deflated JSON encoded size |         `109`
 
 ## Project Name
 The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an
-airplane manufactured by the
-[Avro Corporation](https://en.wikipedia.org/wiki/Avro).
+airplane manufactured by [Avro Aircraft](https://en.wikipedia.org/wiki/Avro).
 
 # Installation
 Using Leiningen / Clojars:
@@ -92,16 +91,16 @@ as explained below.
 Lancaster provides predefined schema objects for all the
 [Avro primitives](http://avro.apache.org/docs/current/spec.html#schema_primitive).
 The following vars are defined in the `deercreeklabs.lancaster` namespace:
-* `null-schema`
-* `boolean-schema`
-* `int-schema`
-* `long-schema`
-* `float-schema`
-* `double-schema`
-* `bytes-schema`
-* `string-schema`
+* `null-schema`: Represents an Avro `null`
+* `boolean-schema`: Represents an Avro `boolean`
+* `int-schema`: Represents an Avro `int`
+* `long-schema`: Represents an Avro `long`
+* `float-schema`: Represents an Avro `float`
+* `double-schema`: Represents an Avro `double`
+* `bytes-schema`: Represents an Avro `bytes`
+* `string-schema`: Represents an Avro `string`
 
-These schemas can be used directly or combined into complex schemas.
+These schema objectss can be used directly or combined into complex schemas.
 
 ## Creating Complex Schemas
 Lancaster provides the following functions and macros to create

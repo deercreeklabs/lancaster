@@ -100,15 +100,18 @@
   [:data a-fixed-schema (ba/byte-array [77 88])]
   [:other-data l/bytes-schema])
 
-(def simple-array-schema (l/array-schema l/string-schema))
+(l/def-array-schema simple-array-schema
+  l/string-schema)
 
-(def rsps-schema (l/array-schema add-to-cart-rsp-schema))
+(l/def-array-schema rsps-schema
+  add-to-cart-rsp-schema)
 
 (l/def-record-schema rec-w-array-and-enum-schema
   [:names simple-array-schema]
   [:why why-schema])
 
-(def ages-schema (l/map-schema l/int-schema))
+(l/def-map-schema ages-schema
+  l/int-schema)
 
 (l/def-record-schema rec-w-map-schema
   [:name-to-age ages-schema]
@@ -120,10 +123,11 @@
 (def sku-to-qty-v2-schema (l/flex-map-schema ::sku-to-qty
                                              l/int-schema l/long-schema))
 
-(def nested-map-schema (l/map-schema add-to-cart-rsp-schema))
+(l/def-map-schema nested-map-schema
+  add-to-cart-rsp-schema)
 
-(def union-schema
-  (l/union-schema [l/int-schema add-to-cart-req-schema a-fixed-schema]))
+(l/def-union-schema union-schema
+  l/int-schema add-to-cart-req-schema a-fixed-schema)
 
 (l/def-record-schema person-schema
   [:name l/string-schema "No name"]
@@ -143,18 +147,17 @@
   [:name l/string-schema "No name"]
   [:tank-num l/int-schema])
 
-(def person-or-dog-schema
-  (l/union-schema [person-schema dog-schema]))
+(l/def-union-schema person-or-dog-schema
+  person-schema dog-schema)
 
-(def fish-or-person-or-dog-v2-schema
-  (l/union-schema [fish-schema person-schema dog-v2-schema]))
+(l/def-union-schema fish-or-person-or-dog-v2-schema
+  fish-schema person-schema dog-v2-schema)
 
-(def map-or-array-schema
-  (l/union-schema [ages-schema simple-array-schema]))
+(l/def-union-schema map-or-array-schema
+  ages-schema simple-array-schema)
 
-(def mopodoa-schema
-  (l/union-schema [ages-schema person-schema dog-schema
-                   simple-array-schema]))
+(l/def-union-schema mopodoa-schema
+  ages-schema person-schema dog-schema simple-array-schema)
 
 (l/def-record-schema date-schema
   [:year l/int-schema]
@@ -188,14 +191,14 @@
                           "[{\"name\":\"sku\",\"type\":\"int\"},{\"name\":"
                           "\"qtyRequested\",\"type\":\"int\"}]}")
         expected-edn {:name :deercreeklabs.lancaster-test/add-to-cart-req
-                             :type :record
-                             :fields
-                             [{:name :sku
-                               :type :int
-                               :default -1}
-                              {:name :qty-requested
-                               :type :int
-                               :default 0}]}]
+                      :type :record
+                      :fields
+                      [{:name :sku
+                        :type :int
+                        :default -1}
+                       {:name :qty-requested
+                        :type :int
+                        :default 0}]}]
     #?(:clj (is (fp-matches? add-to-cart-req-schema)))
     (is (= "5027717767048351978"
            (u/long->str (l/fingerprint64 add-to-cart-req-schema))))
@@ -309,7 +312,7 @@
               :other-data (ba/byte-array [123 123])}
         encoded (l/serialize add-to-cart-rsp-schema data)
         decoded (l/deserialize-same add-to-cart-rsp-schema
-                                  encoded)]
+                                    encoded)]
     (is (= "9gEUFPYB9gEEQkMEe3s=" (ba/byte-array->b64 encoded)))
     (is (= (xf-byte-arrays data)
            (xf-byte-arrays decoded)))))

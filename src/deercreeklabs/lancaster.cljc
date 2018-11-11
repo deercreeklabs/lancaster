@@ -216,6 +216,7 @@
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 
 (defmacro def-record-schema
+  "Defines a var whose value is a Lancaster record schema object"
   [clj-name & fields]
   (when-not (pos? (count fields))
     (throw
@@ -229,6 +230,7 @@
        (schemas/schema :record ~ns-name ~schema-name (vector ~@fields)))))
 
 (defmacro def-enum-schema
+  "Defines a var whose value is a Lancaster enum schema object"
   [clj-name & symbols]
   (when-not (pos? (count symbols))
     (throw
@@ -242,6 +244,7 @@
        (schemas/schema :enum ~ns-name ~schema-name (vector ~@symbols)))))
 
 (defmacro def-fixed-schema
+  "Defines a var whose value is a Lancaster fixed schema object"
   [clj-name size]
   (when-not (and (pos? size) (integer? size))
     (throw
@@ -255,6 +258,7 @@
        (schemas/schema :fixed ~ns-name ~schema-name ~size))))
 
 (defmacro def-flex-map-schema
+  "Defines a var whose value is a Lancaster flex-map schema object"
   [clj-name keys-schema values-schema]
   (when-not keys-schema
     (throw
@@ -271,3 +275,30 @@
     `(def ~clj-name
        (schemas/schema :flex-map ~ns-name ~schema-name
                        [~keys-schema ~values-schema]))))
+
+(defmacro def-array-schema
+  "Defines a var whose value is a Lancaster array schema object"
+  [clj-name items-schema]
+  (when-not items-schema
+    (throw
+     (ex-info "Second argument to def-array-schema must be a schema object."
+              (u/sym-map clj-name items-schema))))
+  `(def ~clj-name
+     (schemas/schema :array nil ~items-schema)))
+
+(defmacro def-map-schema
+  "Defines a var whose value is a Lancaster map schema object"
+  [clj-name values-schema]
+  (when-not values-schema
+    (throw
+     (ex-info "Second argument to def-map-schema must be a schema object."
+              (u/sym-map clj-name values-schema))))
+  `(def ~clj-name
+     (schemas/schema :map nil ~values-schema)))
+
+(defmacro def-union-schema
+  "Defines a var whose value is a Lancaster union schema object"
+  [clj-name & member-schemas]
+  (let [schemas-vec (vec member-schemas)]
+    `(def ~clj-name
+       (schemas/schema :union nil ~schemas-vec))))
