@@ -14,9 +14,9 @@ please read the [Avro Overview](http://avro.apache.org/docs/current/index.html)
 and the  [Avro Specification](http://avro.apache.org/docs/current/spec.html)
 before proceeding.
 
-Lancaster provides functions for:
-* Schema creation and manipulation
-* Serialization to a byte array
+Lancaster provides for:
+* Easy schema creation and manipulation
+* Serialization of arbitrarily-complex data structures to a byte array
 * Deserialization from a byte array, including
 [schema resolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution)
 * Conversion from Lancaster schemas to
@@ -24,15 +24,15 @@ Lancaster provides functions for:
 planned).
 
 Lancaster does not support:
-* Avro RPC and Protocols (RPC and messaging functionality is available
-in [Capsule](https://github.com/deercreeklabs/capsule))
+* Avro protocols
 * Avro container files (may be supported in the future).
 
 ## Performance
 Lancaster aims to be fast. Microbenchmarks show that it is generally faster
-than JSON encoding while producing output that is much more compact.
-The output of an unscientific run of the microbenchmark in
-`deercreeklabs.perf-test` is pasted in below. Your mileage may vary.
+than JSON serialization / deserialization while producing output
+that is much more compact. The output of an unscientific run of
+the microbenchmark in `deercreeklabs.perf-test` is pasted in below.
+Your mileage may vary.
 
 *Clojure 1.9 on JVM 1.8*
 
@@ -72,9 +72,9 @@ Using Leiningen / Clojars:
 # Getting Started
 
 # API Documentation
-All public functions are in the `deercreeklabs.lancaster` namespace. All
-other namespaces should be considered private implementation details that
-may change.
+All public vars, functions, and macros are in the `deercreeklabs.lancaster`
+namespace. All other namespaces should be considered private implementation
+details that may change.
 
 ## Creating and Manipulating Schema objects
 Lancaster schema objects are required for serialization and deserialization.
@@ -87,7 +87,7 @@ If you want to define Avro schemas using Clojure/ClojureScript, Lancaster
 lets you concisely create and combine schemas in arbitrarily complex ways,
 as explained below.
 
-## Predefined Primitive Schemas
+## Primitive Schemas
 Lancaster provides predefined schema objects for all the
 [Avro primitives](http://avro.apache.org/docs/current/spec.html#schema_primitive).
 The following vars are defined in the `deercreeklabs.lancaster` namespace:
@@ -100,11 +100,20 @@ The following vars are defined in the `deercreeklabs.lancaster` namespace:
 * `bytes-schema`: Represents an Avro `bytes`
 * `string-schema`: Represents an Avro `string`
 
-These schema objectss can be used directly or combined into complex schemas.
+These schema objects can be used directly or combined into complex schemas.
 
-## Creating Complex Schemas
-Lancaster provides the following functions and macros to create
-[complex Avro schemas](http://avro.apache.org/docs/current/spec.html#schema_complex):
+## Complex Schemas
+Most non-trivial Lancaster use cases will involve
+[complex Avro schemas](http://avro.apache.org/docs/current/spec.html#schema_complex).
+The easiest and most concise way to create complex
+schemas is by using the [Schema Creation Macros](#schema-creation-macros).
+For situations where macros do not work well,
+the [Schema Creation Functions](#schema-creation-functions) are also
+available.
+
+### Schema Creation Macros
+
+### Schema Creation Functions
 * [record-schema](#record-schema)
 * [enum-schema](#enum-schema)
 * [fixed-schema](#fixed-schema)

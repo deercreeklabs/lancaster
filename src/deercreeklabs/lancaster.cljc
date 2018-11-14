@@ -229,6 +229,18 @@
     `(def ~clj-name
        (schemas/schema :record ~ns-name ~schema-name (vector ~@fields)))))
 
+(defmacro def-merged-record-schema
+  "Defines a var whose value is a Lancaster record schema which contains all
+  the fields of all record schemas passed in."
+  [clj-name & record-schemas]
+  (let [ns-name (str (or
+                      (:name (:ns &env)) ;; cljs
+                      *ns*))             ;; clj
+        schema-name (u/schema-name clj-name)
+        name-kw (keyword ns-name schema-name)]
+    `(def ~clj-name
+       (schemas/merge-record-schemas ~name-kw (vector ~@record-schemas)))))
+
 (defmacro def-enum-schema
   "Defines a var whose value is a Lancaster enum schema object"
   [clj-name & symbols]
@@ -299,6 +311,5 @@
 (defmacro def-union-schema
   "Defines a var whose value is a Lancaster union schema object"
   [clj-name & member-schemas]
-  (let [schemas-vec (vec member-schemas)]
-    `(def ~clj-name
-       (schemas/schema :union nil ~schemas-vec))))
+  `(def ~clj-name
+     (schemas/schema :union nil (vector ~@member-schemas))))

@@ -177,8 +177,8 @@
   [:hour l/int-schema]
   [:minute l/int-schema])
 
-(def merged-date-time-schema
-  (l/merge-record-schemas ::date-time [date-schema time-schema]))
+(l/def-merged-record-schema merged-date-time-schema
+  date-schema time-schema)
 
 (l/def-record-schema tree-schema
   [:value l/int-schema]
@@ -818,11 +818,11 @@
                                    :right nil
                                    :left nil}}}}
         encoded (l/serialize tree-schema data)
-        decoded (l/deserialize-same tree-schema encoded)
-        _ (is (ba/equivalent-byte-arrays?
-               (ba/byte-array [10 2 19 2 39 0 0 0 2 20 0 2 40 0 2 80 0 0])
-               encoded))
-        _ (is (= data decoded))]))
+        decoded (l/deserialize-same tree-schema encoded)]
+    (is (ba/equivalent-byte-arrays?
+         (ba/byte-array [10 2 19 2 39 0 0 0 2 20 0 2 40 0 2 80 0 0])
+         encoded))
+    (is (= data decoded))))
 
 (deftest test-schema-resolution-int-to-long
   (let [data 10
@@ -1190,9 +1190,9 @@
         _ (is (= expected (l/plumatic-schema add-to-cart-req-schema)))
         expected {s/Any s/Any
                   :names [u/StringOrBytes]
-                  :why (s/enum :all :stock :limit)}
-        _ (is (= expected
-                 (l/plumatic-schema rec-w-array-and-enum-schema)))]))
+                  :why (s/enum :all :stock :limit)}]
+    (is (= expected
+           (l/plumatic-schema rec-w-array-and-enum-schema)))))
 
 (deftest test-plumatic-union-unwrapped
   (let [expected (s/conditional
@@ -1212,7 +1212,7 @@
 
 (deftest test-merge-record-schemas
   #?(:clj (is (fp-matches? merged-date-time-schema)))
-  (let [expected {:name :deercreeklabs.lancaster-test/date-time
+  (let [expected {:name :deercreeklabs.lancaster-test/merged-date-time
                   :type :record
                   :fields
                   [{:name :year :type :int :default -1}
@@ -1220,12 +1220,7 @@
                    {:name :day :type :int :default -1}
                    {:name :hour :type :int :default -1}
                    {:name :minute :type :int :default -1}
-                   {:name :second :type [:null :int] :default nil}]}
-        merged-name (:name
-                     (l/edn merged-date-time-schema))
-        normal-name (:name
-                     (l/edn date-time-schema))]
-    (is (= merged-name normal-name))
+                   {:name :second :type [:null :int] :default nil}]}]
     (is (= expected (l/edn merged-date-time-schema)))))
 
 (deftest test-plumatic-maybe-missing-key
