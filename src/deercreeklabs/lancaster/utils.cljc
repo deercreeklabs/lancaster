@@ -278,8 +278,8 @@
 
 (defn valid-int? [data]
   (and (integer? data)
-       (<= (int data) 2147483647)
-       (>= (int data) -2147483648)))
+       (<= (int data) (int 2147483647))
+       (>= (int data) (int -2147483648))))
 
 (defn valid-long? [data]
   (long-or-int? data))
@@ -680,7 +680,7 @@
         serialize-value (make-serializer values name->edn-schema
                                          *name->serializer)]
     (fn serialize [os data path]
-      (when-not (map? data)
+      (when-not (valid-map? data)
         (throw-invalid-data-error edn-schema data path))
       (when (pos? (count data))
         (write-long-varint-zz os (count data))
@@ -870,7 +870,7 @@
                      (when-not (map? data)
                        (throw-invalid-data-error edn-schema data path))
                      (doseq [[k default serializer] field-infos]
-                       (serializer os (data k) (conj path k))))]
+                       (serializer os (get data k) (conj path k))))]
     (swap! *name->serializer assoc name serializer)
     serializer))
 
