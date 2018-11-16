@@ -1,8 +1,13 @@
-* [About](#about)
 * [Installation](#installation)
+* [About](#about)
 * [Getting Started](#getting-started)
 * [API Documentation](#api-documentation)
 * [License](#license)
+
+# Installation
+Using Leiningen / Clojars:
+
+[![Clojars Project](http://clojars.org/deercreeklabs/lancaster/latest-version.svg)](http://clojars.org/deercreeklabs/lancaster)
 
 # About
 Lancaster is an [Apache Avro](http://avro.apache.org/docs/current/)
@@ -11,7 +16,7 @@ with the [Avro Specification](http://avro.apache.org/docs/current/spec.html).
 It is assumed that the reader of this documentation is familiar with
 Avro and Avro terminology. If this is your first exposure to Avro,
 please read the [Avro Overview](http://avro.apache.org/docs/current/index.html)
-and the  [Avro Specification](http://avro.apache.org/docs/current/spec.html)
+and the [Avro Specification](http://avro.apache.org/docs/current/spec.html)
 before proceeding.
 
 Lancaster provides for:
@@ -64,17 +69,84 @@ Deflated JSON encoded size |         `109`
 The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an
 airplane manufactured by [Avro Aircraft](https://en.wikipedia.org/wiki/Avro).
 
-# Installation
-Using Leiningen / Clojars:
 
-[![Clojars Project](http://clojars.org/deercreeklabs/lancaster/latest-version.svg)](http://clojars.org/deercreeklabs/lancaster)
+# Example
+Here's an introductory example of using Lancaster to define a schema,
+serialize data, and then deserialize it again.
 
-# Getting Started
+```clojure
+(require '[deercreeklabs.lancaster :as l])
+
+(l/def-record-schema person-schema
+  [:name l/string-schema "no name"] ;; [field-name field-schema default (optional)]
+  [:age l/int-schema]               ;; [field-name field-schema] (no default)
+  [:dog-name (l/maybe l/string-schema)] ;; l/maybe makes field nillable
+  [:favorite-numbers (l/array-schema l/int-schema)]) ;; array of ints
+
+(def alice
+  {:name "Alice"
+   :age 40
+   :favorite-numbers [12 89]})
+
+(def encoded (l/serialize person-schema alice))
+
+(l/deserialize person-schema person-schema encoded)
+;; {:name "Alice" :age 40 :dog-name nil :favorite-numbers [12 89]}
+```
 
 # API Documentation
 All public vars, functions, and macros are in the `deercreeklabs.lancaster`
 namespace. All other namespaces should be considered private implementation
 details that may change.
+
+## Data types
+
+*Serialization*
+
+When serializing data, Lancaster accepts the following types Clojure(Script)
+types for the given Avro type:
+
+Avro Type | Acceptable Clojure / ClojureScript Types
+--------- | -------------------------
+`null` | `nil`
+`boolean` | `boolean`
+`int` | `int`, `java.lang.Integer`, `long`, (if in integer range), `java.lang.Long` (if in integer range), `js/Number` (if in integer range)
+`long` | `long`, `java.lang.Long`
+`float` | `float`, `java.lang.Float`, `double` (if in float range), `java.lang.Double`, (if in float range), `js/Number` (if in float range)
+`double` | `double`, `java.lang.Double`, `js/Number`
+`bytes` | `byte-array`, `java.lang.String`, `js/Int8Array`, `js/String`
+`string` | `byte-array`, `java.lang.String`, `js/Int8Array`, `js/String`
+`fixed` | `byte-array`, `js/Int8Array`. Byte array length must equal the size declared in the creation of the Lancaster `fixed` schema.
+`enum` | Clojure(Script) `keyword`
+`array` | Any data that passes `(sequential? data)`
+`map` | Any data that passes `(map? data)`, if all keys are `string`s. Clojure(Script) records *DO NOT* qualify, since their keys are keywords.
+`record` | Any data that passes `(map? data)`, if all keys are Clojure(Script) keywords. Clojure(Script) records *DO* qualify, since their keys are keywords.
+`union` | Any data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. Note that some unions require wrapping, as explained in [Notes About Union Data Types](#notes-about-union-data-types)
+
+*Deserialization*
+
+When deserializing data, Lancaster returns the following Clojure or ClojureScript
+types for the given Avro type:
+
+Avro Type | Clojure Type | ClojureScript Type
+--------- | ------------ | ------------------
+`null` | `nil` | `nil`
+`boolean` | `boolean` | `boolean`
+`int` | `java.lang.Integer` | `js/Number`
+`long` | `java.lang.Long` | `js/Number`
+`float` | `java.lang.Float` | `js/Number`
+`double` | `java.lang.Double` | `js/Number`
+`bytes` | `byte-array` | `js/Int8Array`
+`string` | `java.lang.String` | `js/String`
+`fixed` | `byte-array` | `js/Int8Array`
+`enum` | `keyword` | `keyword`
+`array` | `vector` | `vector`
+`map` | `hash-map` | `hash-map`
+`record` | `hash-map` | `hash-map`
+`union` | Data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. If the union schema requires wrapping, the returned data will be wrapped. See [Notes About Union Data Types](#notes-about-union-data-types) below.
+
+## Notes About Union Data Types
+TBD
 
 ## Creating and Manipulating Schema objects
 Lancaster schema objects are required for serialization and deserialization.
@@ -112,14 +184,22 @@ the [Schema Creation Functions](#schema-creation-functions) are also
 available.
 
 ### Schema Creation Macros
+* [def-array-schema](#def-array-schema)
+* [def-enum-schema](#def-enum-schema)
+* [def-fixed-schema](#def-fixed-schema)
+* [def-map-schema](#def-map-schema)
+* [def-record-schema](#def-record-schema)
+* [def-union-schema](#def-union-schema)
 
 ### Schema Creation Functions
-* [record-schema](#record-schema)
+* [array-schema](#array-schema)
 * [enum-schema](#enum-schema)
 * [fixed-schema](#fixed-schema)
-* [array-schema](#array-schema)
 * [map-schema](#map-schema)
+* [record-schema](#record-schema)
 * [union-schema](#union-schema)
+
+
 
 -------------------------------------------------------------------------------
 ### record-schema
@@ -160,7 +240,7 @@ The new Lancaster record schema.
 ```
 Creates a Lancaster schema object representing an Avro
 [```enum```](http://avro.apache.org/docs/current/spec.html#Enums),
-with the given name and symbols. For a more
+with the given name and keyword symbols. For a more
 concise way to declare an enum schema, see
 [def-enum-schema](#def-enum-schema).
 
@@ -169,7 +249,7 @@ concise way to declare an enum schema, see
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
 * `symbols`: A sequence of keywords, representing the symbols in
-             the enum
+             the enum.
 
 #### Return Value:
 The new Lancaster enum schema.
