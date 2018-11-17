@@ -1,6 +1,9 @@
 * [Installation](#installation)
 * [About](#about)
-* [Getting Started](#getting-started)
+* [Examples](#examples)
+* [Creating Schema Objects](#creating-schema-objects)
+* [Data Types](#data-types)
+* [Names and Namespaces](#names-and-namespaces)
 * [API Documentation](#api-documentation)
 * [License](#license)
 
@@ -84,7 +87,7 @@ serialize data, and then deserialize it again.
 ;; {:name "Alice" :age 40 :dog-name nil :favorite-numbers [12 89]}
 ```
 
-# Creating Schema objects
+# Creating Schema Objects
 Lancaster schema objects are required for serialization and deserialization.
 This can be done in two ways:
 1. Using an existing Avro schema in JSON format.
@@ -157,7 +160,7 @@ resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Res
 * [plumatic-schema](#plumatic-schema): Returns a [Plumatic schema](https://github.com/plumatic/schema) for the schema.
 * [default-data](#default-data): Returns default data that conforms to the schema.
 
-# Data types
+# Data Types
 
 **Serialization**
 
