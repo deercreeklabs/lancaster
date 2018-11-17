@@ -59,11 +59,11 @@
 
 (s/defn enum-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro enum
-   with the given name and symbols. For a more
+   with the given name and symbol keywords. For a more
    concise way to declare an enum schema, see def-enum-schema."
   [name-kw :- s/Keyword
-   symbols :- [s/Keyword]]
-  (schemas/schema :enum name-kw symbols))
+   symbol-keywords :- [s/Keyword]]
+  (schemas/schema :enum name-kw symbol-keywords))
 
 (s/defn fixed-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro fixed
@@ -246,17 +246,18 @@
 
 (defmacro def-enum-schema
   "Defines a var whose value is a Lancaster enum schema object"
-  [clj-name & symbols]
-  (when-not (pos? (count symbols))
+  [clj-name & symbol-keywords]
+  (when-not (pos? (count symbol-keywords))
     (throw
-     (ex-info "Missing symbols sequence in def-enum-schema."
-              (u/sym-map clj-name symbols))))
+     (ex-info "Missing symbol-keywords sequence in def-enum-schema."
+              (u/sym-map clj-name symbol-keywords))))
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
         schema-name (u/schema-name clj-name)]
     `(def ~clj-name
-       (schemas/schema :enum ~ns-name ~schema-name (vector ~@symbols)))))
+       (schemas/schema :enum ~ns-name ~schema-name
+                       (vector ~@symbol-keywords)))))
 
 (defmacro def-fixed-schema
   "Defines a var whose value is a Lancaster fixed schema object"

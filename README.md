@@ -198,7 +198,7 @@ details that may change.
 (def-record-schema name-symbol & fields)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```record```](http://avro.apache.org/docs/current/spec.html#schema_record),
+[```record```](http://avro.apache.org/docs/current/spec.html#schema_record).
 For cases where a macro is not appropriate, use the
 [record-schema](#record-schema) function instead.
 
@@ -230,10 +230,10 @@ The defined var
 -------------------------------------------------------------------------------
 ### def-enum-schema
 ```clojure
-(def-enum-schema name-symbol & symbols)
+(def-enum-schema name-symbol & symbol-keywords)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```enum```](http://avro.apache.org/docs/current/spec.html#Enums),
+[```enum```](http://avro.apache.org/docs/current/spec.html#Enums).
 For cases where a macro is not appropriate, use the
 [enum-schema](#enum-schema) function instead.
 
@@ -243,7 +243,7 @@ is also derived from this symbol. See
 [Names and Namespaces](#names-and-namespaces) for more information about
 schema names. The name-symbol must start with a letter and subsequently
 only contain letters, numbers, or hyphens.
-* `symbols`: Keywords representing the symbols in the enum.
+* `symbol-keywords`: Keywords representing the symbols in the enum.
 
 #### Return Value:
 The defined var
@@ -263,7 +263,7 @@ The defined var
 (def-fixed-schema name-symbol size)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```fixed```](http://avro.apache.org/docs/current/spec.html#Fixed),
+[```fixed```](http://avro.apache.org/docs/current/spec.html#Fixed).
 For cases where a macro is not appropriate, use the
 [fixed-schema](#fixed-schema) function instead.
 
@@ -293,7 +293,7 @@ The defined var
 (def-array-schema name-symbol items-schema)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```array```](http://avro.apache.org/docs/current/spec.html#Arrays),
+[```array```](http://avro.apache.org/docs/current/spec.html#Arrays).
 For cases where a macro is not appropriate, use the
 [array-schema](#array-schema) function instead.
 
@@ -319,7 +319,7 @@ The defined var
 (def-map-schema name-symbol values-schema)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```map```](http://avro.apache.org/docs/current/spec.html#Maps),
+[```map```](http://avro.apache.org/docs/current/spec.html#Maps).
 For cases where a macro is not appropriate, use the
 [map-schema](#map-schema) function instead.
 
@@ -377,7 +377,7 @@ The defined var
 (def-union-schema name-symbol & member-schemas)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```union```](http://avro.apache.org/docs/current/spec.html#Unions),
+[```union```](http://avro.apache.org/docs/current/spec.html#Unions).
 For cases where a macro is not appropriate, use the
 [union-schema](#union-schema) function instead.
 
@@ -436,7 +436,7 @@ The new Lancaster record schema.
 -------------------------------------------------------------------------------
 ### enum-schema
 ```clojure
-(enum-schema name-kw symbols)
+(enum-schema name-kw symbol-keywords)
 ```
 Creates a Lancaster schema object representing an Avro
 [```enum```](http://avro.apache.org/docs/current/spec.html#Enums),
@@ -448,7 +448,7 @@ concise way to declare an enum schema, see
 * `name-kw`: A keyword naming this ```enum```. May or may not be
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
-* `symbols`: A sequence of keywords, representing the symbols in
+* `symbol-keywords`: A sequence of keywords, representing the symbols in
              the enum.
 
 #### Return Value:
