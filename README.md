@@ -120,42 +120,42 @@ the [Schema Creation Functions](#schema-creation-functions) are also
 available.
 
 ### Schema Creation Macros
-* [def-array-schema](#def-array-schema) Defines a var w/ an array schema.
-* [def-enum-schema](#def-enum-schema) Defines a var w/ an enum schema.
-* [def-fixed-schema](#def-fixed-schema) Defines a var w/ a fixed schema.
-* [def-map-schema](#def-map-schema) Defines a var w/ a map schema. Keys must be strings.
-* [def-flex-map-schema](#def-flex-map-schema) Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
-* [def-record-schema](#def-record-schema) Defines a var w/ a record schema.
-* [def-merged-record-schema](#def-merged-record-schema) Defines a var w/ a record schema which contains all the fields of all record schemas passed in.
-* [def-union-schema](#def-union-schema) Defines a var w/ a union schema.
-* [def-maybe-schema](#def-maybe-schema) Defines a var w/ a nillable schema.
+* [def-array-schema](#def-array-schema): Defines a var w/ an array schema.
+* [def-enum-schema](#def-enum-schema): Defines a var w/ an enum schema.
+* [def-fixed-schema](#def-fixed-schema): Defines a var w/ a fixed schema.
+* [def-map-schema](#def-map-schema): Defines a var w/ a map schema. Keys must be strings.
+* [def-flex-map-schema](#def-flex-map-schema): Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
+* [def-record-schema](#def-record-schema): Defines a var w/ a record schema.
+* [def-merged-record-schema](#def-merged-record-schema): Defines a var w/ a record schema which contains all the fields of all record schemas passed in.
+* [def-union-schema](#def-union-schema): Defines a var w/ a union schema.
+* [def-maybe-schema](#def-maybe-schema): Defines a var w/ a nillable schema.
 
 ### Schema Creation Functions
-* [array-schema](#array-schema) Creates an array schema.
-* [enum-schema](#enum-schema) Creates an enum schema.
-* [fixed-schema](#fixed-schema) Creates a fixed schema.
-* [map-schema](#map-schema) Creates a map schema. Keys must be strings.
-* [flex-map-schema](#flex-map-schema) Creates a flex-map schema. Flex map keys may be of any schema type.
-* [record-schema](#record-schema) Creates a record schema.
-* [merged-record-schema](#merged-record-schema) Creates a record schema which contains all the fields of all record schemas passed in.
-* [union-schema](#union-schema) Creates a union schema.
-* [maybe](#schema) Creates a nillable schema.
+* [array-schema](#array-schema): Creates an array schema.
+* [enum-schema](#enum-schema): Creates an enum schema.
+* [fixed-schema](#fixed-schema): Creates a fixed schema.
+* [map-schema](#map-schema): Creates a map schema. Keys must be strings.
+* [flex-map-schema](#flex-map-schema): Creates a flex-map schema. Flex map keys may be of any schema type.
+* [record-schema](#record-schema): Creates a record schema.
+* [merged-record-schema](#merged-record-schema): Creates a record schema which contains all the fields of all record schemas passed in.
+* [union-schema](#union-schema): Creates a union schema.
+* [maybe](#schema): Creates a nillable schema.
 
 ## Operations on Schema Objects
 All of these functions take a Lancaster schema object as the first argument
-* [serialize](#serialize) Serializes data to a byte array.
-* [deserialize](#deserialize) Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
-* [deserialize-same](#deserialize-) Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
+* [serialize](#serialize): Serializes data to a byte array.
+* [deserialize](#deserialize): Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
+* [deserialize-same](#deserialize-same): Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
 resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution).
-* [wrap](#wrap) Wraps data for use in an ambiguous union. See [Notes About Union Data Types](#notes-about-union-data-types) below.
-* [edn](#edn) Returns the EDN representation of the schema.
-* [json](#json) Returns the JSON representation of the schema.
-* [pcf](#pcf) Returns a JSON string containing the
+* [wrap](#wrap): Wraps data for use in an ambiguous union. See [Notes About Union Data Types](#notes-about-union-data-types) below.
+* [edn](#edn): Returns the EDN representation of the schema.
+* [json](#json): Returns the JSON representation of the schema.
+* [pcf](#pcf): Returns a JSON string containing the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
-* [fingerprint64](#fingerprint64) Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
-* [schema?](#schema?) Is the argument a Lancaster schema?
-* [plumatic-schema](#plumatic-schema) Returns a [Plumatic schema](https://github.com/plumatic/schema) for the schema.
-* [default-data](#default-data) Returns default data that conforms to the schema.
+* [fingerprint64](#fingerprint64): Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
+* [schema?](#schema): Is the argument a Lancaster schema?
+* [plumatic-schema](#plumatic-schema): Returns a [Plumatic schema](https://github.com/plumatic/schema) for the schema.
+* [default-data](#default-data): Returns default data that conforms to the schema.
 
 # Data types
 
@@ -204,7 +204,54 @@ Avro Type | Clojure Type | ClojureScript Type
 `union` | Data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. If the union schema requires wrapping, the returned data will be wrapped. See [Notes About Union Data Types](#notes-about-union-data-types) below.
 
 ## Notes About Union Data Types
-TBD
+To quote the [Avro spec about unions](http://avro.apache.org/docs/current/spec.html#Unions):
+
+*Unions may not contain more than one schema with the same type, except for the named types record, fixed and enum. For example, unions containing two array types or two map types are not permitted, but two types with different names are permitted.*
+
+In Lancaster, the data for both `records` and `maps` can a Clojure hash-map.
+Also, different record schemas can be included in be a union. This makes it
+impossible, (or at least difficult) to determine which member schema of a union
+to use at serialization time. Given a Clojure hash-map, which schema should
+be used to serialize it? This is resolved via *wrapping*.
+
+A Lancaster schema is *ambiguous* if it contains:
+* More than one `record` or `map`
+* More than one numeric types `int`, `long`, `float`, `double`
+* More than one of `bytes`, `string`, or `fixed`
+
+Data to be encoded by *ambiguous* schemas must be *wrapped*, to indicate
+the schema of the given data. This is easily done with the
+[wrap](#wrap) function.
+
+### Example
+```clojure
+(l/def-record-schema person-schema
+  [:name l/string-schema "No name"]
+  [:age l/int-schema 0])
+
+(l/def-record-schema dog-schema
+  [:name l/string-schema]
+  [:owner l/string-schema])
+
+(def person-or-dog-schema
+  (l/union-schema [person-schema dog-schema]))
+
+(def fido {:name "Fido" :owner "Roger"})
+
+;; Serializing without wrapping fails because the union is ambiguous:
+(l/serialize person-or-dog-schema fido)
+;; ExceptionInfo Union requires wrapping, but data is not wrapped.
+
+;; Wrapping the data before serialization tells the union which type
+;; to use when serializing.
+(def wrapped-fido (l/wrap dog-schema fido))
+;; {:dog {:name "Fido" :owner "Roger"}}
+
+;; This works now
+(l/serialize person-or-dog-schema wrapped-fido)
+;; #object["[B" 0x2cc2072e "[B@2cc2072e"]
+```
+
 
 # API Documentation
 All public vars, functions, and macros are in the `deercreeklabs.lancaster`
@@ -891,7 +938,8 @@ The new Lancaster schema.
 (wrap data-schema data)
 ```
 Wraps the given data for use in an ambigous union. See
-[Special Notes About Unions](#special-notes-about-unions) for more information.
+[Notes About Union Data Types](#notes-about-union-data-types)
+for more information.
 
 #### Parameters:
 * `data-schema`: The Lancaster schema of the data to be wrapped
@@ -922,6 +970,7 @@ The wrapped data.
 ;; Wrapping the data before serialization tells the union which type
 ;; to use when serializing.
 (def wrapped-fido (l/wrap dog-schema fido))
+;; {:dog {:name "Fido" :owner "Roger"}}
 
 ;; This works now
 (l/serialize person-or-dog-schema wrapped-fido)

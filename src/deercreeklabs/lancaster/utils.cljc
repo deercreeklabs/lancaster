@@ -406,7 +406,7 @@
 (defn wrapping-required? [edn-schemas]
   (or (more-than-one? #{:map :record} edn-schemas)
       (more-than-one? #{:int :long :float :double} edn-schemas)
-      (more-than-one? #{:bytes :fixed} edn-schemas)))
+      (more-than-one? #{:bytes :fixed :string} edn-schemas)))
 
 #?(:cljs
    (defn write-long-varint-zz-long [output-stream ^Long l]
