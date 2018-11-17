@@ -259,22 +259,21 @@ Wrapping indicates the schema of the given data. This is easily done with the
 ```
 
 # Names and Namespaces
-Named Avro schemas (`records`, `enums`, and `fixeds`) contain a name
-part and, optionally, a namespace part.
-The
-[Names section of the Avro spec](#http://avro.apache.org/docs/current/spec.html#names)
+Named Avro schemas (`records`, `enums`, `fixeds`, and `flex-maps`)
+contain a name part and, optionally, a namespace part. The
+[Names section of the Avro spec](http://avro.apache.org/docs/current/spec.html#names)
 describes this in detail. Lancaster fully supports the spec, allowing
 both names and namespaces. These are combined into a single fullname,
 including both the namespace (if any) and the name.
 
-Lancaster schema names must start with a letter and subsequently
-only contain letters, numbers, or hyphens.
+Lancaster schema names and namespaces must start with a letter and
+subsequently only contain letters, numbers, or hyphens.
 
 When using the [Schema Creation Macros](#schema-creation-macros),
 the name used in the schema is derived from the name of the symbol
-passed to the `def-*-schema` macro. It the symbol ends with -schema
-(as is common), the -schema portion is dropped from the name. The namespace is
-taken from the Clojure(Script) namespace where the schema is defined.
+passed to the `def-*-schema` macro. It the symbol ends with `-schema`
+(as is common), the `-schema` portion is dropped from the name. The namespace
+is taken from the Clojure(Script) namespace where the schema is defined.
 
 When using the [Schema Creation Functions](#schema-creation-functions),
 the name and namespace are taken from the `name-kw` parameter passed to
@@ -288,10 +287,10 @@ and [merged-record-schema](#merged-record-schema)) have a `name-kw` parameter.
 
 In the EDN representation of a named schema, the :name attribute
 contains the name of the schema, including the namespace, if any.
-In the JSON and PCF representations, the name is also converted
+In the JSON and PCF representations, the name portion is converted
 from kebab-case to PascalCase, and any namespace is converted from
 kebab-case to snake_case. This matches the Avro spec (which does not allow
-hyphenated names) and provides easy interop with other languages
+hyphenated names) and provides for easy interop with other languages
 (Java, JS, C++, etc.)
 
 For example, using the [def-enum-schema](#def-enum-schema) macro:
@@ -750,7 +749,7 @@ The new Lancaster map schema.
 -------------------------------------------------------------------------------
 ### flex-map-schema
 ```clojure
-(flex-map-schema keys-schema values-schema)
+(flex-map-schema name-kw keys-schema values-schema)
 ```
 Creates a Lancaster schema object representing a
 map of keys to values, with the keys and values being described by the
@@ -760,6 +759,9 @@ Note that flex-maps are not part of the
 and are implemented using an Avro `record`.
 
 #### Parameters:
+* `name-kw`: A keyword naming this ```flex-map```. May or may not be
+             namespaced. The name-kw must start with a letter and subsequently
+             only contain letters, numbers, or hyphens.
 * `keys-schema`: A Lancaster schema object describing the keys in the map.
 * `values-schema`: A Lancaster schema object describing the values in the map.
 
