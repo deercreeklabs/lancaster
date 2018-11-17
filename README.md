@@ -41,19 +41,19 @@ Your mileage may vary.
 
 *Clojure 1.9 on JVM 1.8*
 
-Parameter | Lancaster | JSON | JSON+Deflate
-:-------- | --------: |----: | -----------:
-Encode ops/s | `239,808` | `141,844` | `30,488`
-Decode ops/s | `380,228` | `231,481` | -
-Encoded size (bytes) | 14 | 142 | 105
+             | Lancaster |    JSON   | JSON+Deflate
+:----------- | --------: |---------: | -----------:
+Encode ops/s | `235,849` | `138,696` | `29,240`
+Decode ops/s | `364,964` | `233,645` | `86,207`
+Encoded size (bytes) | `14` | `142`  | `105`
 
 *ClojureScript 1.10.339 on Node.js 8.10*
 
-Parameter | Lancaster | JSON | JSON+Deflate
-:-------- | --------: |----: | -----------:
-Encode ops/s | `35,211` | `36,765` | `2,890`
-Decode ops/s | `62,112` | `11,211` | -
-Encoded size (bytes) | 14 | 162 | 109
+             | Lancaster |    JSON   | JSON+Deflate
+:----------- | --------: |---------: | -----------:
+Encode ops/s | `32,468`  | `30,769`  | `2,865`
+Decode ops/s | `76,923`  | `10,428`  | `3,597`
+Encoded size (bytes) | `14` | `162` | `109`
 
 ## Project Name
 The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an

@@ -65,7 +65,14 @@
         json-dec-fn (fn []
                       #?(:clj (json/parse-string json-encoded true)
                          :cljs (js->clj (js/JSON.parse json-encoded))))
-
+        deflated-json-dec-fn (fn []
+                               (let [json (-> deflated-json-encoded
+                                              (ba/inflate)
+                                              (ba/byte-array->utf8))]
+                                 #?(:clj (json/parse-string json true)
+                                    :cljs (js->clj (js/JSON.parse json)))))
+        deflated-json-dec-ops (get-ops-per-sec deflated-json-dec-fn
+                                               (/ num-ops 10))
         dec-ops (get-ops-per-sec dec-fn num-ops)
         json-dec-ops (get-ops-per-sec json-dec-fn num-ops)]
     (infof "Lancaster encode ops per sec:     %.0f" enc-ops)
@@ -73,6 +80,7 @@
     (infof "JSON encode ops per sec:          %.0f" json-enc-ops)
     (infof "JSON decode ops per sec:          %.0f" json-dec-ops)
     (infof "Deflated JSON encode ops per sec: %.0f" deflated-json-enc-ops)
+    (infof "Deflated JSON decode ops per sec: %.0f" deflated-json-dec-ops)
     (infof "Lancaster encoded size:           %d" (count encoded))
     (infof "JSON encoded size:                %d" (count json-encoded))
     (infof "Deflated JSON encoded size:       %d" (count deflated-json-encoded))
