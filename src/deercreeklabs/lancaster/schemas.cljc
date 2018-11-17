@@ -150,7 +150,7 @@
                           (fix-repeated-schemas)))]
      (edn-schema->lancaster-schema schema-type edn-schema))))
 
-(defn merge-record-schemas [name-kw schemas]
+(defn merged-record-schema [name-kw schemas]
   (when-not (keyword? name-kw)
     (throw (ex-info (str "First arg to merge-record-schemas must be a name "
                          "keyword. The keyword can be namespaced or not.")

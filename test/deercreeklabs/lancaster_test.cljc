@@ -84,12 +84,15 @@
 (l/def-fixed-schema a-fixed-schema
   2)
 
-(l/def-record-schema rec-w-fixed-no-default-schema
-  [:data a-fixed-schema])
+(l/def-maybe-schema maybe-int-schema
+  l/int-schema)
 
 (l/def-record-schema rec-w-maybe-field-schema
   [:name l/string-schema]
-  [:age (l/maybe l/int-schema)])
+  [:age maybe-int-schema])
+
+(l/def-record-schema rec-w-fixed-no-default-schema
+  [:data a-fixed-schema])
 
 (l/def-record-schema add-to-cart-rsp-schema
   [:qty-requested l/int-schema]

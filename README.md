@@ -39,7 +39,7 @@ that is much more compact. The output of an unscientific run of
 the microbenchmark in `deercreeklabs.perf-test` is pasted in below.
 Your mileage may vary.
 
-*Clojure 1.9 on JVM 1.8*
+**Clojure 1.9 on JVM 1.8**
 
 Parameter    | Lancaster |    JSON   | JSON+Deflate
 :----------- | --------: |---------: | -----------:
@@ -47,13 +47,13 @@ Encode ops/s | `235,849` | `138,696` | `29,240`
 Decode ops/s | `364,964` | `233,645` | `86,207`
 Encoded size (bytes) | `14` | `142`  | `105`
 
-*ClojureScript 1.10.339 on Node.js 8.10*
+**ClojureScript 1.10.339 on Node.js 8.10**
 
 Parameter    | Lancaster |    JSON   | JSON+Deflate
 :----------- | --------: |---------: | -----------:
 Encode ops/s | `32,468`  | `30,769`  | `2,865`
 Decode ops/s | `76,923`  | `10,428`  | `3,597`
-Encoded size (bytes) | `14` | `162` | `109`
+Encoded size (bytes) | `14` | `162`  | `109`
 
 ## Project Name
 The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an
@@ -83,55 +83,6 @@ serialize data, and then deserialize it again.
 (l/deserialize person-schema person-schema encoded)
 ;; {:name "Alice" :age 40 :dog-name nil :favorite-numbers [12 89]}
 ```
-
-# Data types
-
-*Serialization*
-
-When serializing data, Lancaster accepts the following Clojure(Script)
-types for the given Avro type:
-
-Avro Type | Acceptable Clojure / ClojureScript Types
---------- | -------------------------
-`null` | `nil`
-`boolean` | `boolean`
-`int` | `int`, `java.lang.Integer`, `long (if in integer range)`, `java.lang.Long (if in integer range)`, `js/Number (if in integer range)`
-`long` | `long`, `java.lang.Long`
-`float` | `float`, `java.lang.Float`, `double (if in float range)`, `java.lang.Double (if in float range)`, `js/Number (if in float range)`
-`double` | `double`, `java.lang.Double`, `js/Number`
-`bytes` | `byte-array`, `java.lang.String`, `js/Int8Array`, `js/String`
-`string` | `byte-array`, `java.lang.String`, `js/Int8Array`, `js/String`
-`fixed` | `byte-array`, `js/Int8Array`. Byte array length must equal the size declared in the creation of the Lancaster `fixed` schema.
-`enum` | `keyword`
-`array` | Any data that passes `(sequential? data)`
-`map` | Any data that passes `(map? data)`, if all keys are strings. Clojure(Script) records *DO NOT* qualify, since their keys are keywords.
-`record` | Any data that passes `(map? data)`, if all keys are Clojure(Script) keywords. Clojure(Script) records *DO* qualify, since their keys are keywords.
-`union` | Any data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. Note that some unions require wrapping, as explained in [Notes About Union Data Types](#notes-about-union-data-types)
-
-*Deserialization*
-
-When deserializing data, Lancaster returns the following Clojure or ClojureScript
-types for the given Avro type:
-
-Avro Type | Clojure Type | ClojureScript Type
---------- | ------------ | ------------------
-`null` | `nil` | `nil`
-`boolean` | `boolean` | `boolean`
-`int` | `java.lang.Integer` | `js/Number`
-`long` | `java.lang.Long` | `js/Number`
-`float` | `java.lang.Float` | `js/Number`
-`double` | `java.lang.Double` | `js/Number`
-`bytes` | `byte-array` | `js/Int8Array`
-`string` | `java.lang.String` | `js/String`
-`fixed` | `byte-array` | `js/Int8Array`
-`enum` | `keyword` | `keyword`
-`array` | `vector` | `vector`
-`map` | `hash-map` | `hash-map`
-`record` | `hash-map` | `hash-map`
-`union` | Data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. If the union schema requires wrapping, the returned data will be wrapped. See [Notes About Union Data Types](#notes-about-union-data-types) below.
-
-## Notes About Union Data Types
-TBD
 
 # Creating Schema objects
 Lancaster schema objects are required for serialization and deserialization.
@@ -169,23 +120,91 @@ the [Schema Creation Functions](#schema-creation-functions) are also
 available.
 
 ### Schema Creation Macros
-* [def-array-schema](#def-array-schema)
-* [def-enum-schema](#def-enum-schema)
-* [def-fixed-schema](#def-fixed-schema)
-* [def-map-schema](#def-map-schema)
-* [def-flex-map-schema](#def-flex-map-schema)
-* [def-record-schema](#def-record-schema)
-* [def-union-schema](#def-union-schema)
+* [def-array-schema](#def-array-schema) Defines a var w/ an array schema
+* [def-enum-schema](#def-enum-schema) Defines a var w/ an enum schema
+* [def-fixed-schema](#def-fixed-schema) Defines a var w/ a fixed schema
+* [def-map-schema](#def-map-schema) Defines a var w/ a map schema. Keys must be strings.
+* [def-flex-map-schema](#def-flex-map-schema) Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
+* [def-record-schema](#def-record-schema) Defines a var w/ a record schema
+* [def-merged-record-schema](#def-merged-record-schema) Defines a var w/ a record schema which contains all the fields of all record schemas passed in
+* [def-union-schema](#def-union-schema) Defines a var w/ a union schema
+* [def-maybe-schema](#def-maybe-schema) Defines a var w/ a nillable schema
 
 ### Schema Creation Functions
-* [array-schema](#array-schema)
-* [enum-schema](#enum-schema)
-* [fixed-schema](#fixed-schema)
-* [map-schema](#map-schema)
-* [flex-map-schema](#flex-map-schema)
-* [record-schema](#record-schema)
-* [union-schema](#union-schema)
+* [array-schema](#array-schema) Creates an array schema
+* [enum-schema](#enum-schema) Creates an enum schema
+* [fixed-schema](#fixed-schema) Creates a fixed schema
+* [map-schema](#map-schema) Creates a map schema. Keys must be strings.
+* [flex-map-schema](#flex-map-schema) Creates a flex-map schema. Flex map keys may be of any schema type.
+* [record-schema](#record-schema) Creates a record schema
+* [merged-record-schema](#merged-record-schema) Creates a record schema which contains all the fields of all record schemas passed in
+* [union-schema](#union-schema) Creates a union schema
+* [maybe](#schema) Creates a nillable schema
 
+## Operations on Schema Objects
+All of these functions take a Lancaster schema object as the first argument
+* [serialize](#serialize) Serializes data to a byte array
+* [deserialize](#deserialize) Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
+* [deserialize-same](#deserialize-) Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
+resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution).
+* [wrap](#wrap) Wraps data for use in an ambiguous union. See [Notes About Union Data Types](#notes-about-union-data-types) below.
+* [edn](#edn) Returns the EDN representation of the schema
+* [json](#json) Returns the JSON representation of the schema
+* [pcf](#pcf) Returns a JSON string containing the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema
+* [fingerprint64](#fingerprint64) Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
+* [schema?](#schema?) Is the argument a Lancaster schema?
+* [plumatic-schema](#plumatic-schema) Returns a [Plumatic schema](https://github.com/plumatic/schema) for the schema.
+* [default-data](#default-data) Returns default data that conforms to the schema
+
+# Data types
+
+**Serialization**
+
+When serializing data, Lancaster accepts the following Clojure(Script)
+types for the given Avro type:
+
+Avro Type | Acceptable Clojure / ClojureScript Types
+--------- | -------------------------
+`null` | `nil`
+`boolean` | `boolean`
+`int` | `int`, `java.lang.Integer`, `long (if in integer range)`, `java.lang.Long (if in integer range)`, `js/Number (if in integer range)`
+`long` | `long`, `java.lang.Long`
+`float` | `float`, `java.lang.Float`, `double (if in float range)`, `java.lang.Double (if in float range)`, `js/Number (if in float range)`
+`double` | `double`, `java.lang.Double`, `js/Number`
+`bytes` | `byte-array`, `java.lang.String`, `js/Int8Array`, `js/String`
+`string` | `byte-array`, `java.lang.String`, `js/Int8Array`, `js/String`
+`fixed` | `byte-array`, `js/Int8Array`. Byte array length must equal the size declared in the creation of the Lancaster `fixed` schema.
+`enum` | `keyword`
+`array` | Any data that passes `(sequential? data)`
+`map` | Any data that passes `(map? data)`, if all keys are strings. Clojure(Script) records *DO NOT* qualify, since their keys are keywords.
+`record` | Any data that passes `(map? data)`, if all keys are Clojure(Script) keywords. Clojure(Script) records *DO* qualify, since their keys are keywords.
+`union` | Any data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. Note that some unions require wrapping, as explained in [Notes About Union Data Types](#notes-about-union-data-types)
+
+**Deserialization**
+
+When deserializing data, Lancaster returns the following Clojure or ClojureScript
+types for the given Avro type:
+
+Avro Type | Clojure Type | ClojureScript Type
+--------- | ------------ | ------------------
+`null` | `nil` | `nil`
+`boolean` | `boolean` | `boolean`
+`int` | `java.lang.Integer` | `js/Number`
+`long` | `java.lang.Long` | `js/Number`
+`float` | `java.lang.Float` | `js/Number`
+`double` | `java.lang.Double` | `js/Number`
+`bytes` | `byte-array` | `js/Int8Array`
+`string` | `java.lang.String` | `js/String`
+`fixed` | `byte-array` | `js/Int8Array`
+`enum` | `keyword` | `keyword`
+`array` | `vector` | `vector`
+`map` | `hash-map` | `hash-map`
+`record` | `hash-map` | `hash-map`
+`union` | Data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. If the union schema requires wrapping, the returned data will be wrapped. See [Notes About Union Data Types](#notes-about-union-data-types) below.
+
+## Notes About Union Data Types
+TBD
 
 # API Documentation
 All public vars, functions, and macros are in the `deercreeklabs.lancaster`
@@ -213,6 +232,38 @@ only contain letters, numbers, or hyphens.
     * `field-name-kw`: A keyword naming this field.
     * `field-schema`: A Lancaster schema object representing the field's schema.
     * `default-value`: Optional. The default data value for this field.
+
+#### Return Value:
+The defined var
+
+#### Example
+```clojure
+(l/def-record-schema person-schema
+  [:name l/string-schema "no name"]
+  [:age l/int-schema])
+```
+
+#### See Also:
+* [record-schema](#record-schema)
+
+-------------------------------------------------------------------------------
+### def-merged-record-schema
+```clojure
+(def-merged-record-schema name-symbol & record-schemas)
+```
+Defines a var whose value is a Lancaster schema object representing an Avro
+[```record```](http://avro.apache.org/docs/current/spec.html#schema_record).
+The record schema contains all the fields of all record schemas passed in.
+For cases where a macro is not appropriate, use the
+[merged-record-schema](#merged-record-schema) function instead.
+
+#### Parameters:
+* `name-symbol`: The symbol naming this schema object. The Avro schema name
+is also derived from this symbol. See
+[Names and Namespaces](#names-and-namespaces) for more information about
+schema names. The name-symbol must start with a letter and subsequently
+only contain letters, numbers, or hyphens.
+* `record-schemas`: Lancaster schema record objects to be merged.
 
 #### Return Value:
 The defined var
@@ -392,11 +443,39 @@ The defined var
 #### Example
 ```clojure
 (l/def-union-scheema maybe-name-schema
-  l/null-schema l/int-schema)
+  l/null-schema l/string-schema)
 ```
 
 #### See Also:
 * [union-schema](#union-schema)
+
+-------------------------------------------------------------------------------
+### def-maybe-schema
+```clojure
+(def-maybe-schema name-symbol schemas)
+```
+Defines a var whose value is a Lancaster schema object representing an Avro
+[```union```](http://avro.apache.org/docs/current/spec.html#Unions). The
+members of the union are null-schema and the given schema. Makes a
+schema nillable. For cases where a macro is not appropriate, use the
+[maybe](#maybe) function instead.
+
+#### Parameters:
+* `name-symbol`: The symbol naming this schema object.
+* `schema`: Lancaster schema object representing the non-nil member
+of the union.
+
+#### Return Value:
+The defined var
+
+#### Example
+```clojure
+(l/def-maybe-scheema maybe-name-schema
+  l/string-schema)
+```
+
+#### See Also:
+* [maybe](#maybe)
 
 -------------------------------------------------------------------------------
 ### record-schema
@@ -594,9 +673,9 @@ The new Lancaster union schema.
 * [def-union-schema](#def-union-schema)
 
 -------------------------------------------------------------------------------
-### merge-record-schemas
+### merged-record-schema
 ```clojure
-(merge-record-schemas name-kw schemas)
+(merged-record-schema name-kw schemas)
 ```
 Creates a Lancaster record schema which contains all the fields
 of all record schemas passed in.
@@ -621,8 +700,12 @@ The new Lancaster record schema.
   [:longitude l/double-schema])
 
 (def person-w-lat-long-schema
-  (l/merge-record-schemas [person-schema location-schema]))
+  (l/merged-record-schema [person-schema location-schema]))
 ```
+
+#### See also
+* [def-merged-record-schema](#def-merged-record-schema)
+* [record-schema](#record-schema)
 
 -------------------------------------------------------------------------------
 ### maybe
@@ -643,6 +726,9 @@ The new Lancaster union schema.
 (def int-or-nil-schema (l/maybe l/int-schema))
 ```
 
+#### See also
+* [def-maybe-schema](#def-maybe-schema)
+
 -------------------------------------------------------------------------------
 ### serialize
 ```clojure
@@ -657,10 +743,6 @@ Serializes data to a byte array, using the given Lancaster schema.
 #### Return Value:
 A byte array containing the Avro-encoded data.
 
-#### See also
-* [deserialize](#deserialize)
-* [deserialize-same](#deserialize-same)
-
 #### Example
 ```clojure
 (l/def-record-schema person-schema
@@ -670,7 +752,12 @@ A byte array containing the Avro-encoded data.
 (def encoded (l/serialize person-schema {:name "Arnold"
                                          :age 22}))
 ```
+#### See also
+* [deserialize](#deserialize)
+* [deserialize-same](#deserialize-same)
 
+
+-------------------------------------------------------------------------------
 ### deserialize
 ```clojure
 (deserialize reader-schema writer-schema ba)
@@ -701,10 +788,6 @@ uses the following default values, depending on the field type:
 #### Return Value
 The deserialized data.
 
-#### See also
-* [deserialize-same](#deserialize-same)
-* [serialize](#serialize)
-
 #### Example
 ```clojure
 (def person-schema
@@ -725,6 +808,10 @@ The deserialized data.
 (l/deserialize person-w-nick-schema person-schema encoded)
 ;; {:name "Alice", :age 20, :nickname "no nick", :favorite-number -1}
 ```
+#### See also
+* [deserialize-same](#deserialize-same)
+* [serialize](#serialize)
+
 
 -------------------------------------------------------------------------------
 ### deserialize-same
@@ -734,10 +821,13 @@ The deserialized data.
 Deserializes Avro-encoded data from a byte array, using the given schema
 as both the reader and writer schema.
 
-**Note that this is not recommended**, since the original writer's schema
+**Note that this is not recommended**, since it does not allow for [schema
+resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution). The original writer's schema
 should always be used to deserialize. The writer's schema
 (in [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas))
-should always be stored or transmitted with encoded data.
+should always be stored or transmitted with encoded data. If the schema specified
+in this function does not match the schema with which the data was encoded,
+the function will fail, possibly in strange ways.
 
 #### Parameters:
 * `schema`: The reader's and writer's Lancaster schema for the data
@@ -745,10 +835,6 @@ should always be stored or transmitted with encoded data.
 
 #### Return Value
 The deserialized data.
-
-#### See also
-* [deserialize](#deserialize)
-* [serialize](#serialize)
 
 #### Example
 ```clojure
@@ -762,6 +848,10 @@ The deserialized data.
 (l/deserialize-same dog-schema encoded)
 ;; {:name "Fido :owner "Roger"}
 ```
+
+#### See also
+* [deserialize](#deserialize)
+* [serialize](#serialize)
 
 -------------------------------------------------------------------------------
 ### json->schema
@@ -835,7 +925,7 @@ The wrapped data.
 ```clojure
 (edn schema)
 ```
-Returns an EDN representation of the given Lancaster schema.
+Returns the EDN representation of the given Lancaster schema.
 
 #### Parameters:
 * `schema`: The Lancaster schema
@@ -851,6 +941,9 @@ EDN representation of the given Lancaster schema
 (l/edn suite-schema)
 ;; {:name :suite, :type :enum, :symbols [:clubs :diamonds :hearts :spades]}
 ```
+
+#### See Also
+* [json](#json) Returns the JSON representation of the schema
 
 -------------------------------------------------------------------------------
 ### json
@@ -873,6 +966,9 @@ JSON representation of the given Lancaster schema
 (l/json suite-schema)
 ;; "{\"name\":\"Suite\",\"type\":\"enum\",\"symbols\":[\"CLUBS\",\"DIAMONDS\",\"HEARTS\",\"SPADES\"]}"
 ```
+
+#### See Also
+* [edn](#edn) Returns the EDN representation of the schema
 
 -------------------------------------------------------------------------------
 ### plumatic-schema
@@ -923,8 +1019,11 @@ A JSON string
 ;; particular schema. That is not generally the case.
 ```
 
+#### See Also
+* [fingerprint64](#fingerprint64) Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
+
 -------------------------------------------------------------------------------
-### fingerprint-64
+### fingerprint64
 ```clojure
 (fingerprint64 schema)
 ```
@@ -948,6 +1047,10 @@ java.lang.Long. For ClojureScript, it is a goog.math.Long.
 (l/fingerprint64 suite-schema)
 ;; 5882396032713186004
 ```
+
+#### See Also
+* [pcf](#pcf) Returns a JSON string containing the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema
 
 -------------------------------------------------------------------------------
 ### schema?

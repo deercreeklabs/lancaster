@@ -101,12 +101,12 @@
   [member-schemas :- [LancasterSchemaOrNameKW]]
   (schemas/schema :union nil member-schemas))
 
-(s/defn merge-record-schemas :- LancasterSchema
+(s/defn merged-record-schema :- LancasterSchema
   "Creates a Lancaster record schema which contains all the fields
    of all record schemas passed in."
   [name-kw :- s/Keyword
    schemas :- [LancasterSchema]]
-  (schemas/merge-record-schemas name-kw schemas))
+  (schemas/merged-record-schema name-kw schemas))
 
 (s/defn maybe :- LancasterSchema
   "Creates a Lancaster union schema whose members are l/null-schema
@@ -184,11 +184,6 @@
   [schema :- LancasterSchema]
   (u/json-schema schema))
 
-(s/defn plumatic-schema :- s/Any
-  "Returns a Plumatic schema for the given Lancaster schema."
-  [schema :- LancasterSchema]
-  (u/plumatic-schema schema))
-
 (s/defn pcf :- s/Str
   "Returns a JSON string containing the Avro Parsing Canonical Form of
   the given Lancaster schema."
@@ -206,6 +201,11 @@
    Lancaster schema object."
   [arg :- s/Any]
   (satisfies? u/ILancasterSchema arg))
+
+(s/defn plumatic-schema :- s/Any
+  "Returns a Plumatic schema for the given Lancaster schema."
+  [schema :- LancasterSchema]
+  (u/plumatic-schema schema))
 
 (s/defn default-data :- s/Any
   "Creates default data that conforms to the given Lancaster schema."
@@ -242,7 +242,7 @@
         schema-name (u/schema-name clj-name)
         name-kw (keyword ns-name schema-name)]
     `(def ~clj-name
-       (schemas/merge-record-schemas ~name-kw (vector ~@record-schemas)))))
+       (schemas/merged-record-schema ~name-kw (vector ~@record-schemas)))))
 
 (defmacro def-enum-schema
   "Defines a var whose value is a Lancaster enum schema object"
@@ -317,3 +317,10 @@
   [clj-name & member-schemas]
   `(def ~clj-name
      (schemas/schema :union nil (vector ~@member-schemas))))
+
+(defmacro def-maybe-schema
+  "Defines a var whose value is a Lancaster union schema whose members
+  are l/null-schema and the given schema. Makes a schema nillable."
+  [clj-name schema]
+  `(def ~clj-name
+     (union-schema [null-schema ~schema])))
