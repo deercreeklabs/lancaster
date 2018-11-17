@@ -65,7 +65,7 @@ airplane manufactured by [Avro Aircraft](https://en.wikipedia.org/wiki/Avro).
 
 # Examples
 Here is an introductory example of using Lancaster to define a schema,
-serialize data, and then deserialize it again.
+serialize data, and then deserialize it.
 
 ```clojure
 (require '[deercreeklabs.lancaster :as l])
@@ -114,7 +114,7 @@ the `maybe` function to make fields nillable:
 
 # Creating Schema Objects
 Lancaster schema objects are required for serialization and deserialization.
-This can be done in two ways:
+These can be created in two ways:
 1. Using an existing Avro schema in JSON format.
 To do this, use the [json->schema](#json-schema) function. This is best if
 you are working with externally defined schemas from another system or language.
@@ -170,7 +170,7 @@ available.
 * [maybe](#schema): Creates a nillable schema.
 
 ## Operations on Schema Objects
-All of these functions take a Lancaster schema object as the first argument
+All of these functions take a Lancaster schema object as the first argument:
 * [serialize](#serialize): Serializes data to a byte array.
 * [deserialize](#deserialize): Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
 * [deserialize-same](#deserialize-same): Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
@@ -207,7 +207,7 @@ Avro Type | Acceptable Clojure / ClojureScript Types
 `array` | Any data that passes `(sequential? data)`
 `map` | Any data that passes `(map? data)`, if all keys are strings. Clojure(Script) records *DO NOT* qualify, since their keys are keywords.
 `record` | Any data that passes `(map? data)`, if all keys are Clojure(Script) keywords. Clojure(Script) records *DO* qualify, since their keys are keywords.
-`union` | Any data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. Note that some unions require wrapping, as explained in [Notes About Union Data Types](#notes-about-union-data-types)
+`union` | Any data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. Note that some unions require wrapping, as explained in [Notes About Union Data Types](#notes-about-union-data-types) below.
 
 **Deserialization**
 
@@ -238,8 +238,8 @@ To quote the [Avro spec](http://avro.apache.org/docs/current/spec.html#Unions):
 *Unions may not contain more than one schema with the same type, except for the named types record, fixed and enum. For example, unions containing two array types or two map types are not permitted, but two types with different names are permitted.*
 
 In Lancaster, the data for both `records` and `maps` can be Clojure hash-maps.
-Also, multiple record schemas can be included in be a union. This makes it
-impossible, (or at least difficult) to determine which member schema of a union
+Also, multiple record schemas can be members in a union schema. This makes it
+impossible (or at least difficult) to determine which member schema of a union
 to use at serialization time.
 
 A Lancaster union schema is *ambiguous* if it contains:
@@ -684,7 +684,7 @@ concise way to declare a record schema, see
     * `default-value`: Optional. The default data value for this field.
 
 #### Return Value
-The new Lancaster record schema.
+The new Lancaster record schema
 
 #### Example
 ```clojure
@@ -716,7 +716,7 @@ concise way to declare an enum schema, see
              the enum.
 
 #### Return Value
-The new Lancaster enum schema.
+The new Lancaster enum schema
 
 #### Example
 ```clojure
@@ -744,7 +744,7 @@ Creates a Lancaster schema object representing an Avro
 * `size`: An integer representing the size of this fixed in bytes.
 
 #### Return Value
-The new Lancaster fixed schema.
+The new Lancaster fixed schema
 
 #### Example
 ```clojure
@@ -768,7 +768,7 @@ with the given items schema.
 * `items-schema`: A Lancaster schema object describing the items in the array.
 
 #### Return Value
-The new Lancaster array schema.
+The new Lancaster array schema
 
 #### Example
 ```clojure
@@ -792,7 +792,7 @@ with the given values schema.
 Map keys are always strings.
 
 #### Return Value
-The new Lancaster map schema.
+The new Lancaster map schema
 
 #### Examples
 ```clojure
@@ -824,7 +824,7 @@ and are implemented using an Avro `record`.
 * `values-schema`: A Lancaster schema object describing the values in the map.
 
 #### Return Value
-The new Lancaster flex-map schema.
+The new Lancaster flex-map schema
 
 #### Examples
 ```clojure
@@ -849,7 +849,7 @@ with the given member schemas.
 members of the union.
 
 #### Return Value
-The new Lancaster union schema.
+The new Lancaster union schema
 
 #### Examples
 ```clojure
@@ -875,7 +875,7 @@ of all record schemas passed in.
 * `schemas`: A sequence of Lancaster schema record objects to be merged.
 
 #### Return Value
-The new Lancaster record schema.
+The new Lancaster record schema
 
 #### Example
 ```clojure
@@ -907,7 +907,7 @@ and the given schema. Makes a schema nillable.
 * `schema`: The Lancaster schema to be made nillable.
 
 #### Return Value
-The new Lancaster union schema.
+The new Lancaster union schema
 
 #### Example
 ```clojure
@@ -929,7 +929,7 @@ Serializes data to a byte array, using the given Lancaster schema.
 * `data`: The data to be written.
 
 #### Return Value
-A byte array containing the Avro-encoded data.
+A byte array containing the Avro-encoded data
 
 #### Example
 ```clojure
@@ -973,7 +973,7 @@ uses the following default values, depending on the field type:
 * `ba`: A byte array containing the encoded data
 
 #### Return Value
-The deserialized data.
+The deserialized data
 
 #### Example
 ```clojure
@@ -1022,7 +1022,7 @@ the [deserialize](#deserialize) function instead.
 * `ba`: A byte array containing the encoded data
 
 #### Return Value
-The deserialized data.
+The deserialized data
 
 #### Example
 ```clojure
@@ -1054,7 +1054,7 @@ must comply with the
 [Avro Specification](http://avro.apache.org/docs/current/spec.html).
 
 #### Return Value
-The new Lancaster schema.
+The new Lancaster schema
 
 #### Example
 ```clojure
@@ -1079,7 +1079,7 @@ for more information.
 * `data`: The data to be wrapped.
 
 #### Return Value
-The wrapped data.
+The wrapped data
 
 #### Example
 ```clojure
@@ -1113,8 +1113,8 @@ The wrapped data.
 ```
 
 #### See Also
-* [schema-name](#schema-name): Returns the schema-name portion of wrapped data
-* [data](#data): Returns the data portion of wrapped data
+* [schema-name](#schema-name): Returns the schema-name portion of wrapped data.
+* [data](#data): Returns the data portion of wrapped data.
 
 -------------------------------------------------------------------------------
 ### schema-name
@@ -1225,7 +1225,7 @@ EDN representation of the given Lancaster schema
 ```
 
 #### See Also
-* [json](#json) Returns the JSON representation of the schema
+* [json](#json) Returns the JSON representation of the schema.
 
 -------------------------------------------------------------------------------
 ### json
@@ -1250,7 +1250,7 @@ JSON representation of the given Lancaster schema
 ```
 
 #### See Also
-* [edn](#edn) Returns the EDN representation of the schema
+* [edn](#edn) Returns the EDN representation of the schema.
 
 -------------------------------------------------------------------------------
 ### plumatic-schema
@@ -1258,7 +1258,7 @@ JSON representation of the given Lancaster schema
 (plumatic-schema schema)
 ```
 Returns a [Plumatic schema](https://github.com/plumatic/schema)
-for the given Lancaster schema
+for the given Lancaster schema.
 
 #### Parameters
 * `schema`: The Lancaster schema
@@ -1393,6 +1393,7 @@ Data that matches the given schema
 (l/default-data suite-schema)
 ;; :clubs
 ```
+-------------------------------------------------------------------------------
 
 # License
 
