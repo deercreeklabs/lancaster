@@ -297,10 +297,13 @@ To access the data inside wrapped data, use the [data](#data) function.
 ;; {:dog {:name "Fido" :owner "Roger"}}
 
 ;; This works now
-(l/serialize person-or-dog-schema wrapped-fido)
+(def encoded (l/serialize person-or-dog-schema wrapped-fido))
+encoded
 ;; #object["[B" 0x2cc2072e "[B@2cc2072e"]
 
-;; Note that deserialized data is returned in wrapped
+;; Note that deserialized data is returned in wrapped form
+(l/deserialize person-or-dog-schema person-or-dog-schema encoded)
+;;
 ```
 
 # Names and Namespaces
