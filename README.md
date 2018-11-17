@@ -60,7 +60,7 @@ The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an
 airplane manufactured by [Avro Aircraft](https://en.wikipedia.org/wiki/Avro).
 
 
-# Example
+# Examples
 Here's an introductory example of using Lancaster to define a schema,
 serialize data, and then deserialize it again.
 
@@ -204,27 +204,29 @@ Avro Type | Clojure Type | ClojureScript Type
 `union` | Data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. If the union schema requires wrapping, the returned data will be wrapped. See [Notes About Union Data Types](#notes-about-union-data-types) below.
 
 ## Notes About Union Data Types
-To quote the [Avro spec about unions](http://avro.apache.org/docs/current/spec.html#Unions):
+To quote the [Avro spec](http://avro.apache.org/docs/current/spec.html#Unions):
 
 *Unions may not contain more than one schema with the same type, except for the named types record, fixed and enum. For example, unions containing two array types or two map types are not permitted, but two types with different names are permitted.*
 
-In Lancaster, the data for both `records` and `maps` can a Clojure hash-map.
-Also, different record schemas can be included in be a union. This makes it
+In Lancaster, the data for both `records` and `maps` can be Clojure hash-maps.
+Also, multiple record schemas can be included in be a union. This makes it
 impossible, (or at least difficult) to determine which member schema of a union
-to use at serialization time. Given a Clojure hash-map, which schema should
+to use at serialization time.
+
+A Lancaster union schema is *ambiguous* if it contains:
+* More than one `record` or `map`
+* More than one numeric type: `int`, `long`, `float`, or `double`
+* More than one bytes type: `bytes`, `string`, or `fixed`.
+
+Given a Clojure hash-map, and an ambiguous union schema, which schema should
 be used to serialize it? This is resolved via *wrapping*.
 
-A Lancaster schema is *ambiguous* if it contains:
-* More than one `record` or `map`
-* More than one numeric types `int`, `long`, `float`, `double`
-* More than one of `bytes`, `string`, or `fixed`
-
-Data to be encoded by *ambiguous* schemas must be *wrapped*, to indicate
-the schema of the given data. This is easily done with the
+Wrapping indicates the schema of the given data. This is easily done with the
 [wrap](#wrap) function.
 
 ### Example
 ```clojure
+;; Define two record schemas
 (l/def-record-schema person-schema
   [:name l/string-schema "No name"]
   [:age l/int-schema 0])
@@ -233,8 +235,9 @@ the schema of the given data. This is easily done with the
   [:name l/string-schema]
   [:owner l/string-schema])
 
-(def person-or-dog-schema
-  (l/union-schema [person-schema dog-schema]))
+;; Define an ambiguous union schema, using the two records
+(l/def-union-schema person-or-dog-schema
+  person-schema dog-schema)
 
 (def fido {:name "Fido" :owner "Roger"})
 
@@ -250,6 +253,73 @@ the schema of the given data. This is easily done with the
 ;; This works now
 (l/serialize person-or-dog-schema wrapped-fido)
 ;; #object["[B" 0x2cc2072e "[B@2cc2072e"]
+```
+
+# Names and Namespaces
+Named Avro schemas (`records`, `enums`, and `fixeds`) contain a name
+part and, optionally, a namespace part.
+The
+[Names section of the Avro spec](#http://avro.apache.org/docs/current/spec.html#names)
+describes this in detail. Lancaster fully supports the spec, allowing
+both names and namespaces. These are combined into a single fullname,
+including both the namespace (if any) and the name.
+
+Lancaster schema names must start with a letter and subsequently
+only contain letters, numbers, or hyphens.
+
+When using the [Schema Creation Macros](#schema-creation-macros),
+the name used in the schema is derived from the name of the symbol
+passed to the `def-*-schema` macro. It the symbol ends with -schema
+(as is common), the -schema portion is dropped from the name. The namespace is
+taken from the Clojure(Script) namespace where the schema is defined.
+
+When using the [Schema Creation Functions](#schema-creation-functions),
+the name and namespace are taken from the `name-kw` parameter passed to
+the `*-schema` function. If the keyword is namespaced, the keyword's namespace
+is used as the schema's namespace. If the keyword does not have
+a namespace, the schema will not have a namespace.
+Only the functions for creating named schemas
+([enum-schema](#enum-schema), [fixed-schema](#fixed-schema),
+[record-schema](#record-schema), [flex-map-schema](#flex-map-schema),
+and [merged-record-schema](#merged-record-schema)) have a `name-kw` parameter.
+
+In the EDN representation of a named schema, the :name attribute
+contains the name of the schema, including the namespace, if any.
+In the JSON and PCF representations, the name is also converted
+from kebab-case to PascalCase, and any namespace is converted from
+kebab-case to snake_case. This matches the Avro spec (which does not allow
+hyphenated names) and provides easy interop with other languages
+(Java, JS, C++, etc.)
+
+For example, using the [def-enum-schema](#def-enum-schema) macro:
+
+```clojure
+(l/def-enum-schema suite-schema
+  :clubs :diamonds :hearts :spades)
+
+(l/edn suite-schema)
+;; {:name :user/suite, :type :enum, :symbols [:clubs :diamonds :hearts :spades]}
+;; Note that the :name includes the namespace (:user in this case)
+;; and that the name is 'suite', not 'suite-schema'
+
+(l/json suite-schema)
+;; "{\"name\":\"user.Suite\",\"type\":\"enum\",\"symbols\":[\"CLUBS\",\"DIAMONDS\",\"HEARTS\",\"SPADES\"]}"
+;; Note that the name has been converted to user.Suite
+
+```
+
+Or using the [enum-schema](#enum-schema) function:
+```clojure
+(def suite-schema
+  (l/enum-schema :a-random-ns/suite [:clubs :diamonds :hearts :spades]))
+
+(l/edn suite-schema)
+;; {:name :a-random-ns/suite, :type :enum, :symbols [:clubs :diamonds :hearts :spades]}
+;; Note that the namespace is not :user, but is :a-random-ns
+
+(l/json suite-schema)
+;; "{\"name\":\"a_random_ns.Suite\",\"type\":\"enum\",\"symbols\":[\"CLUBS\",\"DIAMONDS\",\"HEARTS\",\"SPADES\"]}"
+;; Note that the name has been converted to a_random_ns.Suite
 ```
 
 
@@ -356,7 +426,7 @@ The defined var
 
 #### Example
 ```clojure
-(l/def-enum-scheema suite-schema
+(l/def-enum-schema suite-schema
   :clubs :diamonds :hearts :spades)
 ```
 
@@ -950,6 +1020,7 @@ The wrapped data.
 
 #### Example
 ```clojure
+;; Define two record schemas
 (l/def-record-schema person-schema
   [:name l/string-schema "No name"]
   [:age l/int-schema 0])
@@ -958,8 +1029,9 @@ The wrapped data.
   [:name l/string-schema]
   [:owner l/string-schema])
 
-(def person-or-dog-schema
-  (l/union-schema [person-schema dog-schema]))
+;; Define an ambiguous union schema, using the two records
+(l/def-union-schema person-or-dog-schema
+  person-schema dog-schema)
 
 (def fido {:name "Fido" :owner "Roger"})
 
