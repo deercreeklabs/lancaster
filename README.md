@@ -20,7 +20,7 @@ and the [Avro Specification](http://avro.apache.org/docs/current/spec.html)
 before proceeding.
 
 Lancaster provides for:
-* Easy schema creation and manipulation
+* Easy schema creation
 * Serialization of arbitrarily-complex data structures to a byte array
 * Deserialization from a byte array, including
 [schema resolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution)
@@ -87,13 +87,13 @@ serialize data, and then deserialize it again.
 # Creating Schema objects
 Lancaster schema objects are required for serialization and deserialization.
 This can be done in two ways:
-1. Create schema objects from an existing Avro schema in JSON format.
+1. Using an existing Avro schema in JSON format.
 To do this, use the [json->schema](#json-schema) function. This is best if
 you are working with externally defined schemas from another system or language.
-2. Create schema objects using Lancaster schema functions and/or macros.
-If you want to define Avro schemas using Clojure/ClojureScript, Lancaster
-lets you concisely create and combine schemas in arbitrarily complex ways,
-as explained below.
+2. Using Lancaster schema functions and/or macros.
+This is best if you want to define Avro schemas using Clojure/ClojureScript.
+Lancaster lets you concisely create and combine schemas in arbitrarily complex
+ways, as explained below.
 
 ## Primitive Schemas
 Lancaster provides predefined schema objects for all the
@@ -120,42 +120,42 @@ the [Schema Creation Functions](#schema-creation-functions) are also
 available.
 
 ### Schema Creation Macros
-* [def-array-schema](#def-array-schema) Defines a var w/ an array schema
-* [def-enum-schema](#def-enum-schema) Defines a var w/ an enum schema
-* [def-fixed-schema](#def-fixed-schema) Defines a var w/ a fixed schema
+* [def-array-schema](#def-array-schema) Defines a var w/ an array schema.
+* [def-enum-schema](#def-enum-schema) Defines a var w/ an enum schema.
+* [def-fixed-schema](#def-fixed-schema) Defines a var w/ a fixed schema.
 * [def-map-schema](#def-map-schema) Defines a var w/ a map schema. Keys must be strings.
 * [def-flex-map-schema](#def-flex-map-schema) Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
-* [def-record-schema](#def-record-schema) Defines a var w/ a record schema
-* [def-merged-record-schema](#def-merged-record-schema) Defines a var w/ a record schema which contains all the fields of all record schemas passed in
-* [def-union-schema](#def-union-schema) Defines a var w/ a union schema
-* [def-maybe-schema](#def-maybe-schema) Defines a var w/ a nillable schema
+* [def-record-schema](#def-record-schema) Defines a var w/ a record schema.
+* [def-merged-record-schema](#def-merged-record-schema) Defines a var w/ a record schema which contains all the fields of all record schemas passed in.
+* [def-union-schema](#def-union-schema) Defines a var w/ a union schema.
+* [def-maybe-schema](#def-maybe-schema) Defines a var w/ a nillable schema.
 
 ### Schema Creation Functions
-* [array-schema](#array-schema) Creates an array schema
-* [enum-schema](#enum-schema) Creates an enum schema
-* [fixed-schema](#fixed-schema) Creates a fixed schema
+* [array-schema](#array-schema) Creates an array schema.
+* [enum-schema](#enum-schema) Creates an enum schema.
+* [fixed-schema](#fixed-schema) Creates a fixed schema.
 * [map-schema](#map-schema) Creates a map schema. Keys must be strings.
 * [flex-map-schema](#flex-map-schema) Creates a flex-map schema. Flex map keys may be of any schema type.
-* [record-schema](#record-schema) Creates a record schema
-* [merged-record-schema](#merged-record-schema) Creates a record schema which contains all the fields of all record schemas passed in
-* [union-schema](#union-schema) Creates a union schema
-* [maybe](#schema) Creates a nillable schema
+* [record-schema](#record-schema) Creates a record schema.
+* [merged-record-schema](#merged-record-schema) Creates a record schema which contains all the fields of all record schemas passed in.
+* [union-schema](#union-schema) Creates a union schema.
+* [maybe](#schema) Creates a nillable schema.
 
 ## Operations on Schema Objects
 All of these functions take a Lancaster schema object as the first argument
-* [serialize](#serialize) Serializes data to a byte array
+* [serialize](#serialize) Serializes data to a byte array.
 * [deserialize](#deserialize) Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
 * [deserialize-same](#deserialize-) Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
 resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution).
 * [wrap](#wrap) Wraps data for use in an ambiguous union. See [Notes About Union Data Types](#notes-about-union-data-types) below.
-* [edn](#edn) Returns the EDN representation of the schema
-* [json](#json) Returns the JSON representation of the schema
+* [edn](#edn) Returns the EDN representation of the schema.
+* [json](#json) Returns the JSON representation of the schema.
 * [pcf](#pcf) Returns a JSON string containing the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
 * [fingerprint64](#fingerprint64) Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
 * [schema?](#schema?) Is the argument a Lancaster schema?
 * [plumatic-schema](#plumatic-schema) Returns a [Plumatic schema](https://github.com/plumatic/schema) for the schema.
-* [default-data](#default-data) Returns default data that conforms to the schema
+* [default-data](#default-data) Returns default data that conforms to the schema.
 
 # Data types
 
@@ -244,7 +244,7 @@ The defined var
 ```
 
 #### See Also:
-* [record-schema](#record-schema)
+* [record-schema](#record-schema) Creates a record schema.
 
 -------------------------------------------------------------------------------
 ### def-merged-record-schema
@@ -271,12 +271,20 @@ The defined var
 #### Example
 ```clojure
 (l/def-record-schema person-schema
-  [:name l/string-schema "no name"]
+  [:name l/string-schema]
   [:age l/int-schema])
+
+(l/def-record-schema location-schema
+  [:latitude l/double-schema]
+  [:longitude l/double-schema])
+
+(l/def-merged-record-schema person-w-lat-long-schema
+  person-schema location-schema)
 ```
 
 #### See Also:
-* [record-schema](#record-schema)
+* [merged-record-schema](merged-record-schema) Creates a record schema which contains all the fields of all record schemas passed in.
+* [record-schema](#record-schema) Creates a record schema.
 
 -------------------------------------------------------------------------------
 ### def-enum-schema
@@ -306,7 +314,7 @@ The defined var
 ```
 
 #### See Also:
-* [enum-schema](#enum-schema)
+* [enum-schema](#enum-schema) Creates an enum schema.
 
 -------------------------------------------------------------------------------
 ### def-fixed-schema
@@ -336,7 +344,7 @@ The defined var
 ```
 
 #### See Also:
-* [fixed-schema](#fixed-schema)
+* [fixed-schema](#fixed-schema) Creates a fixed schema.
 
 -------------------------------------------------------------------------------
 ### def-array-schema
@@ -362,7 +370,7 @@ The defined var
 ```
 
 #### See Also:
-* [array-schema](#array-schema)
+* [array-schema](#array-schema) Creates an array schema.
 
 -------------------------------------------------------------------------------
 ### def-map-schema
@@ -389,7 +397,7 @@ The defined var
 ```
 
 #### See Also:
-* [map-schema](#map-schema)
+* [map-schema](#map-schema) Creates a map schema.
 
 -------------------------------------------------------------------------------
 ### def-flex-map-schema
@@ -420,7 +428,7 @@ The defined var
 ```
 
 #### See Also:
-* [flex-map-schema](#flex-map-schema)
+* [flex-map-schema](#flex-map-schema) Creates a flex-map schema.
 
 -------------------------------------------------------------------------------
 ### def-union-schema
@@ -447,7 +455,7 @@ The defined var
 ```
 
 #### See Also:
-* [union-schema](#union-schema)
+* [union-schema](#union-schema) Creates a union schema.
 
 -------------------------------------------------------------------------------
 ### def-maybe-schema
@@ -475,7 +483,7 @@ The defined var
 ```
 
 #### See Also:
-* [maybe](#maybe)
+* [maybe](#maybe) Creates a nillable schema.
 
 -------------------------------------------------------------------------------
 ### record-schema
@@ -510,7 +518,7 @@ The new Lancaster record schema.
 ```
 
 #### See Also:
-* [def-record-schema](#def-record-schema)
+* [def-record-schema](#def-record-schema) Defines a var w/ a record schema.
 
 -------------------------------------------------------------------------------
 ### enum-schema
@@ -540,7 +548,7 @@ The new Lancaster enum schema.
 ```
 
 #### See Also
-* [def-enum-schema](#def-enum-schema)
+* [def-enum-schema](#def-enum-schema) Defines a var w/ an enum schema.
 
 -------------------------------------------------------------------------------
 ### fixed-schema
@@ -568,7 +576,7 @@ The new Lancaster fixed schema.
 ```
 
 #### See Also
-* [def-fixed-schema](#def-fixed-schema)
+* [def-fixed-schema](#def-fixed-schema) Defines a var w/ a fixed schema.
 
 -------------------------------------------------------------------------------
 ### array-schema
@@ -591,7 +599,7 @@ The new Lancaster array schema.
 ```
 
 #### See Also
-* [def-array-schema](#def-array-schema)
+* [def-array-schema](#def-array-schema) Defines a var w/ an array schema.
 
 -------------------------------------------------------------------------------
 ### map-schema
@@ -615,9 +623,9 @@ The new Lancaster map schema.
 ```
 
 #### See Also
-* [def-map-schema](#def-map-schema)
-* [flex-map-schema](#flex-map-schema)
-* [def-flex-map-schema](#def-flex-map-schema)
+* [def-map-schema](#def-map-schema) Defines a var w/ a map schema.
+* [flex-map-schema](#flex-map-schema) Creates a flex-map schema. Flex map keys may be of any schema type.
+* [def-flex-map-schema](#def-flex-map-schema) Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
 
 -------------------------------------------------------------------------------
 ### flex-map-schema
@@ -644,8 +652,8 @@ The new Lancaster flex-map schema.
   (l/flex-map-schema l/int-schema l/string-schema))
 ```
 #### See Also
-* [def-flex-map-schema](#def-flex-map-schema)
-* [map-schema](#map-schema)
+* [def-flex-map-schema](#def-flex-map-schema) Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
+* [map-schema](#map-schema) Creates a map schema. Keys must be strings.
 
 -------------------------------------------------------------------------------
 ### union-schema
@@ -670,7 +678,7 @@ The new Lancaster union schema.
 ```
 
 #### See Also
-* [def-union-schema](#def-union-schema)
+* [def-union-schema](#def-union-schema) Defines a var w/ a union schema.
 
 -------------------------------------------------------------------------------
 ### merged-record-schema
@@ -704,8 +712,8 @@ The new Lancaster record schema.
 ```
 
 #### See also
-* [def-merged-record-schema](#def-merged-record-schema)
-* [record-schema](#record-schema)
+* [def-merged-record-schema](#def-merged-record-schema) Defines a var w/ a record schema which contains all the fields of all record schemas passed in.
+* [record-schema](#record-schema) Creates a record schema.
 
 -------------------------------------------------------------------------------
 ### maybe
@@ -727,7 +735,7 @@ The new Lancaster union schema.
 ```
 
 #### See also
-* [def-maybe-schema](#def-maybe-schema)
+* [def-maybe-schema](#def-maybe-schema) Defines a var w/ a nillable schema.
 
 -------------------------------------------------------------------------------
 ### serialize
@@ -753,9 +761,8 @@ A byte array containing the Avro-encoded data.
                                          :age 22}))
 ```
 #### See also
-* [deserialize](#deserialize)
-* [deserialize-same](#deserialize-same)
-
+* [deserialize](#deserialize) Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
+* [deserialize-same](#deserialize-) Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
 
 -------------------------------------------------------------------------------
 ### deserialize
@@ -809,9 +816,9 @@ The deserialized data.
 ;; {:name "Alice", :age 20, :nickname "no nick", :favorite-number -1}
 ```
 #### See also
-* [deserialize-same](#deserialize-same)
-* [serialize](#serialize)
-
+* [serialize](#serialize) Serializes data to a byte array.
+* [deserialize-same](#deserialize-) Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
+resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution).
 
 -------------------------------------------------------------------------------
 ### deserialize-same
@@ -827,7 +834,8 @@ should always be used to deserialize. The writer's schema
 (in [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas))
 should always be stored or transmitted with encoded data. If the schema specified
 in this function does not match the schema with which the data was encoded,
-the function will fail, possibly in strange ways.
+the function will fail, possibly in strange ways. You should generally use
+the [deserialize](#deserialize) function instead.
 
 #### Parameters:
 * `schema`: The reader's and writer's Lancaster schema for the data
@@ -850,8 +858,8 @@ The deserialized data.
 ```
 
 #### See also
-* [deserialize](#deserialize)
-* [serialize](#serialize)
+* [serialize](#serialize) Serializes data to a byte array.
+* [deserialize](#deserialize) Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
 
 -------------------------------------------------------------------------------
 ### json->schema
