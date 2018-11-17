@@ -73,8 +73,11 @@
    size :- s/Int]
   (schemas/schema :fixed name-kw size))
 
-;; TODO: Document this
 (s/defn flex-map-schema :- LancasterSchema
+  "Creates a Lancaster schema object representing a map of keys
+   to values, with the keys and values being described by the
+   given schemas. Differs from map-schema, which only allows
+   string keys."
   [name-kw :- s/Keyword
    keys-schema :- LancasterSchema
    values-schema :- LancasterSchema]

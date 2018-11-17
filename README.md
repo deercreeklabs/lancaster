@@ -68,8 +68,8 @@ serialize data, and then deserialize it again.
 (require '[deercreeklabs.lancaster :as l])
 
 (l/def-record-schema person-schema
-  [:name l/string-schema "no name"] ;; [field-name field-schema default (optional)]
-  [:age l/int-schema]               ;; [field-name field-schema] (no default)
+  [:name l/string-schema]
+  [:age l/int-schema]
   [:dog-name (l/maybe l/string-schema)] ;; l/maybe makes field nillable
   [:favorite-numbers (l/array-schema l/int-schema)]) ;; array of ints
 
@@ -84,12 +84,7 @@ serialize data, and then deserialize it again.
 ;; {:name "Alice" :age 40 :dog-name nil :favorite-numbers [12 89]}
 ```
 
-# API Documentation
-All public vars, functions, and macros are in the `deercreeklabs.lancaster`
-namespace. All other namespaces should be considered private implementation
-details that may change.
-
-## Data types
+# Data types
 
 *Serialization*
 
@@ -138,7 +133,7 @@ Avro Type | Clojure Type | ClojureScript Type
 ## Notes About Union Data Types
 TBD
 
-## Creating and Manipulating Schema objects
+# Creating Schema objects
 Lancaster schema objects are required for serialization and deserialization.
 This can be done in two ways:
 1. Create schema objects from an existing Avro schema in JSON format.
@@ -178,6 +173,7 @@ available.
 * [def-enum-schema](#def-enum-schema)
 * [def-fixed-schema](#def-fixed-schema)
 * [def-map-schema](#def-map-schema)
+* [def-flex-map-schema](#def-flex-map-schema)
 * [def-record-schema](#def-record-schema)
 * [def-union-schema](#def-union-schema)
 
@@ -186,10 +182,221 @@ available.
 * [enum-schema](#enum-schema)
 * [fixed-schema](#fixed-schema)
 * [map-schema](#map-schema)
+* [flex-map-schema](#flex-map-schema)
 * [record-schema](#record-schema)
 * [union-schema](#union-schema)
 
 
+# API Documentation
+All public vars, functions, and macros are in the `deercreeklabs.lancaster`
+namespace. All other namespaces should be considered private implementation
+details that may change.
+
+-------------------------------------------------------------------------------
+### def-record-schema
+```clojure
+(def-record-schema name-symbol & fields)
+```
+Defines a var whose value is a Lancaster schema object representing an Avro
+[```record```](http://avro.apache.org/docs/current/spec.html#schema_record),
+For cases where a macro is not appropriate, use the
+[record-schema](#record-schema) function instead.
+
+#### Parameters:
+* `name-symbol`: The symbol naming this schema object. The Avro schema name
+is also derived from this symbol. See
+[Names and Namespaces](#names-and-namespaces) for more information about
+schema names. The name-symbol must start with a letter and subsequently
+only contain letters, numbers, or hyphens.
+* `fields`: Field definitions. Field definitions are sequences
+            of the form ```[field-name-kw field-schema default-value]```.
+    * `field-name-kw`: A keyword naming this field.
+    * `field-schema`: A Lancaster schema object representing the field's schema.
+    * `default-value`: Optional. The default data value for this field.
+
+#### Return Value:
+The defined var
+
+#### Example
+```clojure
+(l/def-record-schema person-schema
+  [:name l/string-schema "no name"]
+  [:age l/int-schema])
+```
+
+#### See Also:
+* [record-schema](#record-schema)
+
+-------------------------------------------------------------------------------
+### def-enum-schema
+```clojure
+(def-enum-schema name-symbol & symbols)
+```
+Defines a var whose value is a Lancaster schema object representing an Avro
+[```enum```](http://avro.apache.org/docs/current/spec.html#Enums),
+For cases where a macro is not appropriate, use the
+[enum-schema](#enum-schema) function instead.
+
+#### Parameters:
+* `name-symbol`: The symbol naming this schema object. The Avro schema name
+is also derived from this symbol. See
+[Names and Namespaces](#names-and-namespaces) for more information about
+schema names. The name-symbol must start with a letter and subsequently
+only contain letters, numbers, or hyphens.
+* `symbols`: Keywords representing the symbols in the enum.
+
+#### Return Value:
+The defined var
+
+#### Example
+```clojure
+(l/def-enum-scheema suite-schema
+  :clubs :diamonds :hearts :spades)
+```
+
+#### See Also:
+* [enum-schema](#enum-schema)
+
+-------------------------------------------------------------------------------
+### def-fixed-schema
+```clojure
+(def-fixed-schema name-symbol size)
+```
+Defines a var whose value is a Lancaster schema object representing an Avro
+[```fixed```](http://avro.apache.org/docs/current/spec.html#Fixed),
+For cases where a macro is not appropriate, use the
+[fixed-schema](#fixed-schema) function instead.
+
+#### Parameters:
+* `name-symbol`: The symbol naming this schema object. The Avro schema name
+is also derived from this symbol. See
+[Names and Namespaces](#names-and-namespaces) for more information about
+schema names. The name-symbol must start with a letter and subsequently
+only contain letters, numbers, or hyphens.
+* `size`: An integer representing the size of this fixed in bytes.
+
+#### Return Value:
+The defined var
+
+#### Example
+```clojure
+(l/def-fixed-scheema md5-schema
+  16)
+```
+
+#### See Also:
+* [fixed-schema](#fixed-schema)
+
+-------------------------------------------------------------------------------
+### def-array-schema
+```clojure
+(def-array-schema name-symbol items-schema)
+```
+Defines a var whose value is a Lancaster schema object representing an Avro
+[```array```](http://avro.apache.org/docs/current/spec.html#Arrays),
+For cases where a macro is not appropriate, use the
+[array-schema](#array-schema) function instead.
+
+#### Parameters:
+* `name-symbol`: The symbol naming this schema object.
+* `items-schema`: A Lancaster schema object describing the items in the array.
+
+#### Return Value:
+The defined var
+
+#### Example
+```clojure
+(l/def-array-scheema numbers-schema
+  l/int-schema)
+```
+
+#### See Also:
+* [array-schema](#array-schema)
+
+-------------------------------------------------------------------------------
+### def-map-schema
+```clojure
+(def-map-schema name-symbol values-schema)
+```
+Defines a var whose value is a Lancaster schema object representing an Avro
+[```map```](http://avro.apache.org/docs/current/spec.html#Maps),
+For cases where a macro is not appropriate, use the
+[map-schema](#map-schema) function instead.
+
+#### Parameters:
+* `name-symbol`: The symbol naming this schema object.
+* `values-schema`: A Lancaster schema object describing the values in the map.
+Map keys are always strings.
+
+#### Return Value:
+The defined var
+
+#### Example
+```clojure
+(l/def-map-scheema name-to-age-schema
+  l/int-schema)
+```
+
+#### See Also:
+* [map-schema](#map-schema)
+
+-------------------------------------------------------------------------------
+### def-flex-map-schema
+```clojure
+(def-flex-map-schema name-symbol keys-schema values-schema)
+```
+Defines a var whose value is a Lancaster schema object representing a
+map of keys to values, with the keys and values being described by the
+given schemas. Differs from def-map-schema, which only allows string keys.
+Note that flex-maps are not part of the
+[Avro Specification](http://avro.apache.org/docs/current/spec.html)
+and are implemented using an Avro `record`.
+For cases where a macro is not appropriate, use the
+[flex-map-schema](#flex-map-schema) function instead.
+
+#### Parameters:
+* `name-symbol`: The symbol naming this schema object.
+* `keys-schema`: A Lancaster schema object describing the keys in the map.
+* `values-schema`: A Lancaster schema object describing the values in the map.
+
+#### Return Value:
+The defined var
+
+#### Example
+```clojure
+(l/def-flex-map-scheema id-to-name-schema
+  l/int-schema l/string-schema)
+```
+
+#### See Also:
+* [flex-map-schema](#flex-map-schema)
+
+-------------------------------------------------------------------------------
+### def-union-schema
+```clojure
+(def-union-schema name-symbol & member-schemas)
+```
+Defines a var whose value is a Lancaster schema object representing an Avro
+[```union```](http://avro.apache.org/docs/current/spec.html#Unions),
+For cases where a macro is not appropriate, use the
+[union-schema](#union-schema) function instead.
+
+#### Parameters:
+* `name-symbol`: The symbol naming this schema object.
+* `member-schemas`: Lancaster schema objects representing the members of the
+union.
+
+#### Return Value:
+The defined var
+
+#### Example
+```clojure
+(l/def-union-scheema maybe-name-schema
+  l/null-schema l/int-schema)
+```
+
+#### See Also:
+* [union-schema](#union-schema)
 
 -------------------------------------------------------------------------------
 ### record-schema
@@ -223,6 +430,9 @@ The new Lancaster record schema.
                     [:age l/int-schema]]))
 ```
 
+#### See Also:
+* [def-record-schema](#def-record-schema)
+
 -------------------------------------------------------------------------------
 ### enum-schema
 ```clojure
@@ -250,6 +460,9 @@ The new Lancaster enum schema.
   (l/enum-schema :suite [:clubs :diamonds :hearts :spades]))
 ```
 
+#### See Also
+* [def-enum-schema](#def-enum-schema)
+
 -------------------------------------------------------------------------------
 ### fixed-schema
 ```clojure
@@ -275,6 +488,9 @@ The new Lancaster fixed schema.
   (l/fixed-schema :md5 16))
 ```
 
+#### See Also
+* [def-fixed-schema](#def-fixed-schema)
+
 -------------------------------------------------------------------------------
 ### array-schema
 ```clojure
@@ -295,6 +511,9 @@ The new Lancaster array schema.
 (def numbers-schema (l/array-schema l/int-schema))
 ```
 
+#### See Also
+* [def-array-schema](#def-array-schema)
+
 -------------------------------------------------------------------------------
 ### map-schema
 ```clojure
@@ -313,8 +532,41 @@ The new Lancaster map schema.
 
 #### Examples
 ```clojure
-(def name->age-schema (l/map-schema l/int-schema))
+(def name-to-age-schema (l/map-schema l/int-schema))
 ```
+
+#### See Also
+* [def-map-schema](#def-map-schema)
+* [flex-map-schema](#flex-map-schema)
+* [def-flex-map-schema](#def-flex-map-schema)
+
+-------------------------------------------------------------------------------
+### flex-map-schema
+```clojure
+(flex-map-schema keys-schema values-schema)
+```
+Creates a Lancaster schema object representing a
+map of keys to values, with the keys and values being described by the
+given schemas. Differs from map-schema, which only allows string keys.
+Note that flex-maps are not part of the
+[Avro Specification](http://avro.apache.org/docs/current/spec.html)
+and are implemented using an Avro `record`.
+
+#### Parameters:
+* `keys-schema`: A Lancaster schema object describing the keys in the map.
+* `values-schema`: A Lancaster schema object describing the values in the map.
+
+#### Return Value:
+The new Lancaster flex-map schema.
+
+#### Examples
+```clojure
+(def id-to-name-schema
+  (l/flex-map-schema l/int-schema l/string-schema))
+```
+#### See Also
+* [def-flex-map-schema](#def-flex-map-schema)
+* [map-schema](#map-schema)
 
 -------------------------------------------------------------------------------
 ### union-schema
@@ -337,6 +589,9 @@ The new Lancaster union schema.
 (def maybe-name-schema
   (l/union-schema [l/null-schema l/string-schema]))
 ```
+
+#### See Also
+* [def-union-schema](#def-union-schema)
 
 -------------------------------------------------------------------------------
 ### merge-record-schemas
@@ -403,8 +658,8 @@ Serializes data to a byte array, using the given Lancaster schema.
 A byte array containing the Avro-encoded data.
 
 #### See also
-* [deserialize-same](#deserialize-same)
 * [deserialize](#deserialize)
+* [deserialize-same](#deserialize-same)
 
 #### Example
 ```clojure
