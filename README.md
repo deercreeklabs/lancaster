@@ -14,7 +14,7 @@ Using Leiningen / Clojars:
 
 # About
 Lancaster is an [Apache Avro](http://avro.apache.org/docs/current/)
-library for Clojure and ClojureScript and aims to be fully compliant
+library for Clojure and ClojureScript. It aims to be fully compliant
 with the [Avro Specification](http://avro.apache.org/docs/current/spec.html).
 It is assumed that the reader of this documentation is familiar with
 Avro and Avro terminology. If this is your first exposure to Avro,
