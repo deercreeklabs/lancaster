@@ -64,7 +64,7 @@ airplane manufactured by [Avro Aircraft](https://en.wikipedia.org/wiki/Avro).
 
 
 # Examples
-Here's an introductory example of using Lancaster to define a schema,
+Here is an introductory example of using Lancaster to define a schema,
 serialize data, and then deserialize it again.
 
 ```clojure
@@ -72,19 +72,44 @@ serialize data, and then deserialize it again.
 
 (l/def-record-schema person-schema
   [:name l/string-schema]
-  [:age l/int-schema]
-  [:dog-name (l/maybe l/string-schema)] ;; l/maybe makes field nillable
-  [:favorite-numbers (l/array-schema l/int-schema)]) ;; array of ints
+  [:age l/int-schema])
 
 (def alice
   {:name "Alice"
-   :age 40
-   :favorite-numbers [12 89]})
+   :age 40})
 
 (def encoded (l/serialize person-schema alice))
 
 (l/deserialize person-schema person-schema encoded)
-;; {:name "Alice" :age 40 :dog-name nil :favorite-numbers [12 89]}
+;; {:name "Alice" :age 40}
+```
+
+Here is a more complex example, using nested schemas and
+the `maybe` function to make fields nillable:
+```clojure
+(require '[deercreeklabs.lancaster :as l])
+
+(l/def-enum-schema hand-schema
+  :left :right)
+
+(l/def-record-schema person-schema
+  [:name l/string-schema]
+  [:age l/int-schema]
+  [:dominant-hand hand-schema]
+  [:favorite-integers (l/array-schema l/int-schema)]
+  [:favorite-color (l/maybe l/string-schema)]) ;; Field is nillable
+
+(def alice
+  {:name "Alice"
+   :age 40
+   :favorite-integers [12 59]
+   :dominant-hand :left})
+
+(def encoded (l/serialize person-schema alice))
+
+(l/deserialize person-schema person-schema encoded)
+;; {:name "Alice", :age 40, :dominant-hand :left, :favorite-integers [12 59], :favorite-color nil}
+
 ```
 
 # Creating Schema Objects
@@ -207,6 +232,7 @@ Avro Type | Clojure Type | ClojureScript Type
 `union` | Data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. If the union schema requires wrapping, the returned data will be wrapped. See [Notes About Union Data Types](#notes-about-union-data-types) below.
 
 ## Notes About Union Data Types
+
 To quote the [Avro spec](http://avro.apache.org/docs/current/spec.html#Unions):
 
 *Unions may not contain more than one schema with the same type, except for the named types record, fixed and enum. For example, unions containing two array types or two map types are not permitted, but two types with different names are permitted.*
@@ -224,8 +250,25 @@ A Lancaster union schema is *ambiguous* if it contains:
 Given a Clojure hash-map, and an ambiguous union schema, which schema should
 be used to serialize it? This is resolved via *wrapping*.
 
-Wrapping indicates the schema of the given data. This is easily done with the
-[wrap](#wrap) function.
+Wrapping indicates the schema of the given data. Wrapped data is a two-element
+vector. The first element is the EDN name of the schema, and the second
+element is the data itself. For example:
+```clojure
+[:user/dog {:name "Fido", :owner "Roger"}]
+```
+
+Wrapping is most easily accomplished using the [wrap](#wrap) function.
+
+When deserializing data using an ambiguous union, wrapped data is returned.
+This allows you to take different actions based on the schema of the data.
+To access the schema name of the wrapped data, use the
+[schema-name](#schema-name) function.
+To access the data inside wrapped data, use the [data](#data) function.
+
+### Functions For Wrapping and Unwrapping Data
+* [wrap](#wrap): Wraps the given data for serializing with an ambigous union.
+* [schema-name](#schema-name): Returns the schema-name portion of wrapped data.
+* [data](#data): Returns the data portion of wrapped data.
 
 ### Example
 ```clojure
@@ -256,6 +299,8 @@ Wrapping indicates the schema of the given data. This is easily done with the
 ;; This works now
 (l/serialize person-or-dog-schema wrapped-fido)
 ;; #object["[B" 0x2cc2072e "[B@2cc2072e"]
+
+;; Note that deserialized data is returned in wrapped
 ```
 
 # Names and Namespaces
@@ -340,7 +385,7 @@ Defines a var whose value is a Lancaster schema object representing an Avro
 For cases where a macro is not appropriate, use the
 [record-schema](#record-schema) function instead.
 
-#### Parameters:
+#### Parameters
 * `name-symbol`: The symbol naming this schema object. The Avro schema name
 is also derived from this symbol. See
 [Names and Namespaces](#names-and-namespaces) for more information about
@@ -352,7 +397,7 @@ only contain letters, numbers, or hyphens.
     * `field-schema`: A Lancaster schema object representing the field's schema.
     * `default-value`: Optional. The default data value for this field.
 
-#### Return Value:
+#### Return Value
 The defined var
 
 #### Example
@@ -362,7 +407,7 @@ The defined var
   [:age l/int-schema])
 ```
 
-#### See Also:
+#### See Also
 * [record-schema](#record-schema) Creates a record schema.
 
 -------------------------------------------------------------------------------
@@ -376,7 +421,7 @@ The record schema contains all the fields of all record schemas passed in.
 For cases where a macro is not appropriate, use the
 [merged-record-schema](#merged-record-schema) function instead.
 
-#### Parameters:
+#### Parameters
 * `name-symbol`: The symbol naming this schema object. The Avro schema name
 is also derived from this symbol. See
 [Names and Namespaces](#names-and-namespaces) for more information about
@@ -384,7 +429,7 @@ schema names. The name-symbol must start with a letter and subsequently
 only contain letters, numbers, or hyphens.
 * `record-schemas`: Lancaster schema record objects to be merged.
 
-#### Return Value:
+#### Return Value
 The defined var
 
 #### Example
@@ -401,7 +446,7 @@ The defined var
   person-schema location-schema)
 ```
 
-#### See Also:
+#### See Also
 * [merged-record-schema](merged-record-schema) Creates a record schema which contains all the fields of all record schemas passed in.
 * [record-schema](#record-schema) Creates a record schema.
 
@@ -415,7 +460,7 @@ Defines a var whose value is a Lancaster schema object representing an Avro
 For cases where a macro is not appropriate, use the
 [enum-schema](#enum-schema) function instead.
 
-#### Parameters:
+#### Parameters
 * `name-symbol`: The symbol naming this schema object. The Avro schema name
 is also derived from this symbol. See
 [Names and Namespaces](#names-and-namespaces) for more information about
@@ -423,7 +468,7 @@ schema names. The name-symbol must start with a letter and subsequently
 only contain letters, numbers, or hyphens.
 * `symbol-keywords`: Keywords representing the symbols in the enum.
 
-#### Return Value:
+#### Return Value
 The defined var
 
 #### Example
@@ -432,7 +477,7 @@ The defined var
   :clubs :diamonds :hearts :spades)
 ```
 
-#### See Also:
+#### See Also
 * [enum-schema](#enum-schema) Creates an enum schema.
 
 -------------------------------------------------------------------------------
@@ -445,7 +490,7 @@ Defines a var whose value is a Lancaster schema object representing an Avro
 For cases where a macro is not appropriate, use the
 [fixed-schema](#fixed-schema) function instead.
 
-#### Parameters:
+#### Parameters
 * `name-symbol`: The symbol naming this schema object. The Avro schema name
 is also derived from this symbol. See
 [Names and Namespaces](#names-and-namespaces) for more information about
@@ -453,7 +498,7 @@ schema names. The name-symbol must start with a letter and subsequently
 only contain letters, numbers, or hyphens.
 * `size`: An integer representing the size of this fixed in bytes.
 
-#### Return Value:
+#### Return Value
 The defined var
 
 #### Example
@@ -462,7 +507,7 @@ The defined var
   16)
 ```
 
-#### See Also:
+#### See Also
 * [fixed-schema](#fixed-schema) Creates a fixed schema.
 
 -------------------------------------------------------------------------------
@@ -475,11 +520,11 @@ Defines a var whose value is a Lancaster schema object representing an Avro
 For cases where a macro is not appropriate, use the
 [array-schema](#array-schema) function instead.
 
-#### Parameters:
+#### Parameters
 * `name-symbol`: The symbol naming this schema object.
 * `items-schema`: A Lancaster schema object describing the items in the array.
 
-#### Return Value:
+#### Return Value
 The defined var
 
 #### Example
@@ -488,7 +533,7 @@ The defined var
   l/int-schema)
 ```
 
-#### See Also:
+#### See Also
 * [array-schema](#array-schema) Creates an array schema.
 
 -------------------------------------------------------------------------------
@@ -501,12 +546,12 @@ Defines a var whose value is a Lancaster schema object representing an Avro
 For cases where a macro is not appropriate, use the
 [map-schema](#map-schema) function instead.
 
-#### Parameters:
+#### Parameters
 * `name-symbol`: The symbol naming this schema object.
 * `values-schema`: A Lancaster schema object describing the values in the map.
 Map keys are always strings.
 
-#### Return Value:
+#### Return Value
 The defined var
 
 #### Example
@@ -515,7 +560,7 @@ The defined var
   l/int-schema)
 ```
 
-#### See Also:
+#### See Also
 * [map-schema](#map-schema) Creates a map schema.
 
 -------------------------------------------------------------------------------
@@ -532,12 +577,12 @@ and are implemented using an Avro `record`.
 For cases where a macro is not appropriate, use the
 [flex-map-schema](#flex-map-schema) function instead.
 
-#### Parameters:
+#### Parameters
 * `name-symbol`: The symbol naming this schema object.
 * `keys-schema`: A Lancaster schema object describing the keys in the map.
 * `values-schema`: A Lancaster schema object describing the values in the map.
 
-#### Return Value:
+#### Return Value
 The defined var
 
 #### Example
@@ -546,7 +591,7 @@ The defined var
   l/int-schema l/string-schema)
 ```
 
-#### See Also:
+#### See Also
 * [flex-map-schema](#flex-map-schema) Creates a flex-map schema.
 
 -------------------------------------------------------------------------------
@@ -559,12 +604,12 @@ Defines a var whose value is a Lancaster schema object representing an Avro
 For cases where a macro is not appropriate, use the
 [union-schema](#union-schema) function instead.
 
-#### Parameters:
+#### Parameters
 * `name-symbol`: The symbol naming this schema object.
 * `member-schemas`: Lancaster schema objects representing the members of the
 union.
 
-#### Return Value:
+#### Return Value
 The defined var
 
 #### Example
@@ -573,7 +618,7 @@ The defined var
   l/null-schema l/string-schema)
 ```
 
-#### See Also:
+#### See Also
 * [union-schema](#union-schema) Creates a union schema.
 
 -------------------------------------------------------------------------------
@@ -587,12 +632,12 @@ members of the union are null-schema and the given schema. Makes a
 schema nillable. For cases where a macro is not appropriate, use the
 [maybe](#maybe) function instead.
 
-#### Parameters:
+#### Parameters
 * `name-symbol`: The symbol naming this schema object.
 * `schema`: Lancaster schema object representing the non-nil member
 of the union.
 
-#### Return Value:
+#### Return Value
 The defined var
 
 #### Example
@@ -601,7 +646,7 @@ The defined var
   l/string-schema)
 ```
 
-#### See Also:
+#### See Also
 * [maybe](#maybe) Creates a nillable schema.
 
 -------------------------------------------------------------------------------
@@ -615,7 +660,7 @@ with the given name keyword and field definitions. For a more
 concise way to declare a record schema, see
 [def-record-schema](#def-record-schema).
 
-#### Parameters:
+#### Parameters
 * `name-kw`: A keyword naming this ```record```. May or may not be
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
@@ -625,7 +670,7 @@ concise way to declare a record schema, see
     * `field-schema`: A Lancaster schema object representing the field's schema.
     * `default-value`: Optional. The default data value for this field.
 
-#### Return Value:
+#### Return Value
 The new Lancaster record schema.
 
 #### Example
@@ -636,7 +681,7 @@ The new Lancaster record schema.
                     [:age l/int-schema]]))
 ```
 
-#### See Also:
+#### See Also
 * [def-record-schema](#def-record-schema) Defines a var w/ a record schema.
 
 -------------------------------------------------------------------------------
@@ -650,14 +695,14 @@ with the given name and keyword symbols. For a more
 concise way to declare an enum schema, see
 [def-enum-schema](#def-enum-schema).
 
-#### Parameters:
+#### Parameters
 * `name-kw`: A keyword naming this ```enum```. May or may not be
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
 * `symbol-keywords`: A sequence of keywords, representing the symbols in
              the enum.
 
-#### Return Value:
+#### Return Value
 The new Lancaster enum schema.
 
 #### Example
@@ -679,13 +724,13 @@ Creates a Lancaster schema object representing an Avro
    with the given name and size. For a more
    concise way to declare a fixed schema, see [[def-fixed-schema]].
 
-#### Parameters:
+#### Parameters
 * `name-kw`: A keyword naming this ```fixed```. May or may not be
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
 * `size`: An integer representing the size of this fixed in bytes.
 
-#### Return Value:
+#### Return Value
 The new Lancaster fixed schema.
 
 #### Example
@@ -706,10 +751,10 @@ Creates a Lancaster schema object representing an Avro
 [```array```](http://avro.apache.org/docs/current/spec.html#Arrays)
 with the given items schema.
 
-#### Parameters:
+#### Parameters
 * `items-schema`: A Lancaster schema object describing the items in the array.
 
-#### Return Value:
+#### Return Value
 The new Lancaster array schema.
 
 #### Example
@@ -729,11 +774,11 @@ Creates a Lancaster schema object representing an Avro
 [```map```](http://avro.apache.org/docs/current/spec.html#Maps)
 with the given values schema.
 
-#### Parameters:
+#### Parameters
 * `values-schema`: A Lancaster schema object describing the values in the map.
 Map keys are always strings.
 
-#### Return Value:
+#### Return Value
 The new Lancaster map schema.
 
 #### Examples
@@ -758,14 +803,14 @@ Note that flex-maps are not part of the
 [Avro Specification](http://avro.apache.org/docs/current/spec.html)
 and are implemented using an Avro `record`.
 
-#### Parameters:
+#### Parameters
 * `name-kw`: A keyword naming this ```flex-map```. May or may not be
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
 * `keys-schema`: A Lancaster schema object describing the keys in the map.
 * `values-schema`: A Lancaster schema object describing the values in the map.
 
-#### Return Value:
+#### Return Value
 The new Lancaster flex-map schema.
 
 #### Examples
@@ -786,11 +831,11 @@ Creates a Lancaster schema object representing an Avro
 [```union```](http://avro.apache.org/docs/current/spec.html#Unions)
 with the given member schemas.
 
-#### Parameters:
+#### Parameters
 * `members-schemas`: A sequence of Lancaster schema objects that are the
 members of the union.
 
-#### Return Value:
+#### Return Value
 The new Lancaster union schema.
 
 #### Examples
@@ -810,13 +855,13 @@ The new Lancaster union schema.
 Creates a Lancaster record schema which contains all the fields
 of all record schemas passed in.
 
-#### Parameters:
+#### Parameters
 * `name-kw`: A keyword naming the new combined record schema. May or may not be
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
 * `schemas`: A sequence of Lancaster schema record objects to be merged.
 
-#### Return Value:
+#### Return Value
 The new Lancaster record schema.
 
 #### Example
@@ -845,10 +890,10 @@ The new Lancaster record schema.
 Creates a Lancaster union schema whose members are l/null-schema
 and the given schema. Makes a schema nillable.
 
-#### Parameters:
+#### Parameters
 * `schema`: The Lancaster schema to be made nillable.
 
-#### Return Value:
+#### Return Value
 The new Lancaster union schema.
 
 #### Example
@@ -866,11 +911,11 @@ The new Lancaster union schema.
 ```
 Serializes data to a byte array, using the given Lancaster schema.
 
-#### Parameters:
+#### Parameters
 * `writer-schema`: The Lancaster schema that describes the data to be written.
 * `data`: The data to be written.
 
-#### Return Value:
+#### Return Value
 A byte array containing the Avro-encoded data.
 
 #### Example
@@ -909,7 +954,7 @@ uses the following default values, depending on the field type:
 * `array`: `[]`
 * `map`: `{}`
 
-#### Parameters:
+#### Parameters
 * `reader-schema`: The reader's Lancaster schema for the data
 * `writer-schema`: The writer's Lancaster schema for the data
 * `ba`: A byte array containing the encoded data
@@ -959,7 +1004,7 @@ in this function does not match the schema with which the data was encoded,
 the function will fail, possibly in strange ways. You should generally use
 the [deserialize](#deserialize) function instead.
 
-#### Parameters:
+#### Parameters
 * `schema`: The reader's and writer's Lancaster schema for the data
 * `ba`: A byte array containing the encoded data
 
@@ -990,12 +1035,12 @@ The deserialized data.
 ```
 Creates a Lancaster schema object from an Avro schema in JSON format.
 
-#### Parameters:
+#### Parameters
 * `json`: A JSON string representing the Avro schema. The JSON string
 must comply with the
 [Avro Specification](http://avro.apache.org/docs/current/spec.html).
 
-#### Return Value:
+#### Return Value
 The new Lancaster schema.
 
 #### Example
@@ -1012,11 +1057,11 @@ The new Lancaster schema.
 ```clojure
 (wrap data-schema data)
 ```
-Wraps the given data for use in an ambigous union. See
+Wraps the given data for serializing with an ambigous union. See
 [Notes About Union Data Types](#notes-about-union-data-types)
 for more information.
 
-#### Parameters:
+#### Parameters
 * `data-schema`: The Lancaster schema of the data to be wrapped
 * `data`: The data to be wrapped.
 
@@ -1047,12 +1092,102 @@ The wrapped data.
 ;; Wrapping the data before serialization tells the union which type
 ;; to use when serializing.
 (def wrapped-fido (l/wrap dog-schema fido))
-;; {:dog {:name "Fido" :owner "Roger"}}
+;; [:user/dog {:name "Fido", :owner "Roger"}]
 
 ;; This works now
 (l/serialize person-or-dog-schema wrapped-fido)
 ;; #object["[B" 0x2cc2072e "[B@2cc2072e"]
 ```
+
+#### See Also
+* [schema-name](#schema-name): Returns the schema-name portion of wrapped data
+* [data](#data): Returns the data portion of wrapped data
+
+-------------------------------------------------------------------------------
+### schema-name
+```clojure
+(schema-name wrapped-data)
+```
+Returns the schema-name portion of wrapped data. See
+[Notes About Union Data Types](#notes-about-union-data-types)
+for more information.
+
+#### Parameters
+* `wrapped-data`: The wrapped data
+
+#### Return Value
+The EDN name of the schema that represents the wrapped data
+
+#### Example
+```clojure
+;; Define two record schemas
+(l/def-record-schema person-schema
+  [:name l/string-schema "No name"]
+  [:age l/int-schema 0])
+
+(l/def-record-schema dog-schema
+  [:name l/string-schema]
+  [:owner l/string-schema])
+
+;; Define an ambiguous union schema, using the two records
+(l/def-union-schema person-or-dog-schema
+  person-schema dog-schema)
+
+;; Wrapping the data before serialization tells the union which type
+;; to use when serializing.
+(def wrapped-fido (l/wrap dog-schema fido))
+;; [:user/dog {:name "Fido", :owner "Roger"}]
+
+(l/schema-name wrapped-fido)
+;; :user/dog
+```
+
+#### See Also
+* [wrap](#wrap): Wraps the given data for serializing with an ambigous union.
+* [data](#data): Returns the data portion of wrapped data.
+
+-------------------------------------------------------------------------------
+### data
+```clojure
+(data wrapped-data)
+```
+Returns the data portion of wrapped data. See
+[Notes About Union Data Types](#notes-about-union-data-types)
+for more information.
+
+#### Parameters
+* `wrapped-data`: The wrapped data
+
+#### Return Value
+The data portion of the wrapped data
+
+#### Example
+```clojure
+;; Define two record schemas
+(l/def-record-schema person-schema
+  [:name l/string-schema "No name"]
+  [:age l/int-schema 0])
+
+(l/def-record-schema dog-schema
+  [:name l/string-schema]
+  [:owner l/string-schema])
+
+;; Define an ambiguous union schema, using the two records
+(l/def-union-schema person-or-dog-schema
+  person-schema dog-schema)
+
+;; Wrapping the data before serialization tells the union which type
+;; to use when serializing.
+(def wrapped-fido (l/wrap dog-schema fido))
+;; [:user/dog {:name "Fido", :owner "Roger"}]
+
+(l/data wrapped-fido)
+;; {:name "Fido", :owner "Roger"}
+```
+
+#### See Also
+* [wrap](#wrap): Wraps the given data for serializing with an ambigous union.
+* [schema-name](#schema-name): Returns the schema-name portion of wrapped data.
 
 -------------------------------------------------------------------------------
 ### edn
@@ -1061,7 +1196,7 @@ The wrapped data.
 ```
 Returns the EDN representation of the given Lancaster schema.
 
-#### Parameters:
+#### Parameters
 * `schema`: The Lancaster schema
 
 #### Return Value
@@ -1086,7 +1221,7 @@ EDN representation of the given Lancaster schema
 ```
 Returns an Avro-compliant JSON representation of the given Lancaster schema.
 
-#### Parameters:
+#### Parameters
 * `schema`: The Lancaster schema
 
 #### Return Value
@@ -1112,7 +1247,7 @@ JSON representation of the given Lancaster schema
 Returns a [Plumatic schema](https://github.com/plumatic/schema)
 for the given Lancaster schema
 
-#### Parameters:
+#### Parameters
 * `schema`: The Lancaster schema
 
 #### Return Value
@@ -1136,7 +1271,7 @@ Returns a JSON string containing the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 for the given Lancaster schema.
 
-#### Parameters:
+#### Parameters
 * `schema`: The Lancaster schema
 
 #### Return Value
@@ -1166,7 +1301,7 @@ Returns the 64-bit
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 for the given Lancaster schema.
 
-#### Parameters:
+#### Parameters
 * `schema`: The Lancaster schema
 
 #### Return Value
@@ -1194,7 +1329,7 @@ java.lang.Long. For ClojureScript, it is a goog.math.Long.
 Returns a boolean indicating whether or not the argument is a
 Lancaster schema object.
 
-#### Parameters:
+#### Parameters
 * `arg`: The argument to be tested
 
 #### Return Value
@@ -1231,7 +1366,7 @@ values are used for the primitive data types:
 
 Default data for complex schemas are built up from the primitives.
 
-#### Parameters:
+#### Parameters
 * `schema`: The Lancaster schema
 
 #### Return Value

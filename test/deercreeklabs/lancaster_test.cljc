@@ -1368,3 +1368,11 @@
         decoded (l/deserialize reader-schema writer-schema encoded)
         expected (assoc data :b "")]
     (is (= expected decoded))))
+
+(deftest test-wrapping
+  (let [data {:a 1}
+        schema (l/record-schema ::test-rec [[:a l/int-schema]])
+        wrapped-data (l/wrap schema data)]
+    (is (= [:deercreeklabs.lancaster-test/test-rec {:a 1}] wrapped-data))
+    (is (= :deercreeklabs.lancaster-test/test-rec (l/schema-name wrapped-data)))
+    (is (= data (l/data wrapped-data)))))

@@ -216,6 +216,18 @@
               {:given-arg schema})))
   (u/default-data (edn schema)))
 
+;;;;;;;;; Helper functions for unwrapping union data ;;;;;;;;
+
+(s/defn schema-name :- s/Keyword
+  "Returns the schema-name portion of wrapped data."
+  [wrapped-data :- schemas/WrappedData]
+  (first wrapped-data))
+
+(s/defn data :- s/Any
+  "Returns the data portion of wrapped data."
+  [wrapped-data :- schemas/WrappedData]
+  (peek wrapped-data))
+
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 
 (defmacro def-record-schema
