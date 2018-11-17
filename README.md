@@ -301,9 +301,9 @@ To access the data inside wrapped data, use the [data](#data) function.
 encoded
 ;; #object["[B" 0x2cc2072e "[B@2cc2072e"]
 
-;; Note that deserialized data is returned in wrapped form
+;; Note that deserialized data from an ambiguous union is returned in wrapped form
 (l/deserialize person-or-dog-schema person-or-dog-schema encoded)
-;;
+;; [:user/dog {:name "Fido", :owner "Roger"}]
 ```
 
 # Names and Namespaces
