@@ -11,7 +11,7 @@ Using Leiningen / Clojars:
 
 # About
 Lancaster is an [Apache Avro](http://avro.apache.org/docs/current/)
-library for Clojure and ClojureScript. It aims to be fully compliant
+library for Clojure and ClojureScript and aims to be fully compliant
 with the [Avro Specification](http://avro.apache.org/docs/current/spec.html).
 It is assumed that the reader of this documentation is familiar with
 Avro and Avro terminology. If this is your first exposure to Avro,
@@ -41,29 +41,19 @@ Your mileage may vary.
 
 *Clojure 1.9 on JVM 1.8*
 
-Parameter | Value
-:-------- | -----:
-Lancaster encode ops per sec |     `239,808`
-Lancaster decode ops per sec |     `380,228`
-JSON encode ops per sec |          `141,844`
-JSON decode ops per sec |          `231,481`
-Deflated JSON encode ops per sec |  `30,488`
-Lancaster encoded size |                `14`
-JSON encoded size |                    `142`
-Deflated JSON encoded size |           `105`
+Parameter | Lancaster | JSON | JSON+Deflate
+:-------- | --------: |----: | -----------:
+Encode ops/s | `239,808` | `141,844` | `30,488`
+Decode ops/s | `380,228` | `231,481` | -
+Encoded size (bytes) | 14 | 142 | 105
 
 *ClojureScript 1.10.339 on Node.js 8.10*
 
-Parameter | Value
-:-------- | -----:
-Lancaster encode ops per sec |    `35,211`
-Lancaster decode ops per sec |    `62,112`
-JSON encode ops per sec |         `36,765`
-JSON decode ops per sec |         `11,211`
-Deflated JSON encode ops per sec | `2,890`
-Lancaster encoded size |              `14`
-JSON encoded size |                  `162`
-Deflated JSON encoded size |         `109`
+Parameter | Lancaster | JSON | JSON+Deflate
+:-------- | --------: |----: | -----------:
+Encode ops/s | `35,211` | `36,765` | `2,890`
+Decode ops/s | `62,112` | `11,211` | -
+Encoded size (bytes) | 14 | 162 | 109
 
 ## Project Name
 The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an
@@ -103,23 +93,23 @@ details that may change.
 
 *Serialization*
 
-When serializing data, Lancaster accepts the following types Clojure(Script)
+When serializing data, Lancaster accepts the following Clojure(Script)
 types for the given Avro type:
 
 Avro Type | Acceptable Clojure / ClojureScript Types
 --------- | -------------------------
 `null` | `nil`
 `boolean` | `boolean`
-`int` | `int`, `java.lang.Integer`, `long`, (if in integer range), `java.lang.Long` (if in integer range), `js/Number` (if in integer range)
+`int` | `int`, `java.lang.Integer`, `long (if in integer range)`, `java.lang.Long (if in integer range)`, `js/Number (if in integer range)`
 `long` | `long`, `java.lang.Long`
-`float` | `float`, `java.lang.Float`, `double` (if in float range), `java.lang.Double`, (if in float range), `js/Number` (if in float range)
+`float` | `float`, `java.lang.Float`, `double (if in float range)`, `java.lang.Double (if in float range)`, `js/Number (if in float range)`
 `double` | `double`, `java.lang.Double`, `js/Number`
 `bytes` | `byte-array`, `java.lang.String`, `js/Int8Array`, `js/String`
 `string` | `byte-array`, `java.lang.String`, `js/Int8Array`, `js/String`
 `fixed` | `byte-array`, `js/Int8Array`. Byte array length must equal the size declared in the creation of the Lancaster `fixed` schema.
-`enum` | Clojure(Script) `keyword`
+`enum` | `keyword`
 `array` | Any data that passes `(sequential? data)`
-`map` | Any data that passes `(map? data)`, if all keys are `string`s. Clojure(Script) records *DO NOT* qualify, since their keys are keywords.
+`map` | Any data that passes `(map? data)`, if all keys are strings. Clojure(Script) records *DO NOT* qualify, since their keys are keywords.
 `record` | Any data that passes `(map? data)`, if all keys are Clojure(Script) keywords. Clojure(Script) records *DO* qualify, since their keys are keywords.
 `union` | Any data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. Note that some unions require wrapping, as explained in [Notes About Union Data Types](#notes-about-union-data-types)
 
@@ -150,7 +140,7 @@ TBD
 
 ## Creating and Manipulating Schema objects
 Lancaster schema objects are required for serialization and deserialization.
-They can be done in two ways:
+This can be done in two ways:
 1. Create schema objects from an existing Avro schema in JSON format.
 To do this, use the [json->schema](#json-schema) function. This is best if
 you are working with externally defined schemas from another system or language.
