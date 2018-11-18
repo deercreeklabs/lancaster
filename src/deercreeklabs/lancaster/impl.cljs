@@ -52,14 +52,14 @@
       (set! pos new-pos)))
 
   (to-byte-array [this]
-    (.slice ba 0 pos))
+    (.slice ^js/Int8Array ba 0 pos))
 
   IResize
   (embiggen [this min-added-bytes]
     (let [num-new-bytes (max min-added-bytes buflen)
           new-buf-len (+ buflen num-new-bytes)
           new-buf (ba/byte-array new-buf-len)]
-      (.set new-buf ba)
+      (.set ^js/Int8Array new-buf ^js/Int8Array ba)
       (set! buflen new-buf-len)
       (set! ba new-buf))))
 

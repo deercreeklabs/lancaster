@@ -194,7 +194,7 @@
 
 (defn ensure-edn-schema [schema]
   (cond
-    (satisfies? ILancasterSchema schema)
+    (satisfies? ILancasterSchema ^LancasterSchema schema)
     (edn-schema schema)
 
     (sequential? schema)
@@ -318,8 +318,8 @@
    b :- s/Any]
   #?(:clj (= a b)
      :cljs (cond
-             (long? a) (.equals a b)
-             (long? b) (.equals b a)
+             (long? a) (.equals ^Long a b)
+             (long? b) (.equals ^Long b a)
              :else (= a b))))
 
 #?(:cljs (extend-type Long
@@ -374,10 +374,10 @@
     #?(:clj (if (and (<= ^Long l 2147483647) (>= ^Long l -2147483648))
               (.intValue ^Long l)
               (throw-long->int-err l))
-       :cljs (if (and (.lessThanOrEqual l 2147483647)
-                      (.greaterThanOrEqual l -2147483648))
-               (.toInt l)
-               (throw-long->int-err l)))))
+       :cljs (if (and (.lessThanOrEqual ^Long l 2147483647)
+                      (.greaterThanOrEqual ^Long l -2147483648))
+               (.toInt ^Long l)
+               (throw-long->int-err ^Long l)))))
 
 (defn int->long [int]
   #?(:clj (clojure.core/long int)
@@ -453,8 +453,8 @@
 #?(:cljs
    (defn read-long-varint-zz-long [input-stream]
      (loop [i 0
-            out (.getZero Long)]
-       (let [b (.fromNumber Long (read-byte input-stream))]
+            ^Long out (.getZero Long)]
+       (let [^Long b (.fromNumber Long (read-byte input-stream))]
          (if (.isZero (.and b (.fromInt Long 128)))
            (let [zz-n (-> (.shiftLeft b i)
                           (.or out))
