@@ -1,3 +1,4 @@
+# Lancaster
 * [Installation](#installation)
 * [About](#about)
 * [Examples](#examples)
