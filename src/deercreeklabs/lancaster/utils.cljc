@@ -194,7 +194,7 @@
 
 (defn ensure-edn-schema [schema]
   (cond
-    (satisfies? ILancasterSchema ^LancasterSchema schema)
+    (satisfies? ILancasterSchema schema)
     (edn-schema schema)
 
     (sequential? schema)
