@@ -421,7 +421,7 @@ The defined var
 ```
 
 #### See Also
-* [record-schema](#record-schema) Creates a record schema.
+* [record-schema](#record-schema): Creates a record schema.
 
 -------------------------------------------------------------------------------
 ### def-merged-record-schema
@@ -460,8 +460,8 @@ The defined var
 ```
 
 #### See Also
-* [merged-record-schema](merged-record-schema) Creates a record schema which contains all the fields of all record schemas passed in.
-* [record-schema](#record-schema) Creates a record schema.
+* [merged-record-schema](#merged-record-schema): Creates a record schema which contains all the fields of all record schemas passed in.
+* [record-schema](#record-schema): Creates a record schema.
 
 -------------------------------------------------------------------------------
 ### def-enum-schema
@@ -491,7 +491,7 @@ The defined var
 ```
 
 #### See Also
-* [enum-schema](#enum-schema) Creates an enum schema.
+* [enum-schema](#enum-schema): Creates an enum schema.
 
 -------------------------------------------------------------------------------
 ### def-fixed-schema
@@ -521,7 +521,7 @@ The defined var
 ```
 
 #### See Also
-* [fixed-schema](#fixed-schema) Creates a fixed schema.
+* [fixed-schema](#fixed-schema): Creates a fixed schema.
 
 -------------------------------------------------------------------------------
 ### def-array-schema
@@ -547,7 +547,7 @@ The defined var
 ```
 
 #### See Also
-* [array-schema](#array-schema) Creates an array schema.
+* [array-schema](#array-schema): Creates an array schema.
 
 -------------------------------------------------------------------------------
 ### def-map-schema
@@ -574,7 +574,7 @@ The defined var
 ```
 
 #### See Also
-* [map-schema](#map-schema) Creates a map schema.
+* [map-schema](#map-schema): Creates a map schema.
 
 -------------------------------------------------------------------------------
 ### def-flex-map-schema
@@ -605,7 +605,7 @@ The defined var
 ```
 
 #### See Also
-* [flex-map-schema](#flex-map-schema) Creates a flex-map schema.
+* [flex-map-schema](#flex-map-schema): Creates a flex-map schema.
 
 -------------------------------------------------------------------------------
 ### def-union-schema
@@ -632,7 +632,7 @@ The defined var
 ```
 
 #### See Also
-* [union-schema](#union-schema) Creates a union schema.
+* [union-schema](#union-schema): Creates a union schema.
 
 -------------------------------------------------------------------------------
 ### def-maybe-schema
@@ -660,7 +660,7 @@ The defined var
 ```
 
 #### See Also
-* [maybe](#maybe) Creates a nillable schema.
+* [maybe](#maybe): Creates a nillable schema.
 
 -------------------------------------------------------------------------------
 ### record-schema
@@ -695,7 +695,7 @@ The new Lancaster record schema
 ```
 
 #### See Also
-* [def-record-schema](#def-record-schema) Defines a var w/ a record schema.
+* [def-record-schema](#def-record-schema): Defines a var w/ a record schema.
 
 -------------------------------------------------------------------------------
 ### enum-schema
@@ -725,7 +725,7 @@ The new Lancaster enum schema
 ```
 
 #### See Also
-* [def-enum-schema](#def-enum-schema) Defines a var w/ an enum schema.
+* [def-enum-schema](#def-enum-schema): Defines a var w/ an enum schema.
 
 -------------------------------------------------------------------------------
 ### fixed-schema
@@ -753,7 +753,7 @@ The new Lancaster fixed schema
 ```
 
 #### See Also
-* [def-fixed-schema](#def-fixed-schema) Defines a var w/ a fixed schema.
+* [def-fixed-schema](#def-fixed-schema): Defines a var w/ a fixed schema.
 
 -------------------------------------------------------------------------------
 ### array-schema
@@ -776,7 +776,7 @@ The new Lancaster array schema
 ```
 
 #### See Also
-* [def-array-schema](#def-array-schema) Defines a var w/ an array schema.
+* [def-array-schema](#def-array-schema): Defines a var w/ an array schema.
 
 -------------------------------------------------------------------------------
 ### map-schema
@@ -800,9 +800,9 @@ The new Lancaster map schema
 ```
 
 #### See Also
-* [def-map-schema](#def-map-schema) Defines a var w/ a map schema.
-* [flex-map-schema](#flex-map-schema) Creates a flex-map schema. Flex map keys may be of any schema type.
-* [def-flex-map-schema](#def-flex-map-schema) Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
+* [def-map-schema](#def-map-schema): Defines a var w/ a map schema.
+* [flex-map-schema](#flex-map-schema): Creates a flex-map schema. Flex map keys may be of any schema type.
+* [def-flex-map-schema](#def-flex-map-schema): Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
 
 -------------------------------------------------------------------------------
 ### flex-map-schema
@@ -832,7 +832,7 @@ The new Lancaster flex-map schema
   (l/flex-map-schema l/int-schema l/string-schema))
 ```
 #### See Also
-* [def-flex-map-schema](#def-flex-map-schema) Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
+* [def-flex-map-schema](#def-flex-map-schema): Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
 * [map-schema](#map-schema) Creates a map schema. Keys must be strings.
 
 -------------------------------------------------------------------------------
@@ -858,7 +858,7 @@ The new Lancaster union schema
 ```
 
 #### See Also
-* [def-union-schema](#def-union-schema) Defines a var w/ a union schema.
+* [def-union-schema](#def-union-schema): Defines a var w/ a union schema.
 
 -------------------------------------------------------------------------------
 ### merged-record-schema
@@ -891,9 +891,9 @@ The new Lancaster record schema
   (l/merged-record-schema [person-schema location-schema]))
 ```
 
-#### See also
-* [def-merged-record-schema](#def-merged-record-schema) Defines a var w/ a record schema which contains all the fields of all record schemas passed in.
-* [record-schema](#record-schema) Creates a record schema.
+#### See Also
+* [def-merged-record-schema](#def-merged-record-schema): Defines a var w/ a record schema which contains all the fields of all record schemas passed in.
+* [record-schema](#record-schema): Creates a record schema.
 
 -------------------------------------------------------------------------------
 ### maybe
@@ -914,8 +914,8 @@ The new Lancaster union schema
 (def int-or-nil-schema (l/maybe l/int-schema))
 ```
 
-#### See also
-* [def-maybe-schema](#def-maybe-schema) Defines a var w/ a nillable schema.
+#### See Also
+* [def-maybe-schema](#def-maybe-schema): Defines a var w/ a nillable schema.
 
 -------------------------------------------------------------------------------
 ### serialize
@@ -940,9 +940,9 @@ A byte array containing the Avro-encoded data
 (def encoded (l/serialize person-schema {:name "Arnold"
                                          :age 22}))
 ```
-#### See also
-* [deserialize](#deserialize) Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
-* [deserialize-same](#deserialize-) Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
+#### See Also
+* [deserialize](#deserialize): Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
+* [deserialize-same](#deserialize-same): Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema.
 
 -------------------------------------------------------------------------------
 ### deserialize
@@ -995,9 +995,9 @@ The deserialized data
 (l/deserialize person-w-nick-schema person-schema encoded)
 ;; {:name "Alice", :age 20, :nickname "no nick", :favorite-number -1}
 ```
-#### See also
-* [serialize](#serialize) Serializes data to a byte array.
-* [deserialize-same](#deserialize-) Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
+#### See Also
+* [serialize](#serialize): Serializes data to a byte array.
+* [deserialize-same](#deserialize-same): Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
 resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution).
 
 -------------------------------------------------------------------------------
@@ -1037,9 +1037,9 @@ The deserialized data
 ;; {:name "Fido :owner "Roger"}
 ```
 
-#### See also
-* [serialize](#serialize) Serializes data to a byte array.
-* [deserialize](#deserialize) Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
+#### See Also
+* [serialize](#serialize): Serializes data to a byte array.
+* [deserialize](#deserialize): Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
 
 -------------------------------------------------------------------------------
 ### json->schema
@@ -1225,7 +1225,7 @@ EDN representation of the given Lancaster schema
 ```
 
 #### See Also
-* [json](#json) Returns the JSON representation of the schema.
+* [json](#json): Returns the JSON representation of the schema.
 
 -------------------------------------------------------------------------------
 ### json
@@ -1250,7 +1250,7 @@ JSON representation of the given Lancaster schema
 ```
 
 #### See Also
-* [edn](#edn) Returns the EDN representation of the schema.
+* [edn](#edn): Returns the EDN representation of the schema.
 
 -------------------------------------------------------------------------------
 ### plumatic-schema
@@ -1302,7 +1302,7 @@ A JSON string
 ```
 
 #### See Also
-* [fingerprint64](#fingerprint64) Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
+* [fingerprint64](#fingerprint64): Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
 
 -------------------------------------------------------------------------------
 ### fingerprint64
@@ -1331,7 +1331,7 @@ java.lang.Long. For ClojureScript, it is a goog.math.Long.
 ```
 
 #### See Also
-* [pcf](#pcf) Returns a JSON string containing the
+* [pcf](#pcf): Returns a JSON string containing the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema
 
 -------------------------------------------------------------------------------
