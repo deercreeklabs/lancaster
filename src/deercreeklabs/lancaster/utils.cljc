@@ -12,6 +12,8 @@
    #?(:clj [primitive-math :as pm])
    #?(:clj [puget.printer :refer [cprint]])
    [schema.core :as s]
+   #?(:clj  [clojure.spec.alpha :as spec]
+      :cljs [cljs.spec.alpha :as spec])
    [taoensso.timbre :as timbre :refer [debugf errorf infof]])
   #?(:cljs
      (:require-macros
@@ -48,7 +50,8 @@
   (json-schema [this])
   (parsing-canonical-form [this])
   (fingerprint64 [this])
-  (plumatic-schema [this]))
+  (plumatic-schema [this])
+  (schema-spec [this]))
 
 (defprotocol IOutputStream
   (write-byte [this b])
@@ -259,6 +262,7 @@
 (defmulti make-deserializer avro-type-dispatch)
 (defmulti edn-schema->avro-schema avro-type-dispatch)
 (defmulti edn-schema->plumatic-schema avro-type-dispatch)
+(defmulti edn-schema->schema-spec avro-type-dispatch)
 (defmulti make-default-data-size avro-type-dispatch)
 (defmulti make-edn-schema first-arg-dispatch)
 
@@ -1022,6 +1026,60 @@
                         #(edn-schema->pred-and-plumatic-schema
                           % (wrapping-required? edn-schema) name->edn-schema)
                         edn-schema)))
+
+(defmethod edn-schema->spec :null
+  [edn-schema name->edn-schema]
+  nil?)
+
+(defmethod edn-schema->spec :boolean
+  [edn-schema name->edn-schema]
+  boolean?)
+
+(defmethod edn-schema->spec :int
+  [edn-schema name->edn-schema]
+  int?)
+
+(defmethod edn-schema->spec :long
+  [edn-schema name->edn-schema]
+  long?)
+
+(defmethod edn-schema->spec :float
+  [edn-schema name->edn-schema])
+
+(defmethod edn-schema->spec :double
+  [edn-schema name->edn-schema])
+
+(defmethod edn-schema->spec :bytes
+  [edn-schema name->edn-schema])
+
+(defmethod edn-schema->spec :string
+  [edn-schema name->edn-schema])
+
+(defmethod edn-schema->spec :enum
+  [edn-schema name->edn-schema])
+
+(defmethod edn-schema->spec :fixed
+  [edn-schema name->edn-schema])
+
+(defmethod edn-schema->spec :array
+  [edn-schema name->edn-schema])
+
+(defmethod edn-schema->spec :map
+  [edn-schema name->edn-schema])
+
+(defmethod edn-schema->spec :flex-map
+  [edn-schema name->edn-schema])
+
+(defmethod edn-schema->spec :record
+  [edn-schema name->edn-schema]
+  ;; DEV: start from here
+  )
+
+(defmethod edn-schema->spec :name-keyword
+  [edn-schema name->edn-schema])
+
+(defmethod edn-schema->spec :union
+  [edn-schema name->edn-schema])
 
 (defn get-schemas! [edn-schema *name->edn-schema]
   (let [avro-type (get-avro-type edn-schema)]
