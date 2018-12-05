@@ -883,7 +883,8 @@
                                     deserializer (try
                                                    (make-deserializer
                                                     type *name->deserializer)
-                                                   (catch Exception e
+                                                   (catch #?(:clj Exception
+                                                             :cljs js/Error) e
                                                      (errorf
                                                       (str "#### e:" e
                                                            "\nname: " name
