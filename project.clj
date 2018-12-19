@@ -62,13 +62,13 @@
     [[lein-ancient "0.6.15"]
      [lein-cljsbuild "1.1.7" :exclusions [org.clojure/clojure]]
      [lein-cloverage "1.0.13" :exclusions [fipp org.clojure/clojure]]
-     [lein-doo "0.1.10"
+     [lein-doo "0.1.11"
       :exclusions [org.clojure/clojure org.clojure/clojurescript]]
      ;; Because of confusion with a defunct project also called
      ;; lein-release, we exclude lein-release from lein-ancient.
      [lein-release "1.0.9" :upgrade false :exclusions [org.clojure/clojure]]]
     :dependencies
-    [[doo "0.1.10"]
+    [[doo "0.1.11"]
      [org.apache.avro/avro "1.8.2"]
      [org.clojure/tools.namespace "0.2.11"]]}}
 
@@ -77,8 +77,8 @@
    [cheshire "5.8.1"]
    [com.taoensso/timbre "4.10.0"]
    [deercreeklabs/baracus "0.1.13"]
-   [deercreeklabs/log-utils "0.2.1"]
-   [org.clojure/clojure "1.9.0"]
+   [deercreeklabs/log-utils "0.2.2"]
+   [org.clojure/clojure "1.10.0"]
    [org.clojure/clojurescript "1.10.439"]
    [primitive-math "0.1.6"]
    [prismatic/schema "1.1.9"]]
