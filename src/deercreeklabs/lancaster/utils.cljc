@@ -1338,36 +1338,37 @@
                             (csk/->kebab-case))]
         (assoc schema :name (keyword schema-ns schema-name))))))
 
-(defmulti add-defaults avro-type-dispatch)
+(defmulti ensure-defaults avro-type-dispatch)
 
-(defmethod add-defaults :default
+(defmethod ensure-defaults :default
   [edn-schema name->edn-schema]
   edn-schema)
 
-(defmethod add-defaults :array
+(defmethod ensure-defaults :array
   [edn-schema name->edn-schema]
-  (update edn-schema :items #(add-defaults % name->edn-schema)))
+  (update edn-schema :items #(ensure-defaults % name->edn-schema)))
 
-(defmethod add-defaults :map
+(defmethod ensure-defaults :map
   [edn-schema name->edn-schema]
-  (update edn-schema :values #(add-defaults % name->edn-schema)))
+  (update edn-schema :values #(ensure-defaults % name->edn-schema)))
 
-(defmethod add-defaults :union
+(defmethod ensure-defaults :union
   [edn-schema name->edn-schema]
-  (mapv #(add-defaults % name->edn-schema) edn-schema))
+  (mapv #(ensure-defaults % name->edn-schema) edn-schema))
 
-(defmethod add-defaults :record
+(defmethod ensure-defaults :record
   [edn-schema name->edn-schema]
   (update edn-schema :fields
           (fn [fields]
             (mapv
              (fn [field]
-               (let [{:keys [type]} field
-                     default (default-data type nil name->edn-schema)
-                     new-type (add-defaults type name->edn-schema)
+               (let [{:keys [type default]} field
+                     new-default (or default
+                                     (default-data type nil name->edn-schema))
+                     new-type (ensure-defaults type name->edn-schema)
                      field-type (get-avro-type type)
                      new-field (-> field
-                                   (assoc :default default)
+                                   (assoc :default new-default)
                                    (assoc :type new-type))]
                  new-field))
              fields))))
@@ -1416,11 +1417,9 @@
 
 (defmethod avro-schema->edn-schema :record
   [avro-schema]
-  (let [edn-schema (-> (avro-name->edn-name avro-schema)
-                       (update :type keyword)
-                       (update :fields #(mapv avro-field->edn-field %)))
-        name->edn-schema (make-name->edn-schema edn-schema)]
-    (add-defaults edn-schema name->edn-schema)))
+  (-> (avro-name->edn-name avro-schema)
+      (update :type keyword)
+      (update :fields #(mapv avro-field->edn-field %))))
 
 (defmethod avro-schema->edn-schema :union
   [avro-union-schema]

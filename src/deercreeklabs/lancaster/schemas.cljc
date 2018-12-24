@@ -58,8 +58,9 @@
 
 (defmulti validate-schema-args u/first-arg-dispatch)
 
-(defn lancaster-schema* [schema-type edn-schema json-schema]
-  (let [name->edn-schema (u/make-name->edn-schema edn-schema)
+(defn lancaster-schema* [schema-type edn-schema* json-schema]
+  (let [name->edn-schema (u/make-name->edn-schema edn-schema*)
+        edn-schema (u/ensure-defaults edn-schema* name->edn-schema)
         schema-name (u/edn-schema->name-kw edn-schema)
         avro-schema (if (u/avro-primitive-types schema-type)
                       (name schema-type)
