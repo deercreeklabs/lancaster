@@ -5,10 +5,8 @@
    [deercreeklabs.lancaster.impl :as impl]
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.log-utils :as lu :refer [debugs]]
    #?(:cljs [goog.math :as gm])
-   [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]])
+   [schema.core :as s :include-macros true])
   #?(:cljs
      (:require-macros deercreeklabs.lancaster)))
 

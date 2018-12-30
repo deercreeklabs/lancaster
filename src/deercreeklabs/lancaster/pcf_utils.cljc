@@ -4,9 +4,7 @@
    [clojure.string :as string]
    [deercreeklabs.lancaster.impl :as impl]
    [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.log-utils :as lu :refer [debugs]]
-   [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+   [schema.core :as s :include-macros true]))
 
 (defmulti filter-attrs u/avro-type-dispatch)
 (defmulti emit u/avro-type-dispatch)

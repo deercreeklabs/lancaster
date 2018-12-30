@@ -9,9 +9,7 @@
    [deercreeklabs.lancaster.resolution :as reso]
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.log-utils :as lu :refer [debugs]]
-   [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]])
+   [schema.core :as s :include-macros true])
   #?(:clj
      (:import
       (org.apache.avro Schema
@@ -20,8 +18,6 @@
 
 ;; Use this instead of fixtures, which are hard to make work w/ async testing.
 (s/set-fn-validation! true)
-
-(u/configure-logging)
 
 (defn abs-err [expected actual]
   (let [err (- expected actual)]
@@ -54,7 +50,7 @@
                               "clj-fp: " clj-fp "\n"
                               "java-pcf:\n" java-pcf "\n"
                               "clj-pcf:\n" clj-pcf "\n")]
-             (errorf err-str))))))
+             (println err-str))))))
 
 (l/def-record-schema add-to-cart-req-schema
   [:sku l/int-schema]
@@ -726,7 +722,7 @@
     (l/serialize person-or-dog-schema [:non-existent-schema-name {}])
     (is (= :did-not-throw :but-should-have))
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/ex-msg e)]
+      (let [msg (u/ex-msg e)]
         (is (str/includes?
              msg "`:non-existent-schema-name` is not in the union schema"))))))
 
@@ -1020,7 +1016,7 @@
       (l/deserialize reader-schema writer-schema encoded)
       (is (= :did-not-throw :but-should-have))
       (catch #?(:clj Exception :cljs js/Error) e
-        (let [msg (lu/ex-msg e)]
+        (let [msg (u/ex-msg e)]
           (is (str/includes? msg "do not match.")))))))
 
 (deftest test-schema-evolution-no-match
@@ -1033,7 +1029,7 @@
       (l/deserialize reader-schema writer-schema encoded)
       (is (= :did-not-throw :but-should-have))
       (catch #?(:clj Exception :cljs js/Error) e
-        (let [msg (lu/ex-msg e)]
+        (let [msg (u/ex-msg e)]
           (is (str/includes? msg "do not match.")))))))
 
 (deftest test-schema-evolution-named-ref
@@ -1167,7 +1163,7 @@
       (is (= :did-not-throw :but-should-have))
       (catch #?(:cljs js/Error :clj Exception) e
         (is (str/includes?
-             (lu/ex-msg e)
+             (u/ex-msg e)
              (str "is not a valid :int. Path: [:qty-requested]")))))))
 
 (deftest test-record-serdes-missing-maybe-field
@@ -1244,7 +1240,7 @@
       (l/serialize person-or-dog-schema data)
       (is (= :should-have-thrown :but-didnt))
       (catch #?(:clj Exception :cljs js/Error) e
-        (is (str/includes? (lu/ex-msg e)
+        (is (str/includes? (u/ex-msg e)
                            "Union requires wrapping"))))))
 
 (deftest test-schema?
@@ -1257,14 +1253,14 @@
      (l/serialize nil nil)
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/ex-msg e)]
+       (let [msg (u/ex-msg e)]
          (is (str/includes?
               msg "First argument to serialize must be a schema object")))))
    (try
      (l/deserialize why-schema nil (ba/byte-array []))
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/ex-msg e)]
+       (let [msg (u/ex-msg e)]
          (is (str/includes?
               msg (str "Second argument to deserialize must be a "
                        "schema object representing the writer's schema"))))))
@@ -1272,7 +1268,7 @@
      (l/deserialize why-schema why-schema [])
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/ex-msg e)]
+       (let [msg (u/ex-msg e)]
          (is (str/includes?
               msg "argument to deserialize must be a byte array")))))))
 
@@ -1282,14 +1278,14 @@
      (l/deserialize nil nil nil)
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/ex-msg e)]
+       (let [msg (u/ex-msg e)]
          (is (str/includes?
               msg "First argument to deserialize must be a schema object")))))
    (try
      (l/deserialize why-schema nil (ba/byte-array []))
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/ex-msg e)]
+       (let [msg (u/ex-msg e)]
          (is (str/includes?
               msg (str "Second argument to deserialize must be a "
                        "schema object representing the writer's schema"))))))
@@ -1297,7 +1293,7 @@
      (l/deserialize why-schema why-schema [])
      (is (= :should-have-thrown :but-didnt))
      (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (lu/ex-msg e)]
+       (let [msg (u/ex-msg e)]
          (is (str/includes?
               msg "argument to deserialize must be a byte array")))))))
 
@@ -1307,7 +1303,7 @@
                      [[:int-field l/int-schema "a"]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/ex-msg e)]
+      (let [msg (u/ex-msg e)]
         (is (re-find #"Default value for field .* is invalid" msg))))))
 
 (deftest test-default-data
@@ -1321,7 +1317,7 @@
                      [[:bad? l/boolean-schema]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/ex-msg e)]
+      (let [msg (u/ex-msg e)]
         (is (re-find #"Name keywords must start with a letter and subsequently"
                      msg))))))
 
@@ -1331,7 +1327,7 @@
                      [[:is-good l/boolean-schema]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/ex-msg e)]
+      (let [msg (u/ex-msg e)]
         (is (re-find #"Name keywords must start with a letter and subsequently"
                      msg))))))
 
@@ -1342,7 +1338,7 @@
                       [:int-field l/int-schema]])
     (is (= :should-have-thrown :but-didnt))
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/ex-msg e)]
+      (let [msg (u/ex-msg e)]
         (is (re-find #"Field names must be unique." msg))))))
 
 (deftest test-round-trip-json-schema

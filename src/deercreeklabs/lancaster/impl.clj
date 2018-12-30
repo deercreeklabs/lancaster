@@ -2,9 +2,7 @@
   (:require
    [cheshire.core :as json]
    [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.log-utils :as lu :refer [debugs]]
-   [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof warnf]])
+   [schema.core :as s :include-macros true])
   (:import
    (com.google.common.io LittleEndianDataInputStream
                          LittleEndianDataOutputStream)

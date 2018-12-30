@@ -8,10 +8,8 @@
    [deercreeklabs.lancaster.resolution :as resolution]
    [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
    [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.log-utils :as lu :refer [debugs]]
    #?(:clj [primitive-math :as pm])
-   [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+   [schema.core :as s :include-macros true]))
 
 #?(:clj (pm/use-primitive-operators))
 
@@ -204,7 +202,7 @@
         (try
           (u/serialize field-schema (impl/output-stream 100) default)
           (catch #?(:clj Exception :cljs js/Error) e
-            (let [ex-msg (lu/ex-msg e)]
+            (let [ex-msg (u/ex-msg e)]
               (if (str/includes? ex-msg "not a valid")
                 (throw
                  (ex-info

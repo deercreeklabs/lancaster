@@ -6,10 +6,8 @@
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
    [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.log-utils :as lu :refer [debugs]]
    #?(:clj [primitive-math :as pm])
-   [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+   [schema.core :as s :include-macros true]))
 
 #?(:clj (pm/use-primitive-operators))
 
@@ -273,7 +271,7 @@
   (try
     [true (make-xf writer-item-schema reader-item-schema)]
     (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (lu/ex-msg e)]
+      (let [msg (u/ex-msg e)]
         (if-not (str/includes? msg "do not match.")
           (throw e)
           [false nil]
@@ -368,7 +366,7 @@
           (fn deserialize [is]
             (xf (writer-deserializer is)))))
       (catch #?(:clj IllegalArgumentException :cljs js/Error) e
-        (let [msg (lu/ex-msg e)]
+        (let [msg (u/ex-msg e)]
           (if (str/includes?
                msg
                #?(:clj "No method in multimethod 'make-xf'"

@@ -2,9 +2,7 @@
   (:require
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.log-utils :as lu :refer [debugs]]
-   [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+   [schema.core :as s :include-macros true]))
 
 (set! *warn-on-infer* true)
 

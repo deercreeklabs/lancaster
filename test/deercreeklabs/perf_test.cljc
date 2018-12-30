@@ -5,9 +5,7 @@
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
    [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.log-utils :as lu :refer [debugs]]
-   [schema.core :as s :include-macros true]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]]))
+   [schema.core :as s :include-macros true]))
 
 ;; Use this instead of fixtures, which are hard to make work w/ async testing.
 (s/set-fn-validation! false)
@@ -74,15 +72,17 @@
         deflated-json-dec-ops (get-ops-per-sec deflated-json-dec-fn
                                                (/ num-ops 10))
         dec-ops (get-ops-per-sec dec-fn num-ops)
-        json-dec-ops (get-ops-per-sec json-dec-fn num-ops)]
-    (infof "Lancaster encode ops per sec:     %.0f" enc-ops)
-    (infof "Lancaster decode ops per sec:     %.0f" dec-ops)
-    (infof "JSON encode ops per sec:          %.0f" json-enc-ops)
-    (infof "JSON decode ops per sec:          %.0f" json-dec-ops)
-    (infof "Deflated JSON encode ops per sec: %.0f" deflated-json-enc-ops)
-    (infof "Deflated JSON decode ops per sec: %.0f" deflated-json-dec-ops)
-    (infof "Lancaster encoded size:           %d" (count encoded))
-    (infof "JSON encoded size:                %d" (count json-encoded))
-    (infof "Deflated JSON encoded size:       %d" (count deflated-json-encoded))
+        json-dec-ops (get-ops-per-sec json-dec-fn num-ops)
+        floor #?(:cljs Math/floor
+                 :clj #(Math/floor (double %)))]
+    (str "Lancaster encode ops per sec:     " (floor enc-ops))
+    (str "Lancaster decode ops per sec:     " (floor dec-ops))
+    (str "JSON encode ops per sec:          " (floor json-enc-ops))
+    (str "JSON decode ops per sec:          " (floor json-dec-ops))
+    (str "Deflated JSON encode ops per sec: " (floor deflated-json-enc-ops))
+    (str "Deflated JSON decode ops per sec: " (floor deflated-json-dec-ops))
+    (str "Lancaster encoded size:           " (count encoded))
+    (str "JSON encoded size:                " (count json-encoded))
+    (str "Deflated JSON encoded size:       " (count deflated-json-encoded))
     (is (< #?(:cljs 20000 :clj 200000) enc-ops))
     (is (< #?(:cljs 40000 :clj 300000) dec-ops))))

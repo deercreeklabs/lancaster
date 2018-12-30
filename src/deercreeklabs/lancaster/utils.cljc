@@ -3,16 +3,11 @@
   (:require
    [camel-snake-kebab.core :as csk]
    #?(:clj [cheshire.core :as json])
-   [#?(:clj clj-time.format :cljs cljs-time.format) :as f]
-   [#?(:clj clj-time.core :cljs cljs-time.core) :as t]
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
-   [deercreeklabs.log-utils :as lu :refer [debugs]]
    #?(:cljs [goog.math :as gm])
    #?(:clj [primitive-math :as pm])
-   #?(:clj [puget.printer :refer [cprint]])
-   [schema.core :as s]
-   [taoensso.timbre :as timbre :refer [debugf errorf infof]])
+   [schema.core :as s])
   #?(:cljs
      (:require-macros
       [deercreeklabs.lancaster.utils :refer [sym-map]])))
@@ -77,6 +72,28 @@
 (def avro-primitive-type-strings (into #{} (map name avro-primitive-types)))
 
 (def Nil (s/eq nil))
+
+(s/defn ex-msg :- s/Str
+  [e]
+  #?(:clj (.toString ^Exception e)
+     :cljs (.-message e)))
+
+(s/defn ex-stacktrace :- s/Str
+  [e]
+  #?(:clj (clojure.string/join "\n" (map str (.getStackTrace ^Exception e)))
+     :cljs (.-stack e)))
+
+(s/defn ex-msg-and-stacktrace :- s/Str
+  [e]
+  (str "\nException:\n"
+       (ex-msg e)
+       "\nStacktrace:\n"
+       (ex-stacktrace e)))
+
+(s/defn current-time-ms :- s/Num
+  []
+  #?(:clj (System/currentTimeMillis)
+     :cljs (.getTime (js/Date.))))
 
 (defn schema-name [clj-name]
   (-> (name clj-name)
@@ -825,8 +842,7 @@
             (serializer os data path))
           (catch #?(:clj UnsupportedOperationException :cljs js/Error) e
             (throw
-             (if-not (str/includes? (lu/ex-msg e)
-                                    "nth not supported")
+             (if-not (str/includes? (ex-msg e) "nth not supported")
                e
                (ex-info "Union requires wrapping, but data is not wrapped."
                         (sym-map data path edn-schema))))))))
@@ -880,18 +896,8 @@
         field-infos (binding [**enclosing-namespace** (namespace name)]
                       (mapv (fn [field]
                               (let [{:keys [name type]} field
-                                    deserializer (try
-                                                   (make-deserializer
-                                                    type *name->deserializer)
-                                                   (catch #?(:clj Exception
-                                                             :cljs js/Error) e
-                                                     (errorf
-                                                      (str "#### e:" e
-                                                           "\nname: " name
-                                                           "\nfield: " field
-                                                           "\ntype: " type
-                                                           "\nschema: "
-                                                           edn-schema))))]
+                                    deserializer (make-deserializer
+                                                  type *name->deserializer)]
                                 [name deserializer]))
                             fields))
         deserializer (fn deserialize [is]
@@ -915,16 +921,6 @@
     (fn deserialize [is]
       (let [deserializer (@*name->deserializer qualified-name-kw)]
         (deserializer is)))))
-
-(defn configure-logging []
-  (timbre/merge-config!
-   {:level :debug
-    :output-fn lu/short-log-output-fn}))
-
-(s/defn current-time-ms :- s/Num
-  []
-  #?(:clj (System/currentTimeMillis)
-     :cljs (.getTime (js/Date.))))
 
 (defmethod edn-schema->plumatic-schema :null
   [edn-schema name->edn-schema]
