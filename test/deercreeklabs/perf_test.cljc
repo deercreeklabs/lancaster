@@ -7,7 +7,6 @@
    [deercreeklabs.lancaster.utils :as u]
    [schema.core :as s :include-macros true]))
 
-;; Use this instead of fixtures, which are hard to make work w/ async testing.
 (s/set-fn-validation! false)
 
 (l/def-record-schema add-to-cart-req-schema
@@ -74,15 +73,18 @@
         dec-ops (get-ops-per-sec dec-fn num-ops)
         json-dec-ops (get-ops-per-sec json-dec-fn num-ops)
         floor #?(:cljs Math/floor
-                 :clj #(Math/floor (double %)))]
-    (str "Lancaster encode ops per sec:     " (floor enc-ops))
-    (str "Lancaster decode ops per sec:     " (floor dec-ops))
-    (str "JSON encode ops per sec:          " (floor json-enc-ops))
-    (str "JSON decode ops per sec:          " (floor json-dec-ops))
-    (str "Deflated JSON encode ops per sec: " (floor deflated-json-enc-ops))
-    (str "Deflated JSON decode ops per sec: " (floor deflated-json-dec-ops))
-    (str "Lancaster encoded size:           " (count encoded))
-    (str "JSON encoded size:                " (count json-encoded))
-    (str "Deflated JSON encoded size:       " (count deflated-json-encoded))
+                 :clj #(int (Math/floor (double %))))]
+    (println (str "Lancaster encode ops per sec:     " (floor enc-ops)))
+    (println (str "Lancaster decode ops per sec:     " (floor dec-ops)))
+    (println (str "JSON encode ops per sec:          " (floor json-enc-ops)))
+    (println (str "JSON decode ops per sec:          " (floor json-dec-ops)))
+    (println (str "Deflated JSON encode ops per sec: "
+                  (floor deflated-json-enc-ops)))
+    (println (str "Deflated JSON decode ops per sec: "
+                  (floor deflated-json-dec-ops)))
+    (println (str "Lancaster encoded size:           " (count encoded)))
+    (println (str "JSON encoded size:                " (count json-encoded)))
+    (println (str "Deflated JSON encoded size:       "
+                  (count deflated-json-encoded)))
     (is (< #?(:cljs 20000 :clj 200000) enc-ops))
     (is (< #?(:cljs 40000 :clj 300000) dec-ops))))
