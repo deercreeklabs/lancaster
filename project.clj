@@ -69,6 +69,7 @@
      [lein-release "1.0.9" :upgrade false :exclusions [org.clojure/clojure]]]
     :dependencies
     [[doo "0.1.11"]
+     [mvxcvi/puget "1.1.0"]
      [org.apache.avro/avro "1.8.2"]
      [org.clojure/tools.namespace "0.2.11"]]}}
 

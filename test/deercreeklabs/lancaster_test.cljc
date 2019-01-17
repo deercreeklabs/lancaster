@@ -1372,3 +1372,8 @@
     (is (= [:deercreeklabs.lancaster-test/test-rec {:a 1}] wrapped-data))
     (is (= :deercreeklabs.lancaster-test/test-rec (l/schema-name wrapped-data)))
     (is (= data (l/data wrapped-data)))))
+
+(deftest test-issue-4
+  (let [json (slurp "test/example.avsc")
+        schema (l/json->schema json)]
+    (is (= json (l/json schema)))))

@@ -1226,10 +1226,7 @@
 
 (defmethod make-default-data-size :name-keyword
   [name-kw name->edn-schema]
-  (if-let [edn-schema (name->edn-schema name-kw)]
-    (make-default-data-size edn-schema name->edn-schema)
-    100 ;; Recursive schema, so just return a reasonable default
-    ))
+  100) ;; Possibly recursive schema, so just return a reasonable default
 
 (defn make-record-field [field]
   (when-not (#{2 3} (count field))
