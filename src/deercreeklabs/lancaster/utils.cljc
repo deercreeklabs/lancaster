@@ -801,13 +801,13 @@
                          (get-avro-type edn-schema))))))
 
 (defn make-data->branch [member-schemas name->edn-schema]
-  (let [num-schemas (count member-schemas)
+  (let [max-index (dec (count member-schemas))
         tests (mapv #(edn-schema->pred % name->edn-schema) member-schemas)]
     (fn [data path]
       (loop [i 0]
         (cond
           ((tests i) data) i
-          (< i num-schemas) (recur (inc i))
+          (< i max-index) (recur (inc i))
           :else (throw
                  (ex-info (str "Data (" data ") does not match union schema."
                                " Path: " path)

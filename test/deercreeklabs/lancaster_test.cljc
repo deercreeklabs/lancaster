@@ -12,6 +12,7 @@
    [schema.core :as s :include-macros true])
   #?(:clj
      (:import
+      (clojure.lang ExceptionInfo)
       (org.apache.avro Schema
                        SchemaNormalization
                        Schema$Parser))))
@@ -1377,3 +1378,10 @@
   (let [json (slurp "test/example.avsc")
         schema (l/json->schema json)]
     (is (= json (l/json schema)))))
+
+(deftest test-serialize-bad-union-member
+  (let [schema (l/union-schema [l/null-schema l/int-schema])]
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"does not match union schema."
+         (l/serialize schema :foo)))))
