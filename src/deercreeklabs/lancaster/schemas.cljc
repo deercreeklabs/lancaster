@@ -1,6 +1,7 @@
 (ns deercreeklabs.lancaster.schemas
   (:require
    [camel-snake-kebab.core :as csk]
+   [clojure.set :as set]
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.fingerprint :as fingerprint]
@@ -279,7 +280,15 @@
        (ex-info (str "All member schemas in a union must be schema objects "
                      "or name keywords.")
                 {:bad-member-schema member-schema}))))
-  (when (u/illegal-union? (map u/edn-schema
-                               ;; Name keywords & named schemas are always okay
-                               (remove keyword? member-schemas)))
-    (throw (ex-info "Illegal union schema." {:schema member-schemas}))))
+  (let [schemas-to-check (map u/edn-schema
+                              ;; Name keywords & named schemas are always okay
+                              (remove keyword? member-schemas))]
+    (when (u/contains-union? schemas-to-check)
+      (throw (ex-info (str "Illegal union. Unions cannnot immediately contain "
+                           "other unions.")
+                      (u/sym-map member-schemas))))
+    (doseq [schema-type (set/union u/avro-primitive-types #{:map :array})]
+      (when (u/more-than-one? #{schema-type} schemas-to-check)
+        (throw (ex-info (str "Illegal union. Unions may not contain more than "
+                             "one " (name schema-type) " schema.")
+                        (u/sym-map member-schemas)))))))

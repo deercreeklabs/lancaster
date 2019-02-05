@@ -407,19 +407,6 @@
 (defn contains-union? [edn-schemas]
   (some #(= :union (get-avro-type %)) edn-schemas))
 
-(defn illegal-union? [edn-schemas]
-  (or (contains-union? edn-schemas)
-      (more-than-one? #{:int} edn-schemas)
-      (more-than-one? #{:long} edn-schemas)
-      (more-than-one? #{:float} edn-schemas)
-      (more-than-one? #{:double} edn-schemas)
-      (more-than-one? #{:null} edn-schemas)
-      (more-than-one? #{:boolean} edn-schemas)
-      (more-than-one? #{:string} edn-schemas)
-      (more-than-one? #{:bytes} edn-schemas)
-      (more-than-one? #{:map} edn-schemas)
-      (more-than-one? #{:array} edn-schemas)))
-
 (defn wrapping-required? [edn-schemas]
   (or (more-than-one? #{:map :record} edn-schemas)
       (more-than-one? #{:int :long :float :double} edn-schemas)

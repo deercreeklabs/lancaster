@@ -1385,3 +1385,11 @@
          ExceptionInfo
          #"does not match union schema."
          (l/serialize schema :foo)))))
+
+(deftest test-maybe-w-union-arg
+  (let [schema-1 (l/maybe (l/union-schema [l/int-schema l/string-schema]))
+        schema-2 (l/maybe (l/union-schema [l/null-schema l/int-schema]))]
+    (is (= nil (l/deserialize-same schema-1 (l/serialize schema-1 nil))))
+    (is (= nil (l/deserialize-same schema-2 (l/serialize schema-2 nil))))
+    (is (= 34 (l/deserialize-same schema-1 (l/serialize schema-1 34))))
+    (is (= 34 (l/deserialize-same schema-2 (l/serialize schema-2 34))))))
