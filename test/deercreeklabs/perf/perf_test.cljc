@@ -1,4 +1,4 @@
-(ns deercreeklabs.perf-test
+(ns deercreeklabs.perf.perf-test
   (:require
    #?(:clj [cheshire.core :as json])
    [clojure.test :refer [deftest is use-fixtures]]

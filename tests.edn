@@ -1,0 +1,9 @@
+#kaocha/v1
+{:tests [{:id :perf
+          :test-paths ["test/deercreeklabs/perf"]}
+         {:id :unit
+          :test-paths ["test/deercreeklabs/unit"]}
+         {:id :unit-node
+          :type :kaocha.type/cljs
+          :test-paths ["test/deercreeklabs/unit"]}]
+ :kaocha.watch/ignore ["**.#*" "**#*#"]}

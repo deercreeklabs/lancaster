@@ -1,4 +1,4 @@
-(ns deercreeklabs.lancaster-test
+(ns deercreeklabs.unit.lancaster-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is use-fixtures]]
@@ -186,11 +186,11 @@
   [:left (l/maybe :tree)])
 
 (deftest test-record-schema
-  (let [expected-pcf (str "{\"name\":\"deercreeklabs.lancaster_test."
+  (let [expected-pcf (str "{\"name\":\"deercreeklabs.unit.lancaster_test."
                           "AddToCartReq\",\"type\":\"record\",\"fields\":"
                           "[{\"name\":\"sku\",\"type\":\"int\"},{\"name\":"
                           "\"qtyRequested\",\"type\":\"int\"}]}")
-        expected-edn {:name :deercreeklabs.lancaster-test/add-to-cart-req
+        expected-edn {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
                       :type :record
                       :fields
                       [{:name :sku
@@ -200,7 +200,7 @@
                         :type :int
                         :default 0}]}]
     #?(:clj (is (fp-matches? add-to-cart-req-schema)))
-    (is (= "5027717767048351978"
+    (is (= "-6098958998487321663"
            (u/long->str (l/fingerprint64 add-to-cart-req-schema))))
     (is (= expected-edn (l/edn add-to-cart-req-schema)))
     (is (= expected-pcf (l/pcf
@@ -215,15 +215,15 @@
     (is (= data decoded))))
 
 (deftest test-def-enum-schema
-  (is (= {:name :deercreeklabs.lancaster-test/why
+  (is (= {:name :deercreeklabs.unit.lancaster-test/why
           :type :enum
           :symbols [:all :stock :limit]}
          (l/edn why-schema)))
   #?(:clj (is (fp-matches? why-schema)))
-  (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.Why\",\"type\":"
+  (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Why\",\"type\":"
               "\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}")
          (l/pcf why-schema)))
-  (is (= "7071400091851593822"
+  (is (= "3321246333858425949"
          (u/long->str (l/fingerprint64 why-schema)))))
 
 (deftest test-def-enum-schema-serdes
@@ -234,15 +234,15 @@
     (is (= data decoded))))
 
 (deftest test-def-fixed-schema
-  (is (= {:name :deercreeklabs.lancaster-test/a-fixed
+  (is (= {:name :deercreeklabs.unit.lancaster-test/a-fixed
           :type :fixed
           :size 2}
          (l/edn a-fixed-schema)))
   #?(:clj (is (fp-matches? a-fixed-schema)))
-  (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.AFixed\",\"type\":"
+  (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.AFixed\",\"type\":"
               "\"fixed\",\"size\":2}")
          (l/pcf a-fixed-schema)))
-  (is (= "7921008586133908967"
+  (is (= "-1031156250377191762"
          (u/long->str (l/fingerprint64 a-fixed-schema)))))
 
 (deftest test-def-fixed-schema-serdes
@@ -254,7 +254,7 @@
     (is (ba/equivalent-byte-arrays? data decoded))))
 
 (deftest test-nested-record-schema
-  (let [expected {:name :deercreeklabs.lancaster-test/add-to-cart-rsp
+  (let [expected {:name :deercreeklabs.unit.lancaster-test/add-to-cart-rsp
                   :type :record
                   :fields
                   [{:name :qty-requested :type :int :default -1}
@@ -262,7 +262,7 @@
                    {:name :current-qty :type :int :default -1}
                    {:name :req
                     :type
-                    {:name :deercreeklabs.lancaster-test/add-to-cart-req
+                    {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
                      :type :record
                      :fields
                      [{:name :sku :type :int :default -1}
@@ -270,13 +270,13 @@
                     :default {:sku 10 :qty-requested 1}}
                    {:name :the-reason-why
                     :type
-                    {:name :deercreeklabs.lancaster-test/why
+                    {:name :deercreeklabs.unit.lancaster-test/why
                      :type :enum
                      :symbols [:all :stock :limit]}
                     :default :stock}
                    {:name :data
                     :type
-                    {:name :deercreeklabs.lancaster-test/a-fixed
+                    {:name :deercreeklabs.unit.lancaster-test/a-fixed
                      :type :fixed
                      :size 2}
                     :default "MX"}
@@ -284,22 +284,22 @@
                     :type :bytes
                     :default ""}]}]
     #?(:clj (is (fp-matches? add-to-cart-rsp-schema)))
-    (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.AddToCartRsp\","
+    (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.AddToCartRsp\","
                 "\"type\":\"record\",\"fields\":[{\"name\":\"qtyRequested\","
                 "\"type\":\"int\"},{\"name\":\"qtyAdded\",\"type\":\"int\"},"
                 "{\"name\":\"currentQty\",\"type\":\"int\"},{\"name\":\"req\","
-                "\"type\":{\"name\":\"deercreeklabs.lancaster_test."
+                "\"type\":{\"name\":\"deercreeklabs.unit.lancaster_test."
                 "AddToCartReq\",\"type\":\"record\",\"fields\":[{\"name\":"
                 "\"sku\",\"type\":\"int\"},{\"name\":\"qtyRequested\",\"type"
                 "\":\"int\"}]}},{\"name\":\"theReasonWhy\",\"type\":{\"name\":"
-                "\"deercreeklabs.lancaster_test.Why\",\"type\":\"enum\","
+                "\"deercreeklabs.unit.lancaster_test.Why\",\"type\":\"enum\","
                 "\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}},{\"name\":"
-                "\"data\",\"type\":{\"name\":\"deercreeklabs.lancaster_test."
+                "\"data\",\"type\":{\"name\":\"deercreeklabs.unit.lancaster_test."
                 "AFixed\",\"type\":\"fixed\",\"size\":2}},{\"name\":"
                 "\"otherData\",\"type\":\"bytes\"}]}")
            (l/pcf add-to-cart-rsp-schema)))
     (is (= expected (l/edn add-to-cart-rsp-schema))))
-  (is (= "-5582445743513220891"
+  (is (= "-4997526840462835541"
          (u/long->str (l/fingerprint64 add-to-cart-rsp-schema)))))
 
 (deftest test-nested-record-serdes
@@ -416,19 +416,19 @@
     (is (= data decoded))))
 
 (deftest test-flex-map-schema
-  (is (= {:name :deercreeklabs.lancaster-test/sku-to-qty,
+  (is (= {:name :deercreeklabs.unit.lancaster-test/sku-to-qty,
           :type :flex-map,
           :keys :int,
           :values :int}
          (l/edn sku-to-qty-schema)))
   #?(:clj (is (fp-matches? sku-to-qty-schema)))
   (is (= (str
-          "{\"name\":\"deercreeklabs.lancaster_test.SkuToQty\",\"type\":"
+          "{\"name\":\"deercreeklabs.unit.lancaster_test.SkuToQty\",\"type\":"
           "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\":"
           "\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":{\"type\":"
           "\"array\",\"items\":\"int\"}}]}")
          (l/pcf sku-to-qty-schema)))
-  (is (= "6159813828138522206"
+  (is (= "-9158083726900567523"
          (u/long->str (l/fingerprint64 sku-to-qty-schema)))))
 
 (deftest test-embedded-flex-map-pcf
@@ -533,7 +533,7 @@
   #?(:clj (is (fp-matches? rsps-schema)))
   (is (= {:type :array
           :items
-          {:name :deercreeklabs.lancaster-test/add-to-cart-rsp
+          {:name :deercreeklabs.unit.lancaster-test/add-to-cart-rsp
            :type :record
            :fields
            [{:name :qty-requested :type :int :default -1}
@@ -541,7 +541,7 @@
             {:name :current-qty :type :int :default -1}
             {:name :req
              :type
-             {:name :deercreeklabs.lancaster-test/add-to-cart-req
+             {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
               :type :record
               :fields
               [{:name :sku :type :int :default -1}
@@ -549,19 +549,19 @@
              :default {:sku 10 :qty-requested 1}}
             {:name :the-reason-why
              :type
-             {:name :deercreeklabs.lancaster-test/why
+             {:name :deercreeklabs.unit.lancaster-test/why
               :type :enum
               :symbols [:all :stock :limit]}
              :default :stock}
             {:name :data
              :type
-             {:name :deercreeklabs.lancaster-test/a-fixed
+             {:name :deercreeklabs.unit.lancaster-test/a-fixed
               :type :fixed
               :size 2}
              :default "MX"}
             {:name :other-data :type :bytes :default ""}]}}
          (l/edn rsps-schema)))
-  (is (= "6045089564094799287"
+  (is (= "4121614369257759480"
          (u/long->str (l/fingerprint64 rsps-schema)))))
 
 (deftest test-nested-array-schema-serdes
@@ -592,7 +592,7 @@
   #?(:clj (is (fp-matches? nested-map-schema)))
   (is (= {:type :map
           :values
-          {:name :deercreeklabs.lancaster-test/add-to-cart-rsp
+          {:name :deercreeklabs.unit.lancaster-test/add-to-cart-rsp
            :type :record
            :fields
            [{:name :qty-requested :type :int :default -1}
@@ -600,7 +600,7 @@
             {:name :current-qty :type :int :default -1}
             {:name :req
              :type
-             {:name :deercreeklabs.lancaster-test/add-to-cart-req
+             {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
               :type :record
               :fields
               [{:name :sku :type :int :default -1}
@@ -608,19 +608,19 @@
              :default {:sku 10 :qty-requested 1}}
             {:name :the-reason-why
              :type
-             {:name :deercreeklabs.lancaster-test/why
+             {:name :deercreeklabs.unit.lancaster-test/why
               :type :enum
               :symbols [:all :stock :limit]}
              :default :stock}
             {:name :data
              :type
-             {:name :deercreeklabs.lancaster-test/a-fixed
+             {:name :deercreeklabs.unit.lancaster-test/a-fixed
               :type :fixed
               :size 2}
              :default "MX"}
             {:name :other-data :type :bytes :default ""}]}}
          (l/edn nested-map-schema)))
-  (is (= "-6943064080000840455"
+  (is (= "550517813727580798"
          (u/long->str (l/fingerprint64 nested-map-schema)))))
 
 (deftest test-nested-map-schema-serdes
@@ -660,16 +660,16 @@
 (deftest test-union-schema
   #?(:clj (is (fp-matches? union-schema)))
   (is (= [:int
-          {:name :deercreeklabs.lancaster-test/add-to-cart-req
+          {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
            :type :record
            :fields
            [{:name :sku :type :int :default -1}
             {:name :qty-requested :type :int :default 0}]}
-          {:name :deercreeklabs.lancaster-test/a-fixed
+          {:name :deercreeklabs.unit.lancaster-test/a-fixed
            :type :fixed
            :size 2}]
          (l/edn union-schema)))
-  (is (= "-1215721474899338988"
+  (is (= "220769290814327109"
          (u/long->str (l/fingerprint64 union-schema)))))
 
 (deftest test-union-schema-serdes
@@ -688,18 +688,18 @@
 
 (deftest test-wrapped-union-schema
   #?(:clj (is (fp-matches? person-or-dog-schema)))
-  (is (= [{:name :deercreeklabs.lancaster-test/person
+  (is (= [{:name :deercreeklabs.unit.lancaster-test/person
            :type :record
            :fields
            [{:name :name :type :string :default "No name"}
             {:name :age :type :int :default 0}]}
-          {:name :deercreeklabs.lancaster-test/dog
+          {:name :deercreeklabs.unit.lancaster-test/dog
            :type :record
            :fields
            [{:name :name :type :string :default "No name"}
             {:name :owner :type :string :default "No owner"}]}]
          (l/edn person-or-dog-schema)))
-  (is (= "8229597085629138324"
+  (is (= "4442216514942460391"
          (u/long->str (l/fingerprint64 person-or-dog-schema)))))
 
 (deftest test-wrapped-union-schema-serdes
@@ -756,17 +756,17 @@
 (deftest test-mopodoa-schema
   #?(:clj (is (fp-matches? mopodoa-schema)))
   (is (= [{:type :map :values :int}
-          {:name :deercreeklabs.lancaster-test/person
+          {:name :deercreeklabs.unit.lancaster-test/person
            :type :record
            :fields [{:name :name :type :string :default "No name"}
                     {:name :age :type :int :default 0}]}
-          {:name :deercreeklabs.lancaster-test/dog
+          {:name :deercreeklabs.unit.lancaster-test/dog
            :type :record
            :fields [{:name :name :type :string :default "No name"}
                     {:name :owner :type :string :default "No owner"}]}
           {:type :array :items :string}]
          (l/edn mopodoa-schema)))
-  (is (= "-2159799032016380061"
+  (is (= "274497413942050586"
          (u/long->str (l/fingerprint64 mopodoa-schema)))))
 
 (deftest test-mopodoa-schema-serdes
@@ -788,7 +788,7 @@
     (is (= data decoded))))
 
 (deftest test-recursive-schema
-  (is (= {:name :deercreeklabs.lancaster-test/tree
+  (is (= {:name :deercreeklabs.unit.lancaster-test/tree
           :type :record
           :fields
           [{:name :value :type :int :default -1}
@@ -800,7 +800,7 @@
             :default nil}]}
          (l/edn tree-schema)))
   #?(:clj (is (fp-matches? tree-schema)))
-  (is (= "1955448859740230833"
+  (is (= "-3297333764539234889"
          (u/long->str (l/fingerprint64 tree-schema)))))
 
 (deftest test-recursive-schema-serdes
@@ -1052,20 +1052,20 @@
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)
         expected (assoc data :audience [])]
-    (is (= (str "{\"name\":\"deercreeklabs.lancaster_test.Game\",\"type\":"
+    (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Game\",\"type\":"
                 "\"record\",\"fields\":[{\"name\":\"players\",\"type\":"
                 "{\"type\":\"array\",\"items\":{\"name\":"
-                "\"deercreeklabs.lancaster_test.Name\",\"type\":\"record\","
+                "\"deercreeklabs.unit.lancaster_test.Name\",\"type\":\"record\","
                 "\"fields\":[{\"name\":\"first\",\"type\":\"string\"},"
                 "{\"name\":\"last\",\"type\":\"string\"}]}}},{\"name\":"
                 "\"judges\",\"type\":{\"type\":\"array\",\"items\":"
-                "\"deercreeklabs.lancaster_test.Name\"}}]}")
+                "\"deercreeklabs.unit.lancaster_test.Name\"}}]}")
            (l/pcf writer-schema)))
     (is (= expected decoded))))
 
 (deftest test-rec-w-array-and-enum-schema
   #?(:clj (is (fp-matches? rec-w-array-and-enum-schema)))
-  (is (= {:name :deercreeklabs.lancaster-test/rec-w-array-and-enum
+  (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-array-and-enum
           :type :record
           :fields
           [{:name :names
@@ -1073,12 +1073,12 @@
             :default []}
            {:name :why
             :type
-            {:name :deercreeklabs.lancaster-test/why
+            {:name :deercreeklabs.unit.lancaster-test/why
              :type :enum
              :symbols [:all :stock :limit]}
             :default :all}]}
          (l/edn rec-w-array-and-enum-schema)))
-  (is (= "-7927992739929321638"
+  (is (= "-513897484330170713"
          (u/long->str (l/fingerprint64
                        rec-w-array-and-enum-schema)))))
 
@@ -1095,7 +1095,7 @@
 
 (deftest test-rec-w-map-schema
   #?(:clj (is (fp-matches? rec-w-map-schema)))
-  (is (= {:name :deercreeklabs.lancaster-test/rec-w-map
+  (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-map
           :type :record
           :fields
           [{:name :name-to-age
@@ -1103,7 +1103,7 @@
             :default {}}
            {:name :what :type :string :default ""}]}
          (l/edn rec-w-map-schema)))
-  (is (= "-6323129018147636525"
+  (is (= "-2363848852859553430"
          (u/long->str (l/fingerprint64
                        rec-w-map-schema)))))
 
@@ -1122,17 +1122,17 @@
 
 (deftest test-rec-w-fixed-no-default
   #?(:clj (is (fp-matches? rec-w-fixed-no-default-schema)))
-  (is (= {:name :deercreeklabs.lancaster-test/rec-w-fixed-no-default
+  (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-fixed-no-default
           :type :record
           :fields
           [{:name :data
             :type
-            {:name :deercreeklabs.lancaster-test/a-fixed
+            {:name :deercreeklabs.unit.lancaster-test/a-fixed
              :type :fixed
              :size 2}
             :default "\0\0"}]}
          (l/edn rec-w-fixed-no-default-schema)))
-  (is (= "-4442885480253568244"
+  (is (= "-6875395607105571061"
          (u/long->str (l/fingerprint64
                        rec-w-fixed-no-default-schema)))))
 
@@ -1148,13 +1148,13 @@
 
 (deftest test-rec-w-maybe-field
   #?(:clj (is (fp-matches? rec-w-maybe-field-schema)))
-  (is (= {:name :deercreeklabs.lancaster-test/rec-w-maybe-field,
+  (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-maybe-field,
           :type :record,
           :fields
           [{:name :name, :type :string, :default ""}
            {:name :age, :type [:null :int], :default nil}]}
          (l/edn rec-w-maybe-field-schema)))
-  (is (= "7746454544656991807"
+  (is (= "6155099556329734528"
          (u/long->str (l/fingerprint64 rec-w-maybe-field-schema)))))
 
 (deftest test-record-serdes-missing-field
@@ -1212,7 +1212,7 @@
 
 (deftest test-merge-record-schemas
   #?(:clj (is (fp-matches? merged-date-time-schema)))
-  (let [expected {:name :deercreeklabs.lancaster-test/merged-date-time
+  (let [expected {:name :deercreeklabs.unit.lancaster-test/merged-date-time
                   :type :record
                   :fields
                   [{:name :year :type :int :default -1}
@@ -1356,7 +1356,7 @@
 (deftest test-json-schema-w-evolution-no-default
   (let [data {:a 1}
         writer-schema (l/record-schema ::test-rec [[:a l/int-schema]])
-        reader-json (str "{\"name\":\"deercreeklabs.lancaster_test.TestRec\","
+        reader-json (str "{\"name\":\"deercreeklabs.unit.lancaster_test.TestRec\","
                          "\"type\":\"record\",\"fields\":["
                          "{\"name\":\"a\",\"type\":\"int\"},"
                          "{\"name\":\"b\",\"type\":\"string\"}]}")
@@ -1370,8 +1370,8 @@
   (let [data {:a 1}
         schema (l/record-schema ::test-rec [[:a l/int-schema]])
         wrapped-data (l/wrap schema data)]
-    (is (= [:deercreeklabs.lancaster-test/test-rec {:a 1}] wrapped-data))
-    (is (= :deercreeklabs.lancaster-test/test-rec (l/schema-name wrapped-data)))
+    (is (= [:deercreeklabs.unit.lancaster-test/test-rec {:a 1}] wrapped-data))
+    (is (= :deercreeklabs.unit.lancaster-test/test-rec (l/schema-name wrapped-data)))
     (is (= data (l/data wrapped-data)))))
 
 #?(:clj

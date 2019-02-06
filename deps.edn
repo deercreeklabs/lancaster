@@ -1,0 +1,25 @@
+{:deps
+ {camel-snake-kebab {:mvn/version "0.4.0"}
+  cheshire {:mvn/version "5.8.1"}
+  cljsjs/pako {:mvn/version "0.2.7-0"}
+  deercreeklabs/baracus {:mvn/version "0.1.14"}
+  org.clojure/clojure {:mvn/version "1.10.0"}
+  org.clojure/clojurescript {:mvn/version "1.10.516"}
+  primitive-math {:mvn/version "0.1.6"}
+  prismatic/schema {:mvn/version "1.1.9"}}
+
+ :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
+             "clojars" {:url "https://repo.clojars.org/"}}
+
+ :aliases
+ {:outdated {:extra-deps {olical/depot {:mvn/version "1.5.1"}}
+             :main-opts ["-m" "depot.outdated.main"]}
+
+  :dev {:extra-deps {doo {:mvn/version "0.1.11"}
+                     mvxcvi/puget {:mvn/version "1.1.0"}
+                     org.apache.avro/avro {:mvn/version "1.8.2"}
+                     org.clojure/tools.namespace {:mvn/version "0.2.11"}}}
+
+  :test {:extra-paths ["test"]
+         :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-389"}
+                      lambdaisland/kaocha-cljs {:mvn/version "0.0-16"}}}}}

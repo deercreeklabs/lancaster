@@ -9,6 +9,7 @@ pom.xml.asc
 /.lein-*
 /.nrepl-port
 /.cljs_*
+/.cpcache
 
 # JS stuff
 /node_modules
