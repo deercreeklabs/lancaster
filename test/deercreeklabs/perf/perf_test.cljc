@@ -34,6 +34,10 @@
         ms (- (u/current-time-ms) start-ms)]
     (/ (* 1000 iters) ms)))
 
+(defn encode-json [data]
+  #?(:clj (json/generate-string data)
+     :cljs (js/JSON.stringify (clj->js data))))
+
 (deftest ^:perf test-serdes-speed
   (let [data {:qty-requested 123
               :qty-added 10
@@ -44,47 +48,25 @@
               :other-data (ba/byte-array [123 123])}
         num-ops #?(:cljs 1e4 :clj 1e5)
         enc-fn #(l/serialize add-to-cart-rsp-schema data)
-        json-enc-fn (fn []
-                      #?(:clj (json/generate-string data)
-                         :cljs (js/JSON.stringify (clj->js data))))
-        deflated-json-enc-fn #(-> (json-enc-fn)
-                                  (ba/utf8->byte-array)
-                                  (ba/deflate))
+        json-enc-fn (partial encode-json data)
         enc-ops (get-ops-per-sec enc-fn num-ops)
         json-enc-ops (get-ops-per-sec json-enc-fn num-ops)
-        deflated-json-enc-ops (get-ops-per-sec deflated-json-enc-fn
-                                               (/ num-ops 10))
         encoded (enc-fn)
         json-encoded (json-enc-fn)
-        deflated-json-encoded (deflated-json-enc-fn)
         dec-fn #(l/deserialize-same add-to-cart-rsp-schema
                                     encoded)
         json-dec-fn (fn []
                       #?(:clj (json/parse-string json-encoded true)
                          :cljs (js->clj (js/JSON.parse json-encoded))))
-        deflated-json-dec-fn (fn []
-                               (let [json (-> deflated-json-encoded
-                                              (ba/inflate)
-                                              (ba/byte-array->utf8))]
-                                 #?(:clj (json/parse-string json true)
-                                    :cljs (js->clj (js/JSON.parse json)))))
-        deflated-json-dec-ops (get-ops-per-sec deflated-json-dec-fn
-                                               (/ num-ops 10))
         dec-ops (get-ops-per-sec dec-fn num-ops)
         json-dec-ops (get-ops-per-sec json-dec-fn num-ops)
         floor #?(:cljs Math/floor
                  :clj #(int (Math/floor (double %))))]
     (println (str "Lancaster encode ops per sec:     " (floor enc-ops)))
-    (println (str "Lancaster decode ops per sec:     " (floor dec-ops)))
     (println (str "JSON encode ops per sec:          " (floor json-enc-ops)))
+    (println (str "Lancaster decode ops per sec:     " (floor dec-ops)))
     (println (str "JSON decode ops per sec:          " (floor json-dec-ops)))
-    (println (str "Deflated JSON encode ops per sec: "
-                  (floor deflated-json-enc-ops)))
-    (println (str "Deflated JSON decode ops per sec: "
-                  (floor deflated-json-dec-ops)))
     (println (str "Lancaster encoded size:           " (count encoded)))
     (println (str "JSON encoded size:                " (count json-encoded)))
-    (println (str "Deflated JSON encoded size:       "
-                  (count deflated-json-encoded)))
     (is (< #?(:cljs 20000 :clj 200000) enc-ops))
     (is (< #?(:cljs 40000 :clj 300000) dec-ops))))

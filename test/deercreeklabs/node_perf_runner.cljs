@@ -2,12 +2,11 @@
   (:require
    [cljs.nodejs :as nodejs]
    [cljs.test :as test :refer-macros [run-tests]]
-   [deercreeklabs.perf-test]))
+   [deercreeklabs.perf.perf-test]))
 
 (nodejs/enable-util-print!)
 
 (defn -main [& args]
-  (.install (js/require "source-map-support"))
-  (run-tests 'deercreeklabs.perf-test))
+  (run-tests 'deercreeklabs.perf.perf-test))
 
 (set! *main-cli-fn* -main)

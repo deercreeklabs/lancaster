@@ -1,13 +1,5 @@
-{:externs ["lancaster_externs.js"]
- :install-deps true
- :npm-deps {:pako "1.0.6"
-            :source-map-support "0.5.6"}
+{:optimizations :none
  :output-dir "target/test"
  :output-to "target/test/test_main.js"
  :parallel-build true
- :source-map true
- :static-fns true
- ;; :pseudo-names true
- ;; :pretty-print true
- ;; :infer-externs true
- }
+ :source-map true}

@@ -5,5 +5,9 @@
           :test-paths ["test/deercreeklabs/unit"]}
          {:id :unit-node
           :type :kaocha.type/cljs
-          :test-paths ["test/deercreeklabs/unit"]}]
+          :test-paths ["test/deercreeklabs/unit"]}
+         {:id :unit-browser
+          :type :kaocha.type/cljs
+          :test-paths ["test/deercreeklabs/unit"]
+          :cljs/repl-env cljs.repl.browser/repl-env}]
  :kaocha.watch/ignore ["**.#*" "**#*#"]}

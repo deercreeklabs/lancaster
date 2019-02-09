@@ -4,8 +4,6 @@
    [deercreeklabs.lancaster.utils :as u]
    [schema.core :as s :include-macros true]))
 
-(set! *warn-on-infer* true)
-
 (defprotocol IResize
   (embiggen [this min-added-bytes]))
 

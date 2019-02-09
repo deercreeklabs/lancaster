@@ -12,9 +12,6 @@
      (:require-macros
       [deercreeklabs.lancaster.utils :refer [sym-map]])))
 
-#?(:cljs
-   (set! *warn-on-infer* true))
-
 #?(:cljs (def class type))
 #?(:cljs (def Long gm/Long))
 

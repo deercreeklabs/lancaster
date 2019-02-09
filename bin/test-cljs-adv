@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+rm -rf target/test_adv
+
+clj -A:test -m cljs.main -co test/test-cljs-opts-adv.edn \
+-t node -c deercreeklabs.node-test-runner && \
+node target/test_adv/test_main.js

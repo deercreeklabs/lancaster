@@ -1,0 +1,10 @@
+{:externs ["lancaster_externs.js"]
+ :optimizations :advanced
+ :output-dir "target/test_perf"
+ :output-to "target/test_perf/perf_main.js"
+ :parallel-build true
+ :source-map "target/test_perf/map.js.map"
+ :static-fns true
+ ;; :pseudo-names true
+ ;; :pretty-print true
+ }

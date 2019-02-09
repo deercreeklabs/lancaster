@@ -10,6 +10,7 @@ pom.xml.asc
 /.nrepl-port
 /.cljs_*
 /.cpcache
+/out
 
 # JS stuff
 /node_modules
