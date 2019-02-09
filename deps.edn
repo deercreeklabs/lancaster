@@ -14,8 +14,7 @@
  {:outdated {:extra-deps {olical/depot {:mvn/version "1.5.1"}}
              :main-opts ["-m" "depot.outdated.main"]}
 
-  :dev {:extra-deps {doo {:mvn/version "0.1.11"}
-                     mvxcvi/puget {:mvn/version "1.1.0"}
+  :dev {:extra-deps {mvxcvi/puget {:mvn/version "1.1.0"}
                      org.apache.avro/avro {:mvn/version "1.8.2"}
                      org.clojure/tools.namespace {:mvn/version "0.2.11"}}}
 
