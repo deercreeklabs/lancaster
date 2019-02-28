@@ -6,8 +6,6 @@
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
    [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
-   [deercreeklabs.lancaster.resolution :as reso]
-   [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]
    [schema.core :as s :include-macros true])
   #?(:clj
@@ -53,6 +51,11 @@
                               "clj-pcf:\n" clj-pcf "\n")]
              (println err-str))))))
 
+(defn round-trip? [schema data]
+  (let [serialized (l/serialize schema data)
+        deserialized (l/deserialize-same schema serialized)]
+    (= data deserialized)))
+
 (l/def-record-schema add-to-cart-req-schema
   [:sku l/int-schema]
   [:qty-requested l/int-schema 0])
@@ -69,7 +72,7 @@
                     [:qty-requested l/float-schema]
                     [:note l/string-schema "No note"]]))
 
-(def add-to-cart-req-v4-schema ;; :note is now called :comment
+(def add-to-cart-req-v4-schema
   (l/record-schema ::add-to-cart-req
                    [[:sku l/int-schema]
                     [:qty-requested l/int-schema]
@@ -95,8 +98,9 @@
   [:qty-requested l/int-schema]
   [:qty-added l/int-schema]
   [:current-qty l/int-schema]
-  [:req add-to-cart-req-schema {:sku 10 :qty-requested 1}]
-  [:the-reason-why why-schema :stock]
+  [:req add-to-cart-req-schema
+   #:add-to-cart-req{:sku 10 :qty-requested 1}]
+  [:the-reason-why why-schema :why/stock]
   [:data a-fixed-schema (ba/byte-array [77 88])]
   [:other-data l/bytes-schema])
 
@@ -117,11 +121,10 @@
   [:name-to-age ages-schema]
   [:what l/string-schema])
 
-(l/def-flex-map-schema sku-to-qty-schema
-  l/int-schema l/int-schema)
+(l/def-int-map-schema sku-to-qty-schema
+  l/int-schema)
 
-(def sku-to-qty-v2-schema (l/flex-map-schema ::sku-to-qty
-                                             l/int-schema l/long-schema))
+(def sku-to-qty-v2-schema (l/int-map-schema ::sku-to-qty l/long-schema))
 
 (l/def-map-schema nested-map-schema
   add-to-cart-rsp-schema)
@@ -177,9 +180,6 @@
   [:hour l/int-schema]
   [:minute l/int-schema])
 
-(l/def-merged-record-schema merged-date-time-schema
-  date-schema time-schema)
-
 (l/def-record-schema tree-schema
   [:value l/int-schema]
   [:right (l/maybe :tree)]
@@ -192,6 +192,7 @@
                           "\"qtyRequested\",\"type\":\"int\"}]}")
         expected-edn {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
                       :type :record
+                      :key-ns-type :short
                       :fields
                       [{:name :sku
                         :type :int
@@ -207,8 +208,8 @@
                          add-to-cart-req-schema)))))
 
 (deftest test-def-record-schema-serdes
-  (let [data {:sku 123
-              :qty-requested 5}
+  (let [data #:add-to-cart-req{:sku 123
+                              :qty-requested 5}
         encoded (l/serialize add-to-cart-req-schema data)
         decoded (l/deserialize-same add-to-cart-req-schema encoded)]
     (is (= "9gEK" (ba/byte-array->b64 encoded)))
@@ -216,6 +217,7 @@
 
 (deftest test-def-enum-schema
   (is (= {:name :deercreeklabs.unit.lancaster-test/why
+          :key-ns-type :short
           :type :enum
           :symbols [:all :stock :limit]}
          (l/edn why-schema)))
@@ -227,7 +229,7 @@
          (u/long->str (l/fingerprint64 why-schema)))))
 
 (deftest test-def-enum-schema-serdes
-  (let [data :stock
+  (let [data :why/stock
         encoded (l/serialize why-schema data)
         decoded (l/deserialize-same why-schema encoded)]
     (is (ba/equivalent-byte-arrays? (ba/byte-array [2]) encoded))
@@ -256,24 +258,26 @@
 (deftest test-nested-record-schema
   (let [expected {:name :deercreeklabs.unit.lancaster-test/add-to-cart-rsp
                   :type :record
+                  :key-ns-type :short
                   :fields
                   [{:name :qty-requested :type :int :default -1}
                    {:name :qty-added :type :int :default -1}
                    {:name :current-qty :type :int :default -1}
                    {:name :req
-                    :type
-                    {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
-                     :type :record
-                     :fields
-                     [{:name :sku :type :int :default -1}
-                      {:name :qty-requested :type :int :default 0}]}
-                    :default {:sku 10 :qty-requested 1}}
+                    :type {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
+                           :type :record
+                           :key-ns-type :short
+                           :fields [{:name :sku :type :int :default -1}
+                                    {:name :qty-requested
+                                     :type :int
+                                     :default 0}]}
+                    :default #:add-to-cart-req{:sku 10 :qty-requested 1}}
                    {:name :the-reason-why
-                    :type
-                    {:name :deercreeklabs.unit.lancaster-test/why
-                     :type :enum
-                     :symbols [:all :stock :limit]}
-                    :default :stock}
+                    :type {:name :deercreeklabs.unit.lancaster-test/why
+                           :type :enum
+                           :key-ns-type :short
+                           :symbols [:all :stock :limit]}
+                    :default :why/stock}
                    {:name :data
                     :type
                     {:name :deercreeklabs.unit.lancaster-test/a-fixed
@@ -303,13 +307,14 @@
          (u/long->str (l/fingerprint64 add-to-cart-rsp-schema)))))
 
 (deftest test-nested-record-serdes
-  (let [data {:qty-requested 123
-              :qty-added 10
-              :current-qty 10
-              :req {:sku 123 :qty-requested 123}
-              :the-reason-why :limit
-              :data (ba/byte-array [66 67])
-              :other-data (ba/byte-array [123 123])}
+  (let [data #:add-to-cart-rsp{:qty-requested 123
+                               :qty-added 10
+                               :current-qty 10
+                               :req #:add-to-cart-req{:sku 123
+                                                      :qty-requested 123}
+                               :the-reason-why :why/limit
+                               :data (ba/byte-array [66 67])
+                               :other-data (ba/byte-array [123 123])}
         encoded (l/serialize add-to-cart-rsp-schema data)
         decoded (l/deserialize-same add-to-cart-rsp-schema
                                     encoded)]
@@ -415,10 +420,9 @@
          encoded))
     (is (= data decoded))))
 
-(deftest test-flex-map-schema
+(deftest test-int-map-schema
   (is (= {:name :deercreeklabs.unit.lancaster-test/sku-to-qty,
-          :type :flex-map,
-          :keys :int,
+          :type :int-map
           :values :int}
          (l/edn sku-to-qty-schema)))
   #?(:clj (is (fp-matches? sku-to-qty-schema)))
@@ -431,8 +435,8 @@
   (is (= "-9158083726900567523"
          (u/long->str (l/fingerprint64 sku-to-qty-schema)))))
 
-(deftest test-embedded-flex-map-pcf
-  (let [fms (l/flex-map-schema :i-to-i l/int-schema l/int-schema)
+(deftest test-embedded-int-map-pcf
+  (let [fms (l/int-map-schema :i-to-i l/int-schema)
         rs (l/record-schema :r [[:fm fms]])
         pcf (l/pcf rs)
         expected (str "{\"name\":\"R\",\"type\":\"record\",\"fields\":[{"
@@ -442,7 +446,7 @@
                       ",\"type\":{\"type\":\"array\",\"items\":\"int\"}}]}}]}")]
     (is (= expected pcf))))
 
-(deftest test-flex-schema-serdes
+(deftest test-int-map-schema-serdes
   (let [data {123 10
               456 100
               789 2}
@@ -453,52 +457,13 @@
          encoded))
     (is (= data decoded))))
 
-(deftest test-flex-map-evolution
-  (let [data {123 10
-              456 100
-              789 2}
-        encoded (l/serialize sku-to-qty-schema data)
-        decoded (l/deserialize sku-to-qty-v2-schema
-                               sku-to-qty-schema encoded)
-        expected (reduce-kv (fn [acc k v]
-                              (assoc acc k (u/int->long v)))
-                            {} data)]
-    (is (= expected decoded))))
-
-(deftest test-complex-key-flex-schema-serdes
-  (let [item-schema (l/flex-map-schema ::item
-                                       add-to-cart-req-schema
-                                       l/boolean-schema)
-        schema (l/array-schema item-schema)
-        data [{{:sku 123 :qty-requested 10} true
-               {:sku 999 :qty-requested 7} false}]
-        encoded (l/serialize schema data)
-        decoded (l/deserialize-same schema encoded)]
-    (is (ba/equivalent-byte-arrays?
-         (ba/byte-array [2 4 -10 1 20 -50 15 14 0 4 1 0 0 0])
-         encoded))
-    (is (= data decoded))))
-
-(deftest test-plumatic-flex-map
-  (let [child-schema (l/flex-map-schema ::child
-                                        add-to-cart-req-schema
-                                        l/boolean-schema)
-        schema (l/array-schema child-schema)
-        pschema (l/plumatic-schema schema)
-        data [{{:sku 123 :qty-requested 10} true
-               {:sku 999 :qty-requested 7} false}]]
-    (is (nil? (s/check pschema data)))))
-
-(deftest test-maybe-flex-map
-  (let [fms (l/flex-map-schema :i-to-i l/int-schema l/int-schema)
-        ms (l/maybe fms)
+(deftest test-maybe-int-map
+  (let [int-map-schema (l/int-map-schema :i-to-i l/int-schema)
+        maybe-schema (l/maybe int-map-schema)
         data1 {1 1}
-        data2 nil
-        rt (fn [data]
-             (->> (l/serialize ms data)
-                  (l/deserialize-same ms)))]
-    (is (= data1 (rt data1)))
-    (is (= data2 (rt data2)))))
+        data2 nil]
+    (is (round-trip? maybe-schema data1))
+    (is (round-trip? maybe-schema data2))))
 
 (deftest test-def-array-schema
   #?(:clj (is (fp-matches? simple-array-schema)))
@@ -535,24 +500,26 @@
           :items
           {:name :deercreeklabs.unit.lancaster-test/add-to-cart-rsp
            :type :record
+           :key-ns-type :short
            :fields
            [{:name :qty-requested :type :int :default -1}
             {:name :qty-added :type :int :default -1}
             {:name :current-qty :type :int :default -1}
             {:name :req
-             :type
-             {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
-              :type :record
-              :fields
-              [{:name :sku :type :int :default -1}
-               {:name :qty-requested :type :int :default 0}]}
-             :default {:sku 10 :qty-requested 1}}
+             :type {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
+                    :type :record
+                    :key-ns-type :short
+                    :fields
+                    [{:name :sku :type :int :default -1}
+                     {:name :qty-requested :type :int :default 0}]}
+             :default #:add-to-cart-req{:sku 10 :qty-requested 1}}
             {:name :the-reason-why
              :type
              {:name :deercreeklabs.unit.lancaster-test/why
               :type :enum
+              :key-ns-type :short
               :symbols [:all :stock :limit]}
-             :default :stock}
+             :default :why/stock}
             {:name :data
              :type
              {:name :deercreeklabs.unit.lancaster-test/a-fixed
@@ -565,20 +532,22 @@
          (u/long->str (l/fingerprint64 rsps-schema)))))
 
 (deftest test-nested-array-schema-serdes
-  (let [data [{:qty-requested 123
-               :qty-added 4
-               :current-qty 10
-               :req {:sku 123 :qty-requested 123}
-               :the-reason-why :limit
-               :data (ba/byte-array [66 67])
-               :other-data (ba/byte-array [123 123])}
-              {:qty-requested 4
-               :qty-added 4
-               :current-qty 4
-               :req {:sku 10 :qty-requested 4}
-               :the-reason-why :all
-               :data (ba/byte-array [100 110])
-               :other-data (ba/byte-array [64 74])}]
+  (let [data [#:add-to-cart-rsp{:qty-requested 123
+                                :qty-added 4
+                                :current-qty 10
+                                :req
+                                #:add-to-cart-req{:sku 123 :qty-requested 123}
+                                :the-reason-why :why/limit
+                                :data (ba/byte-array [66 67])
+                                :other-data (ba/byte-array [123 123])}
+              #:add-to-cart-rsp{:qty-requested 4
+                                :qty-added 4
+                                :current-qty 4
+                                :req
+                                #:add-to-cart-req{:sku 10 :qty-requested 4}
+                                :the-reason-why :why/all
+                                :data (ba/byte-array [100 110])
+                                :other-data (ba/byte-array [64 74])}]
         encoded (l/serialize rsps-schema data)
         decoded (l/deserialize-same rsps-schema encoded)]
     (is (ba/equivalent-byte-arrays?
@@ -594,24 +563,24 @@
           :values
           {:name :deercreeklabs.unit.lancaster-test/add-to-cart-rsp
            :type :record
+           :key-ns-type :short
            :fields
            [{:name :qty-requested :type :int :default -1}
             {:name :qty-added :type :int :default -1}
             {:name :current-qty :type :int :default -1}
             {:name :req
-             :type
-             {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
-              :type :record
-              :fields
-              [{:name :sku :type :int :default -1}
-               {:name :qty-requested :type :int :default 0}]}
-             :default {:sku 10 :qty-requested 1}}
+             :type {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
+                    :type :record
+                    :key-ns-type :short
+                    :fields [{:name :sku :type :int :default -1}
+                             {:name :qty-requested :type :int :default 0}]}
+             :default #:add-to-cart-req{:sku 10 :qty-requested 1}}
             {:name :the-reason-why
-             :type
-             {:name :deercreeklabs.unit.lancaster-test/why
-              :type :enum
-              :symbols [:all :stock :limit]}
-             :default :stock}
+             :type {:name :deercreeklabs.unit.lancaster-test/why
+                    :type :enum
+                    :key-ns-type :short
+                    :symbols [:all :stock :limit]}
+             :default :why/stock}
             {:name :data
              :type
              {:name :deercreeklabs.unit.lancaster-test/a-fixed
@@ -624,20 +593,22 @@
          (u/long->str (l/fingerprint64 nested-map-schema)))))
 
 (deftest test-nested-map-schema-serdes
-  (let [data {"A" {:qty-requested 123
-                   :qty-added 4
-                   :current-qty 10
-                   :req {:sku 123 :qty-requested 123}
-                   :the-reason-why :limit
-                   :data (ba/byte-array [66 67])
-                   :other-data (ba/byte-array [123 123])}
-              "B" {:qty-requested 4
-                   :qty-added 4
-                   :current-qty 4
-                   :req {:sku 10 :qty-requested 4}
-                   :the-reason-why :all
-                   :data (ba/byte-array [100 110])
-                   :other-data (ba/byte-array [64 74])}}
+  (let [data {"A" #:add-to-cart-rsp{:qty-requested 123
+                                    :qty-added 4
+                                    :current-qty 10
+                                    :req #:add-to-cart-req{:sku 123
+                                                           :qty-requested 123}
+                                    :the-reason-why :why/limit
+                                    :data (ba/byte-array [66 67])
+                                    :other-data (ba/byte-array [123 123])}
+              "B" #:add-to-cart-rsp{:qty-requested 4
+                                    :qty-added 4
+                                    :current-qty 4
+                                    :req #:add-to-cart-req{:sku 10
+                                                           :qty-requested 4}
+                                    :the-reason-why :why/all
+                                    :data (ba/byte-array [100 110])
+                                    :other-data (ba/byte-array [64 74])}}
         encoded (l/serialize nested-map-schema data)
         decoded (l/deserialize-same nested-map-schema encoded)]
     (is (ba/equivalent-byte-arrays?
@@ -662,6 +633,7 @@
   (is (= [:int
           {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
            :type :record
+           :key-ns-type :short
            :fields
            [{:name :sku :type :int :default -1}
             {:name :qty-requested :type :int :default 0}]}
@@ -673,7 +645,7 @@
          (u/long->str (l/fingerprint64 union-schema)))))
 
 (deftest test-union-schema-serdes
-  (let [data {:sku 123 :qty-requested 4}
+  (let [data #:add-to-cart-req{:sku 123 :qty-requested 4}
         encoded (l/serialize union-schema data)
         decoded (l/deserialize-same union-schema encoded)
         _ (is (ba/equivalent-byte-arrays? (ba/byte-array [2 -10 1 8])
@@ -686,15 +658,17 @@
                                     encoded))
     (is (= data decoded))))
 
-(deftest test-wrapped-union-schema
+(deftest test-union-schema-w-multiple-records
   #?(:clj (is (fp-matches? person-or-dog-schema)))
   (is (= [{:name :deercreeklabs.unit.lancaster-test/person
            :type :record
+           :key-ns-type :short
            :fields
            [{:name :name :type :string :default "No name"}
             {:name :age :type :int :default 0}]}
           {:name :deercreeklabs.unit.lancaster-test/dog
            :type :record
+           :key-ns-type :short
            :fields
            [{:name :name :type :string :default "No name"}
             {:name :owner :type :string :default "No owner"}]}]
@@ -702,15 +676,15 @@
   (is (= "4442216514942460391"
          (u/long->str (l/fingerprint64 person-or-dog-schema)))))
 
-(deftest test-wrapped-union-schema-serdes
-  (let [data (l/wrap dog-schema {:name "Fido" :owner "Zach"})
+(deftest test-multi-record-union-schema-serdes
+  (let [data #:dog{:name "Fido" :owner "Zach"}
         encoded (l/serialize person-or-dog-schema data)
         decoded (l/deserialize-same person-or-dog-schema encoded)
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [2 8 70 105 100 111 8 90 97 99 104])
                encoded))
         _ (is (= data decoded))
-        data (l/wrap person-schema {:name "Bill" :age 50})
+        data #:person{:name "Bill" :age 50}
         encoded (l/serialize person-or-dog-schema data)
         decoded (l/deserialize-same person-or-dog-schema encoded)]
     (is (ba/equivalent-byte-arrays?
@@ -718,14 +692,11 @@
          encoded))
     (is (= data decoded))))
 
-(deftest test-wrapped-union-schema-serdes-non-existent
-  (try
-    (l/serialize person-or-dog-schema [:non-existent-schema-name {}])
-    (is (= :did-not-throw :but-should-have))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (u/ex-msg e)]
-        (is (str/includes?
-             msg "`:non-existent-schema-name` is not in the union schema"))))))
+(deftest test-multi-record-schema-serdes-non-existent
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"is not in the union schema"
+       (l/serialize person-or-dog-schema #:foo{:k 1}))))
 
 (deftest test-map-or-array-schema
   #?(:clj (is (fp-matches? map-or-array-schema)))
@@ -758,10 +729,12 @@
   (is (= [{:type :map :values :int}
           {:name :deercreeklabs.unit.lancaster-test/person
            :type :record
+           :key-ns-type :short
            :fields [{:name :name :type :string :default "No name"}
                     {:name :age :type :int :default 0}]}
           {:name :deercreeklabs.unit.lancaster-test/dog
            :type :record
+           :key-ns-type :short
            :fields [{:name :name :type :string :default "No name"}
                     {:name :owner :type :string :default "No owner"}]}
           {:type :array :items :string}]
@@ -770,7 +743,7 @@
          (u/long->str (l/fingerprint64 mopodoa-schema)))))
 
 (deftest test-mopodoa-schema-serdes
-  (let [data (l/wrap ages-schema {"Zeke" 22 "Adeline" 88})
+  (let [data #:ages{"Zeke" 22 "Adeline" 88}
         encoded (l/serialize mopodoa-schema data)
         decoded (l/deserialize-same mopodoa-schema encoded)
         _ (is (ba/equivalent-byte-arrays?
@@ -778,7 +751,7 @@
                                110 101 -80 1 0])
                encoded))
         _ (is (= data decoded))
-        data (l/wrap simple-array-schema ["a thing" "another thing"])
+        data ["a thing" "another thing"]
         encoded (l/serialize mopodoa-schema data)
         decoded (l/deserialize-same mopodoa-schema encoded)]
     (is (ba/equivalent-byte-arrays?
@@ -790,6 +763,7 @@
 (deftest test-recursive-schema
   (is (= {:name :deercreeklabs.unit.lancaster-test/tree
           :type :record
+          :key-ns-type :short
           :fields
           [{:name :value :type :int :default -1}
            {:name :right
@@ -804,19 +778,19 @@
          (u/long->str (l/fingerprint64 tree-schema)))))
 
 (deftest test-recursive-schema-serdes
-  (let [data {:value 5
-              :right {:value -10
-                      :right {:value -20
-                              :right nil
-                              :left nil}
-                      :left nil}
-              :left {:value 10
-                     :right nil
-                     :left {:value 20
-                            :right nil
-                            :left {:value 40
-                                   :right nil
-                                   :left nil}}}}
+  (let [data #:tree{:value 5
+                    :right #:tree{:value -10
+                                  :right #:tree{:value -20
+                                                :right nil
+                                                :left nil}
+                                  :left nil}
+                    :left #:tree{:value 10
+                                 :right nil
+                                 :left #:tree{:value 20
+                                              :right nil
+                                              :left #:tree{:value 40
+                                                           :right nil
+                                                           :left nil}}}}
         encoded (l/serialize tree-schema data)
         decoded (l/deserialize-same tree-schema encoded)]
     (is (ba/equivalent-byte-arrays?
@@ -824,249 +798,11 @@
          encoded))
     (is (= data decoded))))
 
-(deftest test-schema-resolution-int-to-long
-  (let [data 10
-        writer-schema l/int-schema
-        reader-schema l/long-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
-    (is (= "10" (u/long->str decoded-new)))))
-
-(deftest test-schema-resolution-int-to-float
-  (let [data 10
-        writer-schema l/int-schema
-        reader-schema l/float-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
-    (is (= (float data) decoded-new))))
-
-(deftest test-schema-resolution-int-to-double
-  (let [data 10
-        writer-schema l/int-schema
-        reader-schema l/float-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
-    (is (= (double data) decoded-new))))
-
-(deftest test-schema-resolution-long-to-float
-  (let [data (u/ints->long 12345 6789)
-        writer-schema l/long-schema
-        reader-schema l/float-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded-orig)
-        expected 5.3021371E13
-        rel-err (rel-err expected decoded)]
-    (is (> 0.00000001 rel-err))))
-
-(deftest test-schema-resolution-long-to-double
-  (let [data (u/ints->long -12345 -6789)
-        writer-schema l/long-schema
-        reader-schema l/double-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded-orig)
-        expected (double -53017076308613)
-        rel-err (rel-err expected decoded)]
-    (is (> 0.00000001 rel-err))))
-
-(deftest test-schema-resolution-float-to-double
-  (let [data (float 1234.5789)
-        writer-schema l/float-schema
-        reader-schema l/double-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded-orig)
-        rel-err (rel-err data decoded)]
-    (is (> 0.0000001 rel-err))))
-
-(deftest test-schema-resolution-string-to-bytes
-  (let [data "Hello, World!"
-        writer-schema l/string-schema
-        reader-schema l/bytes-schema
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (ba/byte-array [72 101 108 108 111 44
-                                 32 87 111 114 108 100 33])]
-    (is (ba/equivalent-byte-arrays? expected decoded))))
-
-(deftest test-schema-resolution-int-array-to-float-array
-  (let [data [1 2 3]
-        writer-schema (l/array-schema l/int-schema)
-        reader-schema (l/array-schema l/float-schema)
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)
-        expected [1.0 2.0 3.0]]
-    (is (= expected decoded))))
-
-(deftest test-schema-resolution-int-map-to-float-map
-  (let [data {"one" 1 "two" 2}
-        writer-schema (l/map-schema l/int-schema)
-        reader-schema (l/map-schema l/float-schema)
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)
-        expected {"one" 1.0 "two" 2.0}]
-    (is (= expected decoded))))
-
-(deftest  test-schema-resolution-enum-added-symbol
-  (let [data :stock
-        writer-schema why-schema
-        reader-schema (l/enum-schema ::why
-                                     [:foo :all :limit :stock])
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= data decoded))))
-
-(deftest test-record-schema-evolution-add-field
-  (let [data {:sku 789
-              :qty-requested 10}
-        writer-schema add-to-cart-req-schema
-        reader-schema add-to-cart-req-v2-schema
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= (assoc data :note "No note") decoded))))
-
-(deftest test-schema-evolution-remove-field
-  (let [data {:sku 789
-              :qty-requested 10
-              :note "This is a nice item"}
-        writer-schema add-to-cart-req-v2-schema
-        reader-schema add-to-cart-req-schema
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= (dissoc data :note) decoded))))
-
-(deftest test-schema-evolution-change-field
-  (let [data {:sku 123
-              :qty-requested 10
-              :note "This is a nice item"}
-        writer-schema add-to-cart-req-v2-schema
-        reader-schema add-to-cart-req-v3-schema
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= (assoc data :qty-requested 10.0) decoded))))
-
-(deftest test-schema-evolution-change-field-name
-  (let [data {:sku 123
-              :qty-requested 10
-              :note "This is a nice item"}
-        writer-schema add-to-cart-req-v2-schema
-        reader-schema add-to-cart-req-v4-schema
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (-> data
-                     (dissoc :note)
-                     (assoc :comment ""))]
-    (is (= expected decoded))))
-
-(deftest test-schema-evolution-add-field-and-change-field
-  (let [data {:sku 123
-              :qty-requested 10}
-        writer-schema add-to-cart-req-schema
-        reader-schema add-to-cart-req-v3-schema
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= (assoc data :qty-requested 10.0 :note "No note") decoded))))
-
-(deftest test-schema-evolution-union-add-member
-  (let [data (l/wrap dog-schema {:name "Rover" :owner "Zeus"})
-        writer-schema person-or-dog-schema
-        reader-schema fish-or-person-or-dog-v2-schema
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)
-        [dec-sch-name dec-data] decoded
-        [orig-sch-name orig-data] data]
-    (is (= orig-sch-name dec-sch-name))
-    (is (= (assoc orig-data :tag-number -1)
-           dec-data))))
-
-(deftest test-schema-evolution-union-to-non-union
-  (let [data {:name "Rover" :owner "Zeus"}
-        wrapped-data (l/wrap dog-schema data)
-        writer-schema person-or-dog-schema
-        reader-schema dog-v2-schema
-        encoded (l/serialize writer-schema wrapped-data)
-        decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= (assoc data :tag-number -1) decoded))))
-
-(deftest test-schema-evolution-non-union-to-union
-  (let [data {:name "Rover" :owner "Zeus" :tag-number 123}
-        wrapped-data (l/wrap dog-schema data)
-        writer-schema dog-v2-schema
-        reader-schema person-or-dog-schema
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (l/wrap dog-schema (dissoc data :tag-number))]
-    (is (= expected decoded))))
-
-(deftest test-schema-evolution-union-remove-member-success
-  (let [data {:name "Runner" :owner "Tommy" :tag-number 134}
-        wrapped-data (l/wrap dog-schema data)
-        writer-schema fish-or-person-or-dog-v2-schema
-        reader-schema person-or-dog-schema
-        encoded (l/serialize writer-schema wrapped-data)
-        decoded (l/deserialize reader-schema writer-schema encoded)
-        [schema-name decoded-data] decoded
-        expected (dissoc data :tag-number)]
-    (is (= expected decoded-data))))
-
-(deftest test-schema-evolution-union-remove-member-failure
-  (let [data {:name "Swimmy" :tank-num 24}
-        wrapped-data (l/wrap fish-schema data)
-        writer-schema fish-or-person-or-dog-v2-schema
-        reader-schema person-or-dog-schema
-        encoded (l/serialize writer-schema wrapped-data)]
-    (try
-      (l/deserialize reader-schema writer-schema encoded)
-      (is (= :did-not-throw :but-should-have))
-      (catch #?(:clj Exception :cljs js/Error) e
-        (let [msg (u/ex-msg e)]
-          (is (str/includes? msg "do not match.")))))))
-
-(deftest test-schema-evolution-no-match
-  (let [data {:sku 123
-              :qty-requested 10}
-        writer-schema add-to-cart-req-schema
-        reader-schema l/int-schema
-        encoded (l/serialize writer-schema data)]
-    (try
-      (l/deserialize reader-schema writer-schema encoded)
-      (is (= :did-not-throw :but-should-have))
-      (catch #?(:clj Exception :cljs js/Error) e
-        (let [msg (u/ex-msg e)]
-          (is (str/includes? msg "do not match.")))))))
-
-(deftest test-schema-evolution-named-ref
-  (let [data {:players [{:first "Chad" :last "Harrington"}]
-              :judges [{:first "Chibuzor" :last "Okonkwo"}]}
-        name-schema (l/record-schema
-                     ::name
-                     [[:first l/string-schema]
-                      [:last l/string-schema]])
-        writer-schema (l/record-schema
-                       ::game
-                       [[:players (l/array-schema name-schema)]
-                        [:judges (l/array-schema name-schema)]])
-        reader-schema (l/record-schema
-                       ::game
-                       [[:players (l/array-schema name-schema)]
-                        [:judges (l/array-schema name-schema)]
-                        [:audience (l/array-schema name-schema)]])
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (assoc data :audience [])]
-    (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Game\",\"type\":"
-                "\"record\",\"fields\":[{\"name\":\"players\",\"type\":"
-                "{\"type\":\"array\",\"items\":{\"name\":"
-                "\"deercreeklabs.unit.lancaster_test.Name\",\"type\":\"record\","
-                "\"fields\":[{\"name\":\"first\",\"type\":\"string\"},"
-                "{\"name\":\"last\",\"type\":\"string\"}]}}},{\"name\":"
-                "\"judges\",\"type\":{\"type\":\"array\",\"items\":"
-                "\"deercreeklabs.unit.lancaster_test.Name\"}}]}")
-           (l/pcf writer-schema)))
-    (is (= expected decoded))))
-
 (deftest test-rec-w-array-and-enum-schema
   #?(:clj (is (fp-matches? rec-w-array-and-enum-schema)))
   (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-array-and-enum
           :type :record
+          :key-ns-type :short
           :fields
           [{:name :names
             :type {:type :array :items :string}
@@ -1075,6 +811,7 @@
             :type
             {:name :deercreeklabs.unit.lancaster-test/why
              :type :enum
+             :key-ns-type :short
              :symbols [:all :stock :limit]}
             :default :all}]}
          (l/edn rec-w-array-and-enum-schema)))
@@ -1083,8 +820,8 @@
                        rec-w-array-and-enum-schema)))))
 
 (deftest test-rec-w-array-and-enum-serdes
-  (let [data {:names ["Aria" "Beth" "Cindy"]
-              :why :stock}
+  (let [data #:rec-w-array-and-enum{:names ["Aria" "Beth" "Cindy"]
+                                    :why :why/stock}
         encoded (l/serialize rec-w-array-and-enum-schema data)
         decoded (l/deserialize-same rec-w-array-and-enum-schema encoded)]
     (is (ba/equivalent-byte-arrays?
@@ -1097,21 +834,21 @@
   #?(:clj (is (fp-matches? rec-w-map-schema)))
   (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-map
           :type :record
-          :fields
-          [{:name :name-to-age
-            :type {:type :map :values :int}
-            :default {}}
-           {:name :what :type :string :default ""}]}
+          :fields [{:name :name-to-age
+                    :type {:type :map :values :int}
+                    :default {}}
+                   {:name :what :type :string :default ""}]
+          :key-ns-type :short}
          (l/edn rec-w-map-schema)))
   (is (= "-2363848852859553430"
          (u/long->str (l/fingerprint64
                        rec-w-map-schema)))))
 
 (deftest test-rec-w-map-serdes
-  (let [data {:name-to-age {"Aria" 22
-                            "Beth" 33
-                            "Cindy" 44}
-              :what "yo"}
+  (let [data #:rec-w-map{:name-to-age {"Aria" 22
+                                       "Beth" 33
+                                       "Cindy" 44}
+                         :what "yo"}
         encoded (l/serialize rec-w-map-schema data)
         decoded (l/deserialize-same rec-w-map-schema encoded)]
     (is (ba/equivalent-byte-arrays?
@@ -1124,6 +861,7 @@
   #?(:clj (is (fp-matches? rec-w-fixed-no-default-schema)))
   (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-fixed-no-default
           :type :record
+          :key-ns-type :short
           :fields
           [{:name :data
             :type
@@ -1137,19 +875,21 @@
                        rec-w-fixed-no-default-schema)))))
 
 (deftest test-rec-w-fixed-no-default-serdes
-  (let [data {:data (ba/byte-array [1 2])}
+  (let [data {:rec-w-fixed-no-default/data (ba/byte-array [1 2])}
         encoded (l/serialize rec-w-fixed-no-default-schema data)
         decoded (l/deserialize-same rec-w-fixed-no-default-schema encoded)]
     (is (ba/equivalent-byte-arrays?
          (ba/byte-array [1 2])
          encoded))
     (is (ba/equivalent-byte-arrays?
-         (:data data) (:data decoded)))))
+         (:rec-w-fixed-no-default/data data)
+         (:rec-w-fixed-no-default/data decoded)))))
 
 (deftest test-rec-w-maybe-field
   #?(:clj (is (fp-matches? rec-w-maybe-field-schema)))
   (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-maybe-field,
           :type :record,
+          :key-ns-type :short
           :fields
           [{:name :name, :type :string, :default ""}
            {:name :age, :type [:null :int], :default nil}]}
@@ -1158,91 +898,25 @@
          (u/long->str (l/fingerprint64 rec-w-maybe-field-schema)))))
 
 (deftest test-record-serdes-missing-field
-  (let [data {:sku 100}]
-    (try
-      (l/serialize add-to-cart-req-schema data)
-      (is (= :did-not-throw :but-should-have))
-      (catch #?(:cljs js/Error :clj Exception) e
-        (is (str/includes?
-             (u/ex-msg e)
-             (str "is not a valid :int. Path: [:qty-requested]")))))))
+  (let [data #:add-to-cart-req{:sku 100}]
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Record data is missing key `:add-to-cart-req/qty-requested`"
+         (l/serialize add-to-cart-req-schema data)))))
 
 (deftest test-record-serdes-missing-maybe-field
-  (let [data {:name "Sharon"}
+  (let [data #:rec-w-maybe-field{:name "Sharon"}
         encoded (l/serialize rec-w-maybe-field-schema data)
         decoded (l/deserialize-same rec-w-maybe-field-schema encoded)]
-    (is (= (assoc data :age nil) decoded))))
+    (is (= (assoc data :rec-w-maybe-field/age nil) decoded))))
 
-(deftest test-plumatic-primitives
-  (is (= u/Nil (l/plumatic-schema l/null-schema)))
-  (is (= s/Bool (l/plumatic-schema l/boolean-schema)))
-  (is (= s/Int (l/plumatic-schema l/int-schema)))
-  (is (= u/LongOrInt (l/plumatic-schema l/long-schema)))
-  (is (= s/Num (l/plumatic-schema l/float-schema)))
-  (is (= s/Num (l/plumatic-schema l/double-schema)))
-  (is (= u/StringOrBytes (l/plumatic-schema l/string-schema)))
-  (is (= u/StringOrBytes (l/plumatic-schema l/bytes-schema))))
-
-(deftest test-plumatic-records
-  (let [expected {s/Any s/Any
-                  (s/required-key :sku) s/Int
-                  (s/required-key :qty-requested) s/Int}
-        _ (is (= expected (l/plumatic-schema add-to-cart-req-schema)))
-        expected {s/Any s/Any
-                  :names [u/StringOrBytes]
-                  :why (s/enum :all :stock :limit)}]
-    (is (= expected
-           (l/plumatic-schema rec-w-array-and-enum-schema)))))
-
-(deftest test-plumatic-union-unwrapped
-  (let [expected (s/conditional
-                  int? s/Int
-                  map? (l/plumatic-schema add-to-cart-req-schema)
-                  u/valid-bytes-or-string? u/StringOrBytes)]
-    (is (= expected (l/plumatic-schema union-schema)))))
-
-(deftest test-plumatic-union-wrapped
-  (let [pl-sch (l/plumatic-schema person-or-dog-schema)
-        wrapped-data (l/wrap person-schema {:name "Apollo"
-                                            :age 30})
-        bad-wrapped-data (l/wrap person-schema {:name "Apollo"
-                                                :age "thirty"})]
-    (is (= nil (s/check pl-sch wrapped-data)))
-    (is (not= nil (s/check pl-sch bad-wrapped-data)))))
-
-(deftest test-merge-record-schemas
-  #?(:clj (is (fp-matches? merged-date-time-schema)))
-  (let [expected {:name :deercreeklabs.unit.lancaster-test/merged-date-time
-                  :type :record
-                  :fields
-                  [{:name :year :type :int :default -1}
-                   {:name :month :type :int :default -1}
-                   {:name :day :type :int :default -1}
-                   {:name :hour :type :int :default -1}
-                   {:name :minute :type :int :default -1}
-                   {:name :second :type [:null :int] :default nil}]}]
-    (is (= expected (l/edn merged-date-time-schema)))))
-
-(deftest test-plumatic-maybe-missing-key
-  (let [ps (l/plumatic-schema rec-w-maybe-field-schema)
-        data {:name "Boomer"}]
-    (is (= nil (s/check ps data)))))
-
-(deftest test-plumatic-maybe-nil-value
-  (let [ps (l/plumatic-schema rec-w-maybe-field-schema)
-        data {:name "Boomer"
-              :age nil}]
-    (is (= nil (s/check ps data)))))
-
-(deftest test-forgot-wrapping
+(deftest test-forgot-ns-keys
   (let [data {:name "Cally"
               :age 24}]
-    (try
-      (l/serialize person-or-dog-schema data)
-      (is (= :should-have-thrown :but-didnt))
-      (catch #?(:clj Exception :cljs js/Error) e
-        (is (str/includes? (u/ex-msg e)
-                           "Union requires wrapping"))))))
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Missing namespace on record key"
+         (l/serialize person-or-dog-schema data)))))
 
 (deftest test-schema?
   (is (l/schema? person-or-dog-schema))
@@ -1250,97 +924,59 @@
 
 (deftest test-bad-serialize-arg
   (s/without-fn-validation ;; Allow built-in handlers to throw
-   (try
-     (l/serialize nil nil)
-     (is (= :should-have-thrown :but-didnt))
-     (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (u/ex-msg e)]
-         (is (str/includes?
-              msg "First argument to serialize must be a schema object")))))
-   (try
-     (l/deserialize why-schema nil (ba/byte-array []))
-     (is (= :should-have-thrown :but-didnt))
-     (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (u/ex-msg e)]
-         (is (str/includes?
-              msg (str "Second argument to deserialize must be a "
-                       "schema object representing the writer's schema"))))))
-   (try
-     (l/deserialize why-schema why-schema [])
-     (is (= :should-have-thrown :but-didnt))
-     (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (u/ex-msg e)]
-         (is (str/includes?
-              msg "argument to deserialize must be a byte array")))))))
+   (is (thrown-with-msg?
+        #?(:clj ExceptionInfo :cljs js/Error)
+        #"First argument to serialize must be a schema object"
+        (l/serialize nil nil)))))
 
 (deftest test-bad-deserialize-args
   (s/without-fn-validation ;; Allow built-in handlers to throw
-   (try
-     (l/deserialize nil nil nil)
-     (is (= :should-have-thrown :but-didnt))
-     (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (u/ex-msg e)]
-         (is (str/includes?
-              msg "First argument to deserialize must be a schema object")))))
-   (try
-     (l/deserialize why-schema nil (ba/byte-array []))
-     (is (= :should-have-thrown :but-didnt))
-     (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (u/ex-msg e)]
-         (is (str/includes?
-              msg (str "Second argument to deserialize must be a "
-                       "schema object representing the writer's schema"))))))
-   (try
-     (l/deserialize why-schema why-schema [])
-     (is (= :should-have-thrown :but-didnt))
-     (catch #?(:clj Exception :cljs js/Error) e
-       (let [msg (u/ex-msg e)]
-         (is (str/includes?
-              msg "argument to deserialize must be a byte array")))))))
+   (is (thrown-with-msg?
+        #?(:clj ExceptionInfo :cljs js/Error)
+        #"First argument to deserialize must be a schema object"
+        (l/deserialize nil nil nil)))
+   (is (thrown-with-msg?
+        #?(:clj ExceptionInfo :cljs js/Error)
+        #"Second argument to deserialize must be a "
+        (l/deserialize why-schema nil (ba/byte-array []))))
+   (is (thrown-with-msg?
+        #?(:clj ExceptionInfo :cljs js/Error)
+        #"argument to deserialize must be a byte array"
+        (l/deserialize why-schema why-schema [])))))
 
 (deftest test-field-default-validation
-  (try
-    (l/record-schema :test-schema
-                     [[:int-field l/int-schema "a"]])
-    (is (= :should-have-thrown :but-didnt))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (u/ex-msg e)]
-        (is (re-find #"Default value for field .* is invalid" msg))))))
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"Default value for field .* is invalid"
+       (l/record-schema :test-schema
+                        [[:int-field l/int-schema "a"]]))))
 
 (deftest test-default-data
   (is (= :all (l/default-data why-schema)))
-  (is (= {:sku -1, :qty-requested 0}
+  (is (= #:add-to-cart-req{:sku -1, :qty-requested 0}
          (l/default-data add-to-cart-req-schema))))
 
 (deftest test-bad-field-name
-  (try
-    (l/record-schema :test-schema
-                     [[:bad? l/boolean-schema]])
-    (is (= :should-have-thrown :but-didnt))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (u/ex-msg e)]
-        (is (re-find #"Name keywords must start with a letter and subsequently"
-                     msg))))))
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"Name keywords must start with a letter and subsequently"
+       (l/record-schema :test-schema
+                        [[:bad? l/boolean-schema]]))))
 
 (deftest test-bad-record-name
-  (try
-    (l/record-schema :*test-schema*
-                     [[:is-good l/boolean-schema]])
-    (is (= :should-have-thrown :but-didnt))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (u/ex-msg e)]
-        (is (re-find #"Name keywords must start with a letter and subsequently"
-                     msg))))))
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"Name keywords must start with a letter and subsequently"
+       (l/record-schema :*test-schema*
+                        [[:is-good l/boolean-schema]]))))
 
 (deftest test-duplicate-field-name
-  (try
-    (l/record-schema :test-schema
-                     [[:int-field l/int-schema]
-                      [:int-field l/int-schema]])
-    (is (= :should-have-thrown :but-didnt))
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (u/ex-msg e)]
-        (is (re-find #"Field names must be unique." msg))))))
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"Field names must be unique."
+       (l/record-schema :test-schema
+                        [[:int-field l/int-schema]
+                         [:int-field l/int-schema]]))))
 
 (deftest test-round-trip-json-schema
   (let [json-schema (str "{\"type\":\"record\",\"name\":"
@@ -1354,25 +990,19 @@
     (is (= json-schema rt-json-schema))))
 
 (deftest test-json-schema-w-evolution-no-default
-  (let [data {:a 1}
+  (let [data {:test-rec/a 1}
         writer-schema (l/record-schema ::test-rec [[:a l/int-schema]])
-        reader-json (str "{\"name\":\"deercreeklabs.unit.lancaster_test.TestRec\","
-                         "\"type\":\"record\",\"fields\":["
-                         "{\"name\":\"a\",\"type\":\"int\"},"
-                         "{\"name\":\"b\",\"type\":\"string\"}]}")
+        reader-json (str
+                     "{\"name\":\"deercreeklabs.unit.lancaster_test.TestRec\","
+                     "\"type\":\"record\",\"fields\":["
+                     "{\"name\":\"a\",\"type\":\"int\"},"
+                     "{\"name\":\"b\",\"type\":\"string\"}]}")
         reader-schema (l/json->schema reader-json)
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (assoc data :b "")]
+        expected (assoc data :test-rec/b "")]
     (is (= expected decoded))))
 
-(deftest test-wrapping
-  (let [data {:a 1}
-        schema (l/record-schema ::test-rec [[:a l/int-schema]])
-        wrapped-data (l/wrap schema data)]
-    (is (= [:deercreeklabs.unit.lancaster-test/test-rec {:a 1}] wrapped-data))
-    (is (= :deercreeklabs.unit.lancaster-test/test-rec (l/schema-name wrapped-data)))
-    (is (= data (l/data wrapped-data)))))
 
 #?(:clj
    (deftest test-issue-4
@@ -1383,14 +1013,92 @@
 (deftest test-serialize-bad-union-member
   (let [schema (l/union-schema [l/null-schema l/int-schema])]
     (is (thrown-with-msg?
-         ExceptionInfo
-         #"does not match union schema."
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"is not in the union schema."
          (l/serialize schema :foo)))))
 
 (deftest test-maybe-w-union-arg
   (let [schema-1 (l/maybe (l/union-schema [l/int-schema l/string-schema]))
         schema-2 (l/maybe (l/union-schema [l/null-schema l/int-schema]))]
-    (is (= nil (l/deserialize-same schema-1 (l/serialize schema-1 nil))))
-    (is (= nil (l/deserialize-same schema-2 (l/serialize schema-2 nil))))
-    (is (= 34 (l/deserialize-same schema-1 (l/serialize schema-1 34))))
-    (is (= 34 (l/deserialize-same schema-2 (l/serialize schema-2 34))))))
+    (is (round-trip? schema-1 nil))
+    (is (round-trip? schema-2 nil))
+    (is (round-trip? schema-1 34))
+    (is (round-trip? schema-2 34))))
+
+(deftest test-more-than-one-numeric-type-in-a-union
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"Unions may not contain more than one numeric schema"
+       (l/union-schema [l/int-schema l/float-schema]))))
+
+(deftest test-more-than-one-bytes-type-in-a-union
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"Unions may not contain more than one byte-array schema"
+       (l/union-schema [l/bytes-schema (l/fixed-schema :foo 16)]))))
+
+(deftest test-serialisze-empty-map-multi-rec-union
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"Record data is missing key `:person/name`"
+       (l/serialize person-or-dog-schema {}))))
+
+(deftest test-map-and-rec-union
+  (let [schema (l/union-schema [(l/map-schema l/int-schema) person-schema])]
+    (is (round-trip? schema {"foo" 1}))
+    (is (round-trip? schema #:person{:name "Chad" :age 18}))))
+
+(deftest test-map-and-multi-rec-union
+  (let [schema (l/union-schema [(l/map-schema l/int-schema)
+                                person-schema
+                                dog-schema])]
+    (is (round-trip? schema {"foo" 1}))
+    (is (round-trip? schema #:person{:name "Chad" :age 18}))
+    (is (round-trip? schema #:dog{:name "Bowser" :owner "Chad"}))
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Missing namespace on record key"
+         (l/serialize schema {:name "Chad" :age 18})))))
+
+(deftest test-more-than-one-numeric-map-type-in-a-union
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"Unions may not contain more than one numeric map schema"
+       (l/union-schema [(l/int-map-schema :im l/string-schema)
+                        (l/long-map-schema :im l/string-schema)]))))
+
+(deftest test-bad-fixed-map-size
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"Second argument to fixed-map-schema must be a positive integer"
+       (l/fixed-map-schema ::bar -1 l/string-schema))))
+
+(deftest test-bad-enum-opts
+  (s/without-fn-validation ;; Allow built-in handlers to throw
+   (is (thrown-with-msg?
+        #?(:clj ExceptionInfo :cljs js/Error)
+        #"Enum options must be a map"
+        (l/enum-schema ::test :not-a-map [:a :b])))
+   (is (thrown-with-msg?
+        #?(:clj ExceptionInfo :cljs js/Error)
+        #"Unknown enum option"
+        (l/enum-schema ::test {:not-an-opt true} [:a :b])))))
+
+(deftest test-bad-record-opts
+  (s/without-fn-validation ;; Allow built-in handlers to throw
+   (is (thrown-with-msg?
+        #?(:clj ExceptionInfo :cljs js/Error)
+        #"Record options must be a map"
+        (l/record-schema ::test :not-a-map [[:a l/int-schema]])))
+   (is (thrown-with-msg?
+        #?(:clj ExceptionInfo :cljs js/Error)
+        #"Unknown record option"
+        (l/record-schema ::test {:not-an-opt false} [[:a l/int-schema]])))))
+
+(deftest test-all-fields-optional
+  (let [schema (l/record-schema ::rec {:all-fields-optional true}
+                                [[:a l/int-schema]])
+        data {:rec/a nil}
+        encoded (l/serialize schema data)
+        decoded (l/deserialize-same schema encoded)]
+    (is (= data decoded))))

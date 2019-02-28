@@ -7,6 +7,7 @@
    [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
    [deercreeklabs.lancaster.utils :as u]
    #?(:clj [primitive-math :as pm])
+   #?(:clj [puget.printer :refer [cprint]])
    [schema.core :as s :include-macros true]))
 
 #?(:clj (pm/use-primitive-operators))
@@ -86,38 +87,61 @@
                     (assoc! acc k (xf-value v)))
                   (transient {}) data)))))
 
-(defn flex-rec->flex-map [{:keys [ks vs]}]
-  (zipmap ks vs))
+(defn make-xf-flex-map [writer-edn-schema reader-edn-schema]
+  (let [v-xf (make-xf (:values writer-edn-schema) (:values reader-edn-schema))]
+    (fn xf [m]
+      (persistent!
+       (reduce-kv (fn [acc k v]
+                    (assoc! acc k (v-xf v)))
+                  (transient {}) m)))))
 
-(defmethod make-xf [:record :flex-map]
+(defmethod make-xf [:int-map :int-map]
   [writer-edn-schema reader-edn-schema]
-  (check-names writer-edn-schema reader-edn-schema)
-  (let [reader-rec-schema (u/flex-map-edn-schema->record-edn-schema
-                           reader-edn-schema)
-        xf (make-xf writer-edn-schema reader-rec-schema)]
-    (comp flex-rec->flex-map xf)))
+  (make-xf-flex-map writer-edn-schema reader-edn-schema))
 
-(defmethod make-xf [:flex-map :flex-map]
+(defmethod make-xf [:long-map :long-map]
   [writer-edn-schema reader-edn-schema]
-  (check-names writer-edn-schema reader-edn-schema)
-  (let [writer-rec-schema (u/flex-map-edn-schema->record-edn-schema
-                           writer-edn-schema)
-        reader-rec-schema (u/flex-map-edn-schema->record-edn-schema
-                           reader-edn-schema)
-        xf (make-xf writer-rec-schema reader-rec-schema)]
-    (comp flex-rec->flex-map xf)))
+  (make-xf-flex-map writer-edn-schema reader-edn-schema))
+
+(defmethod make-xf [:fixed-map :fixed-map]
+  [writer-edn-schema reader-edn-schema]
+  (make-xf-flex-map writer-edn-schema reader-edn-schema))
+
+(defmethod make-xf [:int-map :long-map]
+  [writer-edn-schema reader-edn-schema]
+  (let [writer-values-schema (:values writer-edn-schema)
+        reader-values-schema (:values reader-edn-schema)
+        v-xf (if (= writer-values-schema reader-values-schema)
+               identity
+               (make-xf writer-values-schema reader-values-schema))]
+    (fn xf [m]
+      (persistent!
+       (reduce-kv (fn [acc k v]
+                    (assoc! acc (u/int->long k) (v-xf v)))
+                  (transient {}) m)))))
 
 (defmethod make-xf [:enum :enum]
   [writer-edn-schema reader-edn-schema]
   (check-names writer-edn-schema reader-edn-schema)
-  (let [reader-symbol-set (set (:symbols reader-edn-schema))]
+  (let [{writer-key-ns-type :key-ns-type
+         writer-name :name
+         writer-symbols :symbols} writer-edn-schema
+        {reader-key-ns-type :key-ns-type
+         reader-name :name
+         reader-symbols :symbols} reader-edn-schema
+        ws->rs (reduce
+                (fn [acc s]
+                  (assoc acc
+                         (u/ns-k writer-key-ns-type writer-name s)
+                         (u/ns-k reader-key-ns-type reader-name s)))
+                {} writer-symbols)]
     (fn xf [written-symbol]
-      (or (reader-symbol-set written-symbol)
+      (or (ws->rs written-symbol)
           (throw
            (ex-info (str "Symbol " written-symbol " is not in the reader's "
                          "symbol list.")
-                    {:reader-symbols (:symbols reader-edn-schema)
-                     :written-symbol written-symbol}))))))
+                    {:written-symbol written-symbol
+                     :reader-symbols (vals ws->rs)}))))))
 
 (defn fields->fields-map [fields]
   (reduce (fn [acc field]
@@ -155,33 +179,28 @@
                           [writer-field reader-field])
 
                   :else
-                  acc)))
+                  (update acc :same-fields conj writer-field))))
             {:added-fields []
              :deleted-fields []
-             :changed-fields []}
+             :changed-fields []
+             :same-fields []}
             all-field-names)))
 
-(defmulti make-record-xf (fn [added-fields deleted-fields changed-fields]
-                           (let [added? (pos? (count added-fields))
-                                 deleted? (pos? (count deleted-fields))
-                                 changed? (pos? (count changed-fields))]
-                             [added? deleted? changed?])))
-
-(defn make-add-fields-fn [added-fields]
+(defn make-add-fields-fn [reader-key-ns-fn added-fields]
   (let [new-fields (reduce (fn [acc {:keys [name default]}]
                              (-> acc
-                                 (conj name)
+                                 (conj (reader-key-ns-fn name))
                                  (conj default)))
                            [] added-fields)]
     (fn add-fields [r]
       (apply assoc r new-fields))))
 
-(defn make-change-fields-fn [changed-fields]
+(defn make-change-fields-fn [reader-key-ns-fn changed-fields]
   (let [field-name->xf (reduce (fn [acc [writer-field reader-field]]
                                  (let [{:keys [name]} writer-field
                                        xf (make-xf (:type writer-field)
                                                    (:type reader-field))]
-                                   (assoc acc name xf)))
+                                   (assoc acc (reader-key-ns-fn name) xf)))
                                {} changed-fields)]
     (fn change-fields [r]
       (persistent!
@@ -189,104 +208,71 @@
                     (assoc! acc field-name (xf (get acc field-name))))
                   (transient r) field-name->xf)))))
 
-(defn make-delete-fields-fn [deleted-fields]
-  (let [field-names (mapv :name deleted-fields)]
+(defn make-delete-fields-fn [writer-key-ns-fn deleted-fields]
+  (let [field-names (mapv #(writer-key-ns-fn (:name %)) deleted-fields)]
     (fn delete-fields [r]
       (apply dissoc r field-names))))
 
-(defmethod make-record-xf [false false false]
-  [added-fields deleted-fields changed-fields]
-  identity)
-
-(defmethod make-record-xf [false false true]
-  [added-fields deleted-fields changed-fields]
-  (make-change-fields-fn changed-fields))
-
-(defmethod make-record-xf [false true false]
-  [added-fields deleted-fields changed-fields]
-  (make-delete-fields-fn deleted-fields))
-
-(defmethod make-record-xf [false true true]
-  [added-fields deleted-fields changed-fields]
-  (let [delete-fields (make-delete-fields-fn deleted-fields)
-        change-fields (make-change-fields-fn changed-fields)]
-    (fn [r]
-      (-> r
-          (delete-fields)
-          (change-fields)))))
-
-(defmethod make-record-xf [true false false]
-  [added-fields deleted-fields changed-fields]
-  (make-add-fields-fn added-fields))
-
-(defmethod make-record-xf [true false true]
-  [added-fields deleted-fields changed-fields]
-  (let [add-fields (make-add-fields-fn added-fields)
-        change-fields (make-change-fields-fn changed-fields)]
-    (fn [r]
-      (-> r
-          (change-fields)
-          (add-fields)))))
-
-(defmethod make-record-xf [true true false]
-  [added-fields deleted-fields changed-fields]
-  (let [add-fields (make-add-fields-fn added-fields)
-        delete-fields (make-delete-fields-fn deleted-fields)]
-    (fn [r]
-      (-> r
-          (delete-fields)
-          (add-fields)))))
-
-(defmethod make-record-xf [true true true]
-  [added-fields deleted-fields changed-fields]
-  (let [add-fields (make-add-fields-fn added-fields)
-        delete-fields (make-delete-fields-fn deleted-fields)
-        change-fields (make-change-fields-fn changed-fields)]
-    (fn [r]
-      (-> r
-          (delete-fields)
-          (change-fields)
-          (add-fields)))))
+(defn make-ns-same-fields [writer-key-ns-fn reader-key-ns-fn same-fields]
+  (fn ns-fields [r]
+    (persistent!
+     (reduce (fn [acc {field-name :name}]
+               (let [writer-key (writer-key-ns-fn field-name)]
+                 (-> acc
+                     (assoc! (reader-key-ns-fn field-name) (acc writer-key))
+                     (dissoc! writer-key))))
+             (transient r) same-fields))))
 
 (defmethod make-xf [:record :record]
-  [writer-edn-schema reader-edn-schema]
-  (check-names writer-edn-schema reader-edn-schema)
-  (let [writer-fields (:fields writer-edn-schema)
-        reader-fields (:fields reader-edn-schema)
-        changes (get-field-changes writer-fields reader-fields)
-        {:keys [added-fields deleted-fields changed-fields]} changes]
-    (make-record-xf added-fields deleted-fields changed-fields)))
+[writer-edn-schema reader-edn-schema]
+(check-names writer-edn-schema reader-edn-schema)
+(let [{writer-fields :fields
+       writer-key-ns-type :key-ns-type} writer-edn-schema
+      {reader-fields :fields
+       reader-key-ns-type :key-ns-type} reader-edn-schema
+      changes (get-field-changes writer-fields reader-fields)
+      {:keys [added-fields deleted-fields changed-fields same-fields]} changes
+      writer-key-ns-fn (partial u/ns-k writer-key-ns-type
+                                (:name writer-edn-schema))
+      reader-key-ns-fn (partial u/ns-k (:key-ns-type reader-edn-schema)
+                                (:name reader-edn-schema))
+      add-fields (make-add-fields-fn reader-key-ns-fn added-fields)
+      delete-fields (make-delete-fields-fn writer-key-ns-fn deleted-fields)
+      change-fields (make-change-fields-fn reader-key-ns-fn changed-fields)
+      diff-key-ns-types? (not= writer-key-ns-type reader-key-ns-type)
+      ns-same-fields (make-ns-same-fields writer-key-ns-fn reader-key-ns-fn
+                                          same-fields)]
+  (fn [r]
+    (cond-> r
+      (seq deleted-fields) (delete-fields)
+      (seq changed-fields) (change-fields)
+      (seq added-fields) (add-fields)
+      (and diff-key-ns-types? (seq same-fields)) (ns-same-fields)))))
 
 (defn throw-mismatch-error
-  [writer-edn-schema reader-edn-schema]
-  (let [writer-type (u/get-avro-type writer-edn-schema)
-        reader-type (u/get-avro-type reader-edn-schema)]
-    (throw
-     (ex-info (str "Writer schema (" writer-type ") and reader schema ("
-                   reader-type ") do not match.")
-              (u/sym-map writer-edn-schema reader-edn-schema
-                         writer-type reader-type)))))
+[writer-edn-schema reader-edn-schema]
+(let [writer-type (u/get-avro-type writer-edn-schema)
+      reader-type (u/get-avro-type reader-edn-schema)]
+  (throw
+   (ex-info (str "Writer schema (" writer-type ") and reader schema ("
+                 reader-type ") do not match.")
+            (u/sym-map writer-edn-schema reader-edn-schema
+                       writer-type reader-type)))))
 
-(defn try-schema-pair [writer-item-schema reader-item-schema]
-  (try
-    [true (make-xf writer-item-schema reader-item-schema)]
-    (catch #?(:clj Exception :cljs js/Error) e
-      (let [msg (u/ex-msg e)]
-        (if-not (str/includes? msg "do not match.")
-          (throw e)
-          [false nil]
-          )))))
+(defn make-xf* [writer-item-schema reader-item-schema]
+(try
+  (make-xf writer-item-schema reader-item-schema)
+  (catch #?(:clj Exception :cljs js/Error) e
+    (when-not (str/includes? (u/ex-msg e) "do not match.")
+      (throw e)))))
 
 (defn make-union-xf [writer-item-schema reader-union-schema]
-  (loop [branch 0]
-    (let [[success? xf] (try-schema-pair writer-item-schema
-                                         (reader-union-schema branch))]
-      (if success?
-        xf
-        (if (< (inc branch) (count reader-union-schema))
-          (recur (inc branch))
-          (fn [data]
-            (throw-mismatch-error writer-item-schema reader-union-schema)))))))
+(loop [branch 0]
+  (or (make-xf* writer-item-schema (reader-union-schema branch))
+      (if (< (inc branch) (count reader-union-schema))
+        (recur (inc branch))
+        (fn [data]
+          (throw-mismatch-error writer-item-schema reader-union-schema))))))
 
 (defn make-union-resolving-decoder
   [writer-edn-schema reader-edn-schema writer-type reader-type
@@ -296,63 +282,36 @@
     (let [branch->deserializer (mapv
                                 #(u/make-deserializer % *name->deserializer)
                                 writer-edn-schema)
-          branch->schema-name (mapv u/edn-schema->name-kw writer-edn-schema)
           branch->xf (mapv #(make-union-xf % (vec reader-edn-schema))
                            writer-edn-schema)]
-      (if (u/wrapping-required? reader-edn-schema)
-        (fn deserialize [is]
-          (let [branch (u/read-long-varint-zz is)
-                deserializer (branch->deserializer branch)
-                xf (branch->xf branch)
-                data (xf (deserializer is))
-                schema-name (branch->schema-name branch)]
-            [schema-name data]))
-        (fn deserialize [is]
-          (let [branch (u/read-long-varint-zz is)
-                deserializer (branch->deserializer branch)
-                xf (branch->xf branch)
-                data (xf (deserializer is))]
-            data))))
+      (fn deserialize [is]
+        (let [branch (u/read-long-varint-zz is)
+              deserializer (branch->deserializer branch)
+              xf (branch->xf branch)]
+          (xf (deserializer is)))))
 
     (= :union writer-type)
     (let [branch->deserializer (mapv #(u/make-deserializer
                                        % *name->deserializer)
                                      writer-edn-schema)
-          branch->schema-name (mapv u/edn-schema->name-kw writer-edn-schema)
           branch->xf (mapv #(make-union-xf % [reader-edn-schema])
                            writer-edn-schema)]
-      (if (u/wrapping-required? reader-edn-schema)
-        (fn deserialize [is]
-          (let [branch (u/read-long-varint-zz is)
-                deserializer (branch->deserializer branch)
-                xf (branch->xf branch)
-                data (xf (deserializer is))
-                schema-name (branch->schema-name branch)]
-            [schema-name data]))
-        (fn deserialize [is]
-          (let [branch (u/read-long-varint-zz is)
-                deserializer (branch->deserializer branch)
-                xf (branch->xf branch)
-                data (xf (deserializer is))]
-            data))))
+      (fn deserialize [is]
+        (let [branch (u/read-long-varint-zz is)
+              deserializer (branch->deserializer branch)
+              xf (branch->xf branch)]
+          (xf (deserializer is)))))
 
     :else
     (let [xf (make-union-xf writer-edn-schema reader-edn-schema)
           deserializer (u/make-deserializer writer-edn-schema
-                                            *name->deserializer)
-          schema-name (u/edn-schema->name-kw writer-edn-schema)]
-      (if (u/wrapping-required? reader-edn-schema)
-        (fn deserialize [is]
-          (let [data (xf (deserializer is))]
-            [schema-name data]))
-        (fn deserialize [is]
-          (xf (deserializer is)))))))
+                                            *name->deserializer)]
+      (fn deserialize [is]
+        (xf (deserializer is))))))
 
-(defn resolving-deserializer [writer-pcf reader-schema *name->deserializer]
-  (let [writer-edn-schema (-> writer-pcf
-                              (u/json-schema->avro-schema)
-                              (u/avro-schema->edn-schema))
-        reader-edn-schema (u/edn-schema reader-schema)
+(defn resolving-deserializer
+  [writer-edn-schema reader-schema *name->deserializer]
+  (let [reader-edn-schema (u/edn-schema reader-schema)
         writer-type (u/get-avro-type writer-edn-schema)
         reader-type (u/get-avro-type reader-edn-schema)]
     (try

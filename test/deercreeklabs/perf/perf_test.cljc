@@ -23,7 +23,7 @@
   [:qty-added l/int-schema]
   [:current-qty l/int-schema]
   [:req add-to-cart-req-schema]
-  [:reason why-schema :stock]
+  [:reason why-schema :why/stock]
   [:data a-fixed-schema]
   [:other-data l/bytes-schema])
 

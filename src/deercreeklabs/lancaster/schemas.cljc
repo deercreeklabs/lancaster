@@ -14,17 +14,15 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-(def WrappedData [(s/one s/Keyword "schema-name")
-                  (s/one s/Any "data")])
 
 (def RecordFieldDef [(s/one s/Keyword "field-name")
                      (s/one (s/protocol u/ILancasterSchema) "field-schema")
                      (s/optional s/Any "field-default")])
 
 (defrecord LancasterSchema
-    [schema-name edn-schema json-schema parsing-canonical-form
+    [edn-schema json-schema parsing-canonical-form
      fingerprint64 plumatic-schema serializer deserializer default-data-size
-     *name->serializer *name->deserializer *pcf->resolving-deserializer]
+     *name->serializer *name->deserializer *edn->resolving-deserializer]
   u/ILancasterSchema
   (serialize [this data]
     (let [os (impl/output-stream default-data-size)]
@@ -33,17 +31,15 @@
   (serialize [this os data]
     (serializer os data []))
   (deserialize [this writer-schema is]
-    (let [writer-pcf (u/parsing-canonical-form writer-schema)]
-      (if (= writer-pcf parsing-canonical-form)
+    (let [writer-edn-schema (:edn-schema writer-schema)]
+      (if (= writer-edn-schema edn-schema)
         (deserializer is)
-        (if-let [rd (@*pcf->resolving-deserializer writer-pcf)]
+        (if-let [rd (@*edn->resolving-deserializer writer-edn-schema)]
           (rd is)
-          (let [rd (resolution/resolving-deserializer writer-pcf this
+          (let [rd (resolution/resolving-deserializer writer-edn-schema this
                                                       *name->deserializer)]
-            (swap! *pcf->resolving-deserializer assoc writer-pcf rd)
+            (swap! *edn->resolving-deserializer assoc writer-edn-schema rd)
             (rd is))))))
-  (wrap [this data]
-    [schema-name data])
   (edn-schema [this]
     edn-schema)
   (json-schema [this]
@@ -56,44 +52,6 @@
     plumatic-schema))
 
 (defmulti validate-schema-args u/first-arg-dispatch)
-
-(defn lancaster-schema* [schema-type edn-schema* json-schema]
-  (let [name->edn-schema (u/make-name->edn-schema edn-schema*)
-        edn-schema (u/ensure-defaults edn-schema* name->edn-schema)
-        schema-name (u/edn-schema->name-kw edn-schema)
-        avro-schema (if (u/avro-primitive-types schema-type)
-                      (name schema-type)
-                      (u/edn-schema->avro-schema edn-schema))
-        parsing-canonical-form (pcf-utils/avro-schema->pcf avro-schema)
-        fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
-        plumatic-schema (u/edn-schema->plumatic-schema edn-schema
-                                                       name->edn-schema)
-        *name->serializer (atom {})
-        *name->deserializer (atom {})
-        serializer (u/make-serializer edn-schema name->edn-schema
-                                      *name->serializer)
-        deserializer (u/make-deserializer edn-schema *name->deserializer)
-        default-data-size (u/make-default-data-size edn-schema
-                                                    name->edn-schema)
-        *pcf->resolving-deserializer (atom {})]
-    (->LancasterSchema
-     schema-name edn-schema json-schema parsing-canonical-form
-     fingerprint64 plumatic-schema serializer deserializer default-data-size
-     *name->serializer *name->deserializer *pcf->resolving-deserializer)))
-
-(defn edn-schema->lancaster-schema [schema-type edn-schema]
-  (let [avro-schema (if (u/avro-primitive-types schema-type)
-                      (name schema-type)
-                      (u/edn-schema->avro-schema edn-schema))
-        json-schema (u/edn->json-string avro-schema)]
-    (lancaster-schema* schema-type edn-schema json-schema)))
-
-(defn json-schema->lancaster-schema [json-schema]
-  (let [edn-schema (-> json-schema
-                       (u/json-schema->avro-schema)
-                       (u/avro-schema->edn-schema))
-        schema-type (u/get-avro-type edn-schema)]
-    (lancaster-schema* schema-type edn-schema json-schema)))
 
 (defn name-or-schema [edn-schema *names]
   (let [schema-name (u/edn-schema->name-kw edn-schema)]
@@ -122,6 +80,41 @@
                  name-or-schema))
      edn-schema)))
 
+(defn edn-schema->lancaster-schema
+  ([edn-schema*]
+   (edn-schema->lancaster-schema edn-schema* nil))
+  ([edn-schema* json-schema*]
+   (let [name->edn-schema (u/make-name->edn-schema edn-schema*)
+         edn-schema (u/ensure-defaults (fix-repeated-schemas edn-schema*)
+                                       name->edn-schema)
+         avro-schema (if (u/avro-primitive-types edn-schema)
+                       (name edn-schema)
+                       (u/edn-schema->avro-schema edn-schema))
+         json-schema (or json-schema* (u/edn->json-string avro-schema))
+         parsing-canonical-form (pcf-utils/avro-schema->pcf avro-schema)
+         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
+         plumatic-schema (u/edn-schema->plumatic-schema edn-schema
+                                                        name->edn-schema)
+         *name->serializer (u/make-initial-*name->f
+                            #(u/make-serializer %1 name->edn-schema %2))
+         *name->deserializer (u/make-initial-*name->f u/make-deserializer)
+         serializer (u/make-serializer edn-schema name->edn-schema
+                                       *name->serializer)
+         deserializer (u/make-deserializer edn-schema *name->deserializer)
+         default-data-size (u/make-default-data-size edn-schema
+                                                     name->edn-schema)
+         *edn->resolving-deserializer (atom {})]
+     (->LancasterSchema
+      edn-schema json-schema parsing-canonical-form fingerprint64
+      plumatic-schema serializer deserializer default-data-size
+      *name->serializer *name->deserializer *edn->resolving-deserializer))))
+
+(defn json-schema->lancaster-schema [json-schema]
+  (let [edn-schema (-> json-schema
+                       (u/json-schema->avro-schema)
+                       (u/avro-schema->edn-schema))]
+    (edn-schema->lancaster-schema edn-schema json-schema)))
+
 (defn validate-name-kw [name-kw]
   (when-not (re-matches #"[A-Za-z][A-Za-z0-9\-]*" (name name-kw))
     (throw (ex-info
@@ -146,30 +139,8 @@
      (validate-schema-args schema-type args))
    (let [edn-schema (if (u/avro-primitive-types schema-type)
                       schema-type
-                      (-> (u/make-edn-schema schema-type name-kw args)
-                          (fix-repeated-schemas)))]
-     (edn-schema->lancaster-schema schema-type edn-schema))))
-
-(defn merged-record-schema [name-kw schemas]
-  (when-not (keyword? name-kw)
-    (throw (ex-info (str "First arg to merge-record-schemas must be a name "
-                         "keyword. The keyword can be namespaced or not.")
-                    {:given-name-kw name-kw})))
-  (when-not (sequential? schemas)
-    (throw (ex-info (str "Second arg to merge-record-schemas must be a "
-                         "sequence of record schema objects.")
-                    {:given-schemas schemas})))
-  (doseq [schema schemas]
-    (when (or (not (instance? LancasterSchema schema))
-              (not (= :record (:type (u/edn-schema schema)))))
-      (throw (ex-info (str "Second arg to merge-record-schemas must be a "
-                           "sequence of record schema objects.")
-                      {:bad-schema schema}))))
-  (let [fields (mapcat #(:fields (u/edn-schema %)) schemas)
-        edn-schema {:name name-kw
-                    :type :record
-                    :fields fields}]
-    (edn-schema->lancaster-schema :record edn-schema)))
+                      (u/make-edn-schema schema-type name-kw args))]
+     (edn-schema->lancaster-schema edn-schema))))
 
 (defn primitive-schema [schema-kw]
   (schema schema-kw nil nil))
@@ -179,7 +150,7 @@
       (keyword? x)))
 
 (defmethod validate-schema-args :record
-  [schema-type fields]
+  [schema-type [opts fields]]
   (when-not (sequential? fields)
     (throw (ex-info (str "Second arg to record-schema must be a sequence "
                          "of field definitions.")
@@ -204,7 +175,8 @@
           (u/serialize field-schema (impl/output-stream 100) default)
           (catch #?(:clj Exception :cljs js/Error) e
             (let [ex-msg (u/ex-msg e)]
-              (if (str/includes? ex-msg "not a valid")
+              (if-not (str/includes? ex-msg "not a valid")
+                (throw e)
                 (throw
                  (ex-info
                   (str "Default value for field `" name-kw "` is invalid. "
@@ -217,10 +189,19 @@
       (throw
        (ex-info
         (str "Field names must be unique. Duplicated field-names: " dups)
-        (u/sym-map dups))))))
+        (u/sym-map dups)))))
+  (when opts
+    (when (not (map? opts))
+      (throw (ex-info (str "Record options must be a map. Got: " opts)
+                      {:opts opts})))
+    (when-let [unk-opts (seq (set/difference
+                              (set (keys opts))
+                              (set (keys u/default-record-options))))]
+      (throw (ex-info (str "Unknown record option(s): " unk-opts)
+                      (u/sym-map opts unk-opts))))))
 
 (defmethod validate-schema-args :enum
-  [schema-type symbols]
+  [schema-type [opts symbols]]
   (when-not (sequential? symbols)
     (throw (ex-info (str "Second arg to enum-schema must be a sequence "
                          "of keywords.")
@@ -228,7 +209,16 @@
   (doseq [symbol symbols]
     (when-not (keyword? symbol)
       (throw (ex-info "All symbols in an enum must be keywords."
-                      {:given-symbol symbol})))))
+                      {:given-symbol symbol}))))
+  (when opts
+    (when (not (map? opts))
+      (throw (ex-info (str "Enum options must be a map. Got: " opts)
+                      {:opts opts})))
+    (when-let [unk-opts (seq (set/difference
+                              (set (keys opts))
+                              (set (keys u/default-enum-options))))]
+      (throw (ex-info (str "Unknown enum option(s): " unk-opts)
+                      (u/sym-map opts unk-opts))))))
 
 (defmethod validate-schema-args :fixed
   [schema-type size]
@@ -253,19 +243,36 @@
                    "or a name keyword.")
               {:given-values-schema values-schema}))))
 
-(defmethod validate-schema-args :flex-map
-  [schema-type [keys-schema values-schema]]
-  (when-not (schema-or-kw? keys-schema)
-    (throw
-     (ex-info (str "Second arg to flex-map-schema must be a schema object "
-                   "or a name keyword indicating the key schema of the "
-                   "flex-map.")
-              {:given-values-schema values-schema})))
+(defmethod validate-schema-args :int-map
+  [schema-type values-schema]
   (when-not (schema-or-kw? values-schema)
     (throw
-     (ex-info (str "Third arg to flex-map-schema must be a schema object "
+     (ex-info (str "Second arg to int-map-schema must be a schema object "
                    "or a name keyword indicating the value schema of the "
-                   "flex-map.")
+                   "int-map.")
+              {:given-values-schema values-schema}))))
+
+(defmethod validate-schema-args :long-map
+  [schema-type values-schema]
+  (when-not (schema-or-kw? values-schema)
+    (throw
+     (ex-info (str "Second arg to long-map-schema must be a schema object "
+                   "or a name keyword indicating the value schema of the "
+                   "long-map.")
+              {:given-values-schema values-schema}))))
+
+(defmethod validate-schema-args :fixed-map
+  [schema-type [key-size values-schema]]
+  (when-not (and (int? key-size) (pos? key-size))
+    (throw
+     (ex-info (str "Second argument to fixed-map-schema must be a positive "
+                   "integer indicating the size of the keys.")
+              (u/sym-map key-size))))
+  (when-not (schema-or-kw? values-schema)
+    (throw
+     (ex-info (str "Third arg to fixed-map-schema must be a schema object "
+                   "or a name keyword indicating the value schema of the "
+                   "fixed-map.")
               {:given-values-schema values-schema}))))
 
 (defmethod validate-schema-args :union
@@ -280,9 +287,23 @@
        (ex-info (str "All member schemas in a union must be schema objects "
                      "or name keywords.")
                 {:bad-member-schema member-schema}))))
-  (let [schemas-to-check (map u/edn-schema
-                              ;; Name keywords & named schemas are always okay
-                              (remove keyword? member-schemas))]
+  (let [schemas-to-check (reduce (fn [acc sch]
+                                   (if-not (keyword? sch)
+                                     (conj acc (u/edn-schema sch))
+                                     (if (or (u/avro-primitive-types sch)
+                                             (u/avro-flex-map-types sch))
+                                       (conj acc sch)
+                                       acc)))
+                                 [] member-schemas)]
+    (doseq [{:keys [type key-ns-type] :as edn-schema} schemas-to-check]
+      (when (and (= :record type)
+                 (or (nil? key-ns-type) (= :none key-ns-type)))
+        (throw (ex-info
+                (str "Illegal union member. Records in unions must "
+                     "have namespace-qualified keys. `key-ns-type` is `"
+                     key-ns-type "`. Must be either `:short` or `:fq`. "
+                     "Record edn schema: " edn-schema ".")
+                (u/sym-map edn-schema)))))
     (when (u/contains-union? schemas-to-check)
       (throw (ex-info (str "Illegal union. Unions cannnot immediately contain "
                            "other unions.")
@@ -291,4 +312,16 @@
       (when (u/more-than-one? #{schema-type} schemas-to-check)
         (throw (ex-info (str "Illegal union. Unions may not contain more than "
                              "one " (name schema-type) " schema.")
-                        (u/sym-map member-schemas)))))))
+                        (u/sym-map member-schemas)))))
+    (when (u/more-than-one? u/avro-numeric-types schemas-to-check)
+      (throw (ex-info (str "Illegal union. Unions may not contain more than "
+                           "one numeric schema (int, long, float, or double).")
+                      (u/sym-map member-schemas))))
+    (when (u/more-than-one? u/avro-numeric-map-types schemas-to-check)
+      (throw (ex-info (str "Illegal union. Unions may not contain more than "
+                           "one numeric map schema (int-map  or long-map).")
+                      (u/sym-map member-schemas))))
+    (when (u/more-than-one? u/avro-byte-types schemas-to-check)
+      (throw (ex-info (str "Illegal union. Unions may not contain more than "
+                           "one byte-array schema (bytes or fixed).")
+                      (u/sym-map member-schemas))))))

@@ -176,7 +176,6 @@ All of these functions take a Lancaster schema object as the first argument:
 * [deserialize](#deserialize): Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
 * [deserialize-same](#deserialize-same): Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
 resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution).
-* [wrap](#wrap): Wraps data for use in an ambiguous union. See [Notes About Union Data Types](#notes-about-union-data-types) below.
 * [edn](#edn): Returns the EDN representation of the schema.
 * [json](#json): Returns the JSON representation of the schema.
 * [pcf](#pcf): Returns a JSON string containing the
@@ -208,7 +207,7 @@ Avro Type | Acceptable Clojure / ClojureScript Types
 `array` | Any data that passes `(sequential? data)`
 `map` | Any data that passes `(map? data)`, if all keys are strings. Clojure(Script) records *DO NOT* qualify, since their keys are keywords.
 `record` | Any data that passes `(map? data)`, if all keys are Clojure(Script) keywords. Clojure(Script) records *DO* qualify, since their keys are keywords.
-`union` | Any data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. Note that some unions require wrapping, as explained in [Notes About Union Data Types](#notes-about-union-data-types) below.
+`union` | Any data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. Note that there are some restrictions on what schemas may be in a union schema, as explained in [Notes About Union Data Types](#notes-about-union-data-types) below.
 
 **Deserialization**
 
@@ -230,13 +229,17 @@ Avro Type | Clojure Type | ClojureScript Type
 `array` | `vector` | `vector`
 `map` | `hash-map` | `hash-map`
 `record` | `hash-map` | `hash-map`
-`union` | Data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. If the union schema requires wrapping, the returned data will be wrapped. See [Notes About Union Data Types](#notes-about-union-data-types) below.
+`union` | Data that matches one of the member schemas declared in the creation of the Lancaster `union` schema.
 
 ## Notes About Union Data Types
 
 To quote the [Avro spec](http://avro.apache.org/docs/current/spec.html#Unions):
 
 *Unions may not contain more than one schema with the same type, except for the named types record, fixed and enum. For example, unions containing two array types or two map types are not permitted, but two types with different names are permitted.*
+
+In additon to the above, Lancaster disallows unions with more than one numeric
+schema (int,float, long, or double) or more than one string-ish schema
+(string, bytes, or fixed).
 
 In Lancaster, the data for both `records` and `maps` can be Clojure hash-maps.
 Also, multiple record schemas can be members in a union schema. This makes it
