@@ -669,7 +669,6 @@
 (defmethod make-serializer :enum
   [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [name key-ns-type]} edn-schema
-        ns-sym (partial ns-k key-ns-type name)
         symbols (map #(ns-k key-ns-type name %) (:symbols edn-schema))
         symbol->index (apply hash-map
                              (apply concat (map-indexed
@@ -677,19 +676,24 @@
         ser (fn serialize [os data path]
               (if-let [i (symbol->index data)]
                 (write-long-varint-zz os i)
-                (if (or (= :none key-ns-type)
-                        (namespace data))
-                  (throw-bad-enum-data data path symbols edn-schema)
+                (if-not (keyword? data)
                   (throw
-                   (ex-info
-                    (str "Enum data `" data "` is missing the proper namespace "
-                         "qualifier. Should be `"
-                         (keyword (namespace (first symbols)) data)
-                         "`. To allow unqualified "
-                         "keywords set the :key-ns-type option to :none in the "
-                         "schema constructor. It is currently set to `"
-                         key-ns-type "`. Path: " path)
-                    (sym-map data path symbols edn-schema))))))]
+                   (ex-info (str "Enum data must be a keyword. Got: " data)
+                            (sym-map data)))
+                  (if (or (= :none key-ns-type)
+                          (namespace data))
+                    (throw-bad-enum-data data path symbols edn-schema)
+                    (throw
+                     (ex-info
+                      (str "Enum data `" data "` is missing the proper "
+                           "namespace qualifier. Should be `"
+                           (str (keyword (namespace (first symbols))
+                                         (clojure.core/name data)))
+                           "`. To allow unqualified "
+                           "keywords set the :key-ns-type option to :none in "
+                           "the schema constructor. It is currently set to `"
+                           key-ns-type "`. Path: " path)
+                      (sym-map data path symbols edn-schema)))))))]
     (swap! *name->serializer assoc name ser)
     ser))
 
