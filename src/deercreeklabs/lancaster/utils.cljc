@@ -683,8 +683,9 @@
                   (throw
                    (ex-info
                     (str "Enum data `" data "` is missing the proper namespace "
-                         "qualifier. Should be `"(namespace (first symbols))
-                         "/" data "`. To allow unqualified "
+                         "qualifier. Should be `"
+                         (keyword (namespace (first symbols)) data)
+                         "`. To allow unqualified "
                          "keywords set the :key-ns-type option to :none in the "
                          "schema constructor. It is currently set to `"
                          key-ns-type "`. Path: " path)
