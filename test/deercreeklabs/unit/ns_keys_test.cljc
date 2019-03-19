@@ -9,6 +9,38 @@
      (:import
       (clojure.lang ExceptionInfo))))
 
+(l/def-record-schema unq-rec-a-schema
+  {:key-ns-type :none}
+  [:a l/int-schema])
+
+(l/def-record-schema unq-rec-b-schema
+  {:key-ns-type :none}
+  [:b l/int-schema])
+
+(def maybe-unq-rec-schema (l/maybe unq-rec-a-schema))
+
+(l/def-union-schema union-of-two-unq-reqs
+  unq-rec-a-schema unq-rec-b-schema)
+
+(deftest test-forgot-ns-keys-in-union
+  (let [data {:name "Cally"
+              :age 24}]
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Can't serialize ambiguous record with union schema"
+         (l/serialize lt/person-or-dog-schema data)))))
+
+(deftest test-map-and-multi-rec-union
+  (let [schema (l/union-schema [(l/map-schema l/int-schema)
+                                lt/person-schema lt/dog-schema])]
+    (is (lt/round-trip? schema {"foo" 1}))
+    (is (lt/round-trip? schema #:person{:name "Chad" :age 18}))
+    (is (lt/round-trip? schema #:dog{:name "Bowser" :owner "Chad"}))
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Can't serialize ambiguous record with union schema"
+         (l/serialize schema {:name "Chad" :age 18})))))
+
 (deftest test-fq-ns-rec
   (let [schema (l/record-schema ::lt/rec {:key-ns-type :fq}
                                 [[:a l/int-schema]])]
@@ -62,9 +94,19 @@
          (l/serialize schema ::a)))))
 
 (deftest test-unqualified-record-in-union
-  (let [unq-rec-schema (l/record-schema ::rec {:key-ns-type :none}
-                                        [[:a l/int-schema]])]
+  (let [data {:a 42}
+        data-w-meta (with-meta data {:short-name "unq-rec-a"})
+        encoded (l/serialize union-of-two-unq-reqs data-w-meta)
+        decoded (l/deserialize-same union-of-two-unq-reqs encoded)
+        output-meta {:branch-index 0
+                     :fq-name "deercreeklabs.unit.ns-keys-test.unq-rec-a"
+                     :short-name "unq-rec-a"}]
     (is (thrown-with-msg?
          #?(:clj ExceptionInfo :cljs js/Error)
-         #"Records in unions must have namespace-qualified keys"
-         (l/union-schema [unq-rec-schema l/int-schema])))))
+         #"Can't serialize ambiguous record with union schema"
+         (l/serialize union-of-two-unq-reqs data)))
+    (is (= data decoded))
+    (is (= output-meta (meta decoded)))))
+
+(deftest test-maybe-unq-record
+  (is (lt/round-trip? maybe-unq-rec-schema {:a 42})))

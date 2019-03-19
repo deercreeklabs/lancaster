@@ -7,7 +7,6 @@
    [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
    [deercreeklabs.lancaster.utils :as u]
    #?(:clj [primitive-math :as pm])
-   #?(:clj [puget.printer :refer [cprint]])
    [schema.core :as s :include-macros true]))
 
 #?(:clj (pm/use-primitive-operators))
@@ -224,55 +223,55 @@
              (transient r) same-fields))))
 
 (defmethod make-xf [:record :record]
-[writer-edn-schema reader-edn-schema]
-(check-names writer-edn-schema reader-edn-schema)
-(let [{writer-fields :fields
-       writer-key-ns-type :key-ns-type} writer-edn-schema
-      {reader-fields :fields
-       reader-key-ns-type :key-ns-type} reader-edn-schema
-      changes (get-field-changes writer-fields reader-fields)
-      {:keys [added-fields deleted-fields changed-fields same-fields]} changes
-      writer-key-ns-fn (partial u/ns-k writer-key-ns-type
-                                (:name writer-edn-schema))
-      reader-key-ns-fn (partial u/ns-k (:key-ns-type reader-edn-schema)
-                                (:name reader-edn-schema))
-      add-fields (make-add-fields-fn reader-key-ns-fn added-fields)
-      delete-fields (make-delete-fields-fn writer-key-ns-fn deleted-fields)
-      change-fields (make-change-fields-fn reader-key-ns-fn changed-fields)
-      diff-key-ns-types? (not= writer-key-ns-type reader-key-ns-type)
-      ns-same-fields (make-ns-same-fields writer-key-ns-fn reader-key-ns-fn
-                                          same-fields)]
-  (fn [r]
-    (cond-> r
-      (seq deleted-fields) (delete-fields)
-      (seq changed-fields) (change-fields)
-      (seq added-fields) (add-fields)
-      (and diff-key-ns-types? (seq same-fields)) (ns-same-fields)))))
+  [writer-edn-schema reader-edn-schema]
+  (check-names writer-edn-schema reader-edn-schema)
+  (let [{writer-fields :fields
+         writer-key-ns-type :key-ns-type} writer-edn-schema
+        {reader-fields :fields
+         reader-key-ns-type :key-ns-type} reader-edn-schema
+        changes (get-field-changes writer-fields reader-fields)
+        {:keys [added-fields deleted-fields changed-fields same-fields]} changes
+        writer-key-ns-fn (partial u/ns-k writer-key-ns-type
+                                  (:name writer-edn-schema))
+        reader-key-ns-fn (partial u/ns-k (:key-ns-type reader-edn-schema)
+                                  (:name reader-edn-schema))
+        add-fields (make-add-fields-fn reader-key-ns-fn added-fields)
+        delete-fields (make-delete-fields-fn writer-key-ns-fn deleted-fields)
+        change-fields (make-change-fields-fn reader-key-ns-fn changed-fields)
+        diff-key-ns-types? (not= writer-key-ns-type reader-key-ns-type)
+        ns-same-fields (make-ns-same-fields writer-key-ns-fn reader-key-ns-fn
+                                            same-fields)]
+    (fn [r]
+      (cond-> r
+        (seq deleted-fields) (delete-fields)
+        (seq changed-fields) (change-fields)
+        (seq added-fields) (add-fields)
+        (and diff-key-ns-types? (seq same-fields)) (ns-same-fields)))))
 
 (defn throw-mismatch-error
-[writer-edn-schema reader-edn-schema]
-(let [writer-type (u/get-avro-type writer-edn-schema)
-      reader-type (u/get-avro-type reader-edn-schema)]
-  (throw
-   (ex-info (str "Writer schema (" writer-type ") and reader schema ("
-                 reader-type ") do not match.")
-            (u/sym-map writer-edn-schema reader-edn-schema
-                       writer-type reader-type)))))
+  [writer-edn-schema reader-edn-schema]
+  (let [writer-type (u/get-avro-type writer-edn-schema)
+        reader-type (u/get-avro-type reader-edn-schema)]
+    (throw
+     (ex-info (str "Writer schema (" writer-type ") and reader schema ("
+                   reader-type ") do not match.")
+              (u/sym-map writer-edn-schema reader-edn-schema
+                         writer-type reader-type)))))
 
 (defn make-xf* [writer-item-schema reader-item-schema]
-(try
-  (make-xf writer-item-schema reader-item-schema)
-  (catch #?(:clj Exception :cljs js/Error) e
-    (when-not (str/includes? (u/ex-msg e) "do not match.")
-      (throw e)))))
+  (try
+    (make-xf writer-item-schema reader-item-schema)
+    (catch #?(:clj Exception :cljs js/Error) e
+      (when-not (str/includes? (u/ex-msg e) "do not match.")
+        (throw e)))))
 
 (defn make-union-xf [writer-item-schema reader-union-schema]
-(loop [branch 0]
-  (or (make-xf* writer-item-schema (reader-union-schema branch))
-      (if (< (inc branch) (count reader-union-schema))
-        (recur (inc branch))
-        (fn [data]
-          (throw-mismatch-error writer-item-schema reader-union-schema))))))
+  (loop [branch 0]
+    (or (make-xf* writer-item-schema (reader-union-schema branch))
+        (if (< (inc branch) (count reader-union-schema))
+          (recur (inc branch))
+          (fn [data]
+            (throw-mismatch-error writer-item-schema reader-union-schema))))))
 
 (defn make-union-resolving-decoder
   [writer-edn-schema reader-edn-schema writer-type reader-type

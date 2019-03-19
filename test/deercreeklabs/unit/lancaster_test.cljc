@@ -910,14 +910,6 @@
         decoded (l/deserialize-same rec-w-maybe-field-schema encoded)]
     (is (= (assoc data :rec-w-maybe-field/age nil) decoded))))
 
-(deftest test-forgot-ns-keys
-  (let [data {:name "Cally"
-              :age 24}]
-    (is (thrown-with-msg?
-         #?(:clj ExceptionInfo :cljs js/Error)
-         #"Missing namespace on record key"
-         (l/serialize person-or-dog-schema data)))))
-
 (deftest test-schema?
   (is (l/schema? person-or-dog-schema))
   (is (not (l/schema? :foo))))
@@ -1047,18 +1039,6 @@
   (let [schema (l/union-schema [(l/map-schema l/int-schema) person-schema])]
     (is (round-trip? schema {"foo" 1}))
     (is (round-trip? schema #:person{:name "Chad" :age 18}))))
-
-(deftest test-map-and-multi-rec-union
-  (let [schema (l/union-schema [(l/map-schema l/int-schema)
-                                person-schema
-                                dog-schema])]
-    (is (round-trip? schema {"foo" 1}))
-    (is (round-trip? schema #:person{:name "Chad" :age 18}))
-    (is (round-trip? schema #:dog{:name "Bowser" :owner "Chad"}))
-    (is (thrown-with-msg?
-         #?(:clj ExceptionInfo :cljs js/Error)
-         #"Missing namespace on record key"
-         (l/serialize schema {:name "Chad" :age 18})))))
 
 (deftest test-more-than-one-numeric-map-type-in-a-union
   (is (thrown-with-msg?

@@ -295,15 +295,6 @@
                                        (conj acc sch)
                                        acc)))
                                  [] member-schemas)]
-    (doseq [{:keys [type key-ns-type] :as edn-schema} schemas-to-check]
-      (when (and (= :record type)
-                 (or (nil? key-ns-type) (= :none key-ns-type)))
-        (throw (ex-info
-                (str "Illegal union member. Records in unions must "
-                     "have namespace-qualified keys. `key-ns-type` is `"
-                     key-ns-type "`. Must be either `:short` or `:fq`. "
-                     "Record edn schema: " edn-schema ".")
-                (u/sym-map edn-schema)))))
     (when (u/contains-union? schemas-to-check)
       (throw (ex-info (str "Illegal union. Unions cannnot immediately contain "
                            "other unions.")

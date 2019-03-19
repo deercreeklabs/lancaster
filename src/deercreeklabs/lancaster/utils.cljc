@@ -8,7 +8,7 @@
    [deercreeklabs.baracus :as ba]
    #?(:cljs [goog.math :as gm])
    #?(:clj [primitive-math :as pm])
-   #?(:clj [puget.printer :refer [cprint]])
+   #?(:clj [puget.printer :refer [cprint-str]])
    [schema.core :as s])
   #?(:cljs
      (:require-macros
@@ -88,9 +88,9 @@
                               (assoc acc (s/optional-key k) s/Any))
                             {} (keys default-enum-options)))
 
-(defn pprint [x]
-  #?(:clj (cprint x)
-     :cljs (pprint/pprint x)))
+(defn pprintln [x]
+  #?(:clj (.write *out* (str (cprint-str x) "\n"))
+     :cljs (pprint/pprint (str x "\n"))))
 
 (s/defn ex-msg :- s/Str
   [e]
@@ -844,7 +844,8 @@
    :fixed bytes-types
    :array sequential-types})
 
-(defn make-type->-branch-info [edn-schema name->edn-schema *name->serializer]
+(defn make-type->branch-info
+  [edn-schema single-rec? name->edn-schema *name->serializer]
   (reduce (fn [acc i]
             (let [sch (nth edn-schema i)
                   avro-type (get-avro-type sch)
@@ -860,7 +861,10 @@
                 (let [name-kw (:name sch)
                       short-name (name name-kw)
                       fq-name (str (namespace name-kw) "." short-name)]
-                  (cond-> (assoc acc short-name branch-info fq-name branch-info)
+                  (cond-> (if single-rec?
+                            (assoc acc :record branch-info)
+                            (assoc acc short-name branch-info
+                                   fq-name branch-info))
                     (nil? (:empty-map acc)) (assoc :empty-map branch-info)))
 
                 :int-map
@@ -880,55 +884,84 @@
                         acc (avro-type->data-types avro-type)))))
           {} (range (count edn-schema))))
 
-(defn get-type-key [data path]
+(defn throw-ambiguous-record [data path]
+  (throw
+   (ex-info (str "Can't serialize ambiguous record with union schema. "
+                 "Records in unions must either have namespaced keys or "
+                 "metadata that indicates the name of the record. "
+                 "e.g. {:short-name \"dog\"} or {:fq-name \"my.ns.dog\"} "
+                 "\nRecord: " data "\nPath: " path)
+            (sym-map data path))))
+
+(defn get-type-key [data path single-rec?]
   (if-not (map? data)
     (type data)
-    (let [[k v] (first data)]
-      (cond
-        (keyword? k)
-        (or (namespace k)
-            (throw
-             (ex-info (str "Missing namespace on record key. All "
-                           "records in unions must have namespaced "
-                           "keys.\n Path: " path)
-                      (sym-map data path))))
+    (if-let [m (meta data)]
+      (or (m :short-name) (m :fq-name))
+      (let [[k v] (first data)]
+        (cond
+          (keyword? k)
+          (if single-rec?
+            :record
+            (or (namespace k)
+                (throw-ambiguous-record data path)))
 
-        (nil? k)
-        (if (nil? v)
-          :empty-map
-          (throw (ex-info (str "Illegal nil key in record or map. Path: " path
-                               "Data: " data ".")
-                          (sym-map data path))))
+          (nil? k)
+          (if (nil? v)
+            :empty-map
+            (throw (ex-info (str "Illegal nil key in record or map. Path: " path
+                                 "Data: " data ".")
+                            (sym-map data path))))
 
-        (string? k)
-        :map
+          (string? k)
+          :map
 
-        (int? k)
-        :numeric-map))))
+          (int? k)
+          :numeric-map)))))
+
+(defn count-recs [union-edn-schema]
+  (count (filter #(= :record (get-avro-type %)) union-edn-schema)))
 
 (defmethod make-serializer :union
   [edn-schema name->edn-schema *name->serializer]
-  (let [type->branch-info (make-type->-branch-info edn-schema name->edn-schema
-                                                   *name->serializer)]
+  (let [single-rec? (= 1 (count-recs edn-schema))
+        type->branch-info (make-type->branch-info edn-schema single-rec?
+                                                  name->edn-schema
+                                                  *name->serializer)]
     (fn serialize [os data path]
-      (let [type-key (get-type-key data path)
+      (let [type-key (get-type-key data path single-rec?)
             [branch serializer] (type->branch-info type-key)]
         (when-not branch
           (let [data-type (type data)]
-            (throw (ex-info (str "Data type `" data-type "` is not in the "
-                                 "union schema. Path: " path)
-                            (sym-map data-type data path type-key)))))
+            (throw
+             (ex-info (str "Data type `" data-type "` is not in the "
+                           "union schema. Path: " path)
+                      (sym-map data-type data path type-key single-rec?)))))
         (write-long-varint-zz os branch)
         (serializer os data path)))))
+
+(defn branch-record-meta [branch-index edn-schema]
+  (if-not (= :record (get-avro-type edn-schema))
+    {}
+    (let [name-kw (:name edn-schema)
+          short-name (name name-kw)
+          fq-name (str (namespace name-kw) "." short-name)]
+      (sym-map short-name fq-name branch-index))))
 
 (defmethod make-deserializer :union
   [edn-schema *name->deserializer]
   (let [branch->deserializer (mapv #(make-deserializer % *name->deserializer)
-                                   edn-schema)]
+                                   edn-schema)
+        branch->record-metadata (vec (map-indexed branch-record-meta
+                                                  edn-schema))
+        add-meta? (> (int (count-recs edn-schema)) 1)]
     (fn deserialize [is]
       (let [branch (read-long-varint-zz is)
-            deserializer (branch->deserializer branch)]
-        (deserializer is)))))
+            deserializer (branch->deserializer branch)
+            data (deserializer is)]
+        (if (and add-meta? (map? data))
+          (with-meta data (branch->record-metadata branch))
+          data)))))
 
 (defn make-field-info
   [record-name-kw key-ns-type field-schema name->edn-schema *name->serializer]
