@@ -99,8 +99,8 @@
         encoded (l/serialize union-of-two-unq-reqs data-w-meta)
         decoded (l/deserialize-same union-of-two-unq-reqs encoded)
         output-meta {:branch-index 0
-                     :fq-name "deercreeklabs.unit.ns-keys-test.unq-rec-a"
-                     :short-name "unq-rec-a"}]
+                     :fq-name :deercreeklabs.unit.ns-keys-test/unq-rec-a
+                     :short-name :unq-rec-a}]
     (is (thrown-with-msg?
          #?(:clj ExceptionInfo :cljs js/Error)
          #"Can't serialize ambiguous record with union schema"

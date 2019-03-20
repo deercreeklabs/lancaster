@@ -940,27 +940,26 @@
         (write-long-varint-zz os branch)
         (serializer os data path)))))
 
-(defn branch-record-meta [branch-index edn-schema]
-  (if-not (= :record (get-avro-type edn-schema))
-    {}
-    (let [name-kw (:name edn-schema)
-          short-name (name name-kw)
-          fq-name (str (namespace name-kw) "." short-name)]
-      (sym-map short-name fq-name branch-index))))
+(defn branch-meta [branch-index edn-schema]
+  (case (get-avro-type edn-schema)
+    :map {:short-name :map :fq-name :map :branch-index branch-index}
+    :record (let [fq-name (:name edn-schema)
+                  short-name (keyword (name fq-name))]
+              (sym-map short-name fq-name branch-index))
+    nil))
 
 (defmethod make-deserializer :union
   [edn-schema *name->deserializer]
   (let [branch->deserializer (mapv #(make-deserializer % *name->deserializer)
                                    edn-schema)
-        branch->record-metadata (vec (map-indexed branch-record-meta
-                                                  edn-schema))
-        add-meta? (> (int (count-recs edn-schema)) 1)]
+        branch->metadata (vec (map-indexed branch-meta edn-schema))]
     (fn deserialize [is]
       (let [branch (read-long-varint-zz is)
             deserializer (branch->deserializer branch)
-            data (deserializer is)]
-        (if (and add-meta? (map? data))
-          (with-meta data (branch->record-metadata branch))
+            data (deserializer is)
+            m (branch->metadata branch)]
+        (if m
+          (with-meta data m)
           data)))))
 
 (defn make-field-info
