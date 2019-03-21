@@ -967,9 +967,9 @@
       (let [branch (read-long-varint-zz is)
             deserializer (branch->deserializer branch)
             data (deserializer is)
-            m (branch->metadata branch)]
-        (if m
-          (with-meta data m)
+            metadata (branch->metadata branch)]
+        (if metadata
+          (with-meta data metadata)
           data)))))
 
 (defn make-field-info
