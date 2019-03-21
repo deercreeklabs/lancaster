@@ -153,6 +153,15 @@
   (and (keyword? x)
        (not (avro-primitive-types x))))
 
+(defn k->record-name [k]
+  (when-let [n (namespace k)]
+    (if-not (fullname? n)
+      (keyword n)
+      (let [parts (str/split n #"\.")
+            ns-part (str/join "." (butlast parts))
+            name-part (last parts)]
+        (keyword ns-part name-part)))))
+
 (defn clj-namespace->java-namespace [ns]
   (when ns
     (str/replace (str ns) #"-" "_")))
@@ -858,9 +867,8 @@
                   (nil? (:empty-map acc)) (assoc :empty-map branch-info))
 
                 :record
-                (let [name-kw (:name sch)
-                      short-name (name name-kw)
-                      fq-name (str (namespace name-kw) "." short-name)]
+                (let [fq-name (:name sch)
+                      short-name (keyword (name fq-name))]
                   (cond-> (if single-rec?
                             (assoc acc :record branch-info)
                             (assoc acc short-name branch-info
@@ -876,7 +884,7 @@
                   (nil? (:empty-map acc)) (assoc :empty-map branch-info))
 
                 :name-keyword
-                (assoc acc (name sch) branch-info)
+                (assoc acc sch branch-info)
 
                 ;; else
                 (reduce (fn [acc* data-type]
@@ -903,7 +911,7 @@
           (keyword? k)
           (if single-rec?
             :record
-            (or (namespace k)
+            (or (k->record-name k)
                 (throw-ambiguous-record data path)))
 
           (nil? k)
@@ -932,11 +940,13 @@
       (let [type-key (get-type-key data path single-rec?)
             [branch serializer] (type->branch-info type-key)]
         (when-not branch
-          (let [data-type (type data)]
+          (let [data-type (type data)
+                type-keys (keys type->branch-info)]
             (throw
              (ex-info (str "Data type `" data-type "` is not in the "
                            "union schema. Path: " path)
-                      (sym-map data-type data path type-key single-rec?)))))
+                      (sym-map data-type data path type-key type-keys
+                               single-rec?)))))
         (write-long-varint-zz os branch)
         (serializer os data path)))))
 

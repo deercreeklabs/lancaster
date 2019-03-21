@@ -95,7 +95,7 @@
 
 (deftest test-unqualified-record-in-union
   (let [data {:a 42}
-        data-w-meta (with-meta data {:short-name "unq-rec-a"})
+        data-w-meta (with-meta data {:short-name :unq-rec-a})
         encoded (l/serialize union-of-two-unq-reqs data-w-meta)
         decoded (l/deserialize-same union-of-two-unq-reqs encoded)
         output-meta {:branch-index 0
