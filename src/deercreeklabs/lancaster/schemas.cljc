@@ -31,8 +31,9 @@
   (serialize [this os data]
     (serializer os data []))
   (deserialize [this writer-schema is]
-    (let [writer-edn-schema (:edn-schema writer-schema)]
-      (if (= writer-edn-schema edn-schema)
+    (let [writer-edn-schema (:edn-schema writer-schema)
+          writer-pcf (:parsing-canonical-form writer-schema)]
+      (if (= writer-pcf parsing-canonical-form)
         (deserializer is)
         (if-let [rd (@*edn->resolving-deserializer writer-edn-schema)]
           (rd is)
