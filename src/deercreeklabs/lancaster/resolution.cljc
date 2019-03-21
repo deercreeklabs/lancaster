@@ -267,11 +267,15 @@
 
 (defn make-union-xf [writer-item-schema reader-union-schema]
   (loop [branch 0]
-    (or (make-xf* writer-item-schema (reader-union-schema branch))
-        (if (< (inc branch) (count reader-union-schema))
-          (recur (inc branch))
-          (fn [data]
-            (throw-mismatch-error writer-item-schema reader-union-schema))))))
+    (if-let [xf (make-xf* writer-item-schema (reader-union-schema branch))]
+      (if-let [metadata (u/branch-meta branch (reader-union-schema branch))]
+        (fn [data]
+          (with-meta (xf data) metadata))
+        xf)
+      (if (< (inc branch) (count reader-union-schema))
+        (recur (inc branch))
+        (fn [data]
+          (throw-mismatch-error writer-item-schema reader-union-schema))))))
 
 (defn make-union-resolving-decoder
   [writer-edn-schema reader-edn-schema writer-type reader-type
@@ -282,7 +286,8 @@
                                 #(u/make-deserializer % *name->deserializer)
                                 writer-edn-schema)
           branch->xf (mapv #(make-union-xf % (vec reader-edn-schema))
-                           writer-edn-schema)]
+                           writer-edn-schema)
+          branch->metadata (vec (map-indexed u/branch-meta reader-edn-schema))]
       (fn deserialize [is]
         (let [branch (u/read-long-varint-zz is)
               deserializer (branch->deserializer branch)

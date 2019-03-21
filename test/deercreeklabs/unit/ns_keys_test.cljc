@@ -22,6 +22,9 @@
 (l/def-union-schema union-of-two-unq-reqs
   unq-rec-a-schema unq-rec-b-schema)
 
+(l/def-union-schema union-of-two-unq-reqs-reversed
+  unq-rec-b-schema unq-rec-a-schema)
+
 (deftest test-forgot-ns-keys-in-union
   (let [data {:name "Cally"
               :age 24}]
@@ -99,6 +102,22 @@
         encoded (l/serialize union-of-two-unq-reqs data-w-meta)
         decoded (l/deserialize-same union-of-two-unq-reqs encoded)
         output-meta {:branch-index 0
+                     :fq-name :deercreeklabs.unit.ns-keys-test/unq-rec-a
+                     :short-name :unq-rec-a}]
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Can't serialize ambiguous record with union schema"
+         (l/serialize union-of-two-unq-reqs data)))
+    (is (= data decoded))
+    (is (= output-meta (meta decoded)))))
+
+(deftest test-unqualified-record-in-union-resolution
+  (let [data {:a 42}
+        data-w-meta (with-meta data {:short-name :unq-rec-a})
+        encoded (l/serialize union-of-two-unq-reqs data-w-meta)
+        decoded (l/deserialize union-of-two-unq-reqs-reversed
+                               union-of-two-unq-reqs encoded)
+        output-meta {:branch-index 1
                      :fq-name :deercreeklabs.unit.ns-keys-test/unq-rec-a
                      :short-name :unq-rec-a}]
     (is (thrown-with-msg?
