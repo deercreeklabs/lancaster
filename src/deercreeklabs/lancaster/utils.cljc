@@ -897,7 +897,7 @@
    (ex-info (str "Can't serialize ambiguous record with union schema. "
                  "Records in unions must either have namespaced keys or "
                  "metadata that indicates the name of the record. "
-                 "e.g. {:short-name \"dog\"} or {:fq-name \"my.ns.dog\"} "
+                 "e.g. {:short-name :dog} or {:fq-name :my.ns.dog} "
                  "\nRecord: " data "\nPath: " path)
             (sym-map data path))))
 
@@ -978,7 +978,8 @@
         serializer (make-serializer type name->edn-schema *name->serializer)
         unq-k (:name field-schema)
         k (ns-k key-ns-type record-name-kw unq-k)
-        nilable? (and (sequential? type) (= :null (first type)))]
+        nilable? (or (= :null type)
+                     (and (sequential? type) ((set type) :null)))]
     [k unq-k serializer nilable?]))
 
 (defn throw-ns-error [k unq-k data path key-ns-type]
