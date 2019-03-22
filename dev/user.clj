@@ -1,3 +1,7 @@
 (ns user
   (:require
-   [clojure.tools.namespace.repl :refer [refresh refresh-all]]))
+   [cljs.repl]
+   [cljs.repl.node]))
+
+(defn node-repl []
+  (cljs.repl/repl (cljs.repl.node/repl-env)))

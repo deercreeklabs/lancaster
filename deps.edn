@@ -12,7 +12,16 @@
              "clojars" {:url "https://repo.clojars.org/"}}
 
  :aliases
- {:dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.8.2"}
+ {:cider-clj {:extra-deps {cider/cider-nrepl {:mvn/version "0.21.1"}}
+              :main-opts ["-m" "nrepl.cmdline" "--middleware"
+                          "[cider.nrepl/cider-middleware]"]}
+
+  :cider-cljs {:extra-deps {cider/cider-nrepl {:mvn/version "0.21.1"}
+                            cider/piggieback {:mvn/version "0.4.0"}}
+               :main-opts
+               ["-m" "nrepl.cmdline" "--middleware"
+                "[cider.nrepl/cider-middleware,cider.piggieback/wrap-cljs-repl]"]}
+  :dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.8.2"}
                      org.clojure/tools.namespace {:mvn/version "0.2.11"}}}
 
   :test {:extra-paths ["test"]
