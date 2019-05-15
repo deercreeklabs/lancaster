@@ -87,3 +87,12 @@
                 (u/edn-schema)
                 (u/edn-schema->name-kw))]
     (is (= :deercreeklabs.unit.lancaster-test/sku-to-qty ret))))
+
+(l/def-record-schema foo-schema
+  [:a (l/map-schema l/int-schema)])
+
+(l/def-record-schema bar-schema
+  [:a (l/map-schema l/string-schema)])
+
+(l/def-map-schema map-of-fbs-schema
+  (l/union-schema [foo-schema bar-schema]))

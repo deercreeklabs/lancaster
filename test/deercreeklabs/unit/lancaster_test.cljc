@@ -1023,13 +1023,22 @@
        #"Unions may not contain more than one numeric schema"
        (l/union-schema [l/int-schema l/float-schema]))))
 
+(l/def-int-map-schema im-schema
+  l/string-schema)
+
+(deftest test-int-map-w-array-in-a-union
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"more than one of these types: array, int-map, or long-map"
+       (l/union-schema [im-schema (l/array-schema l/int-schema)]))))
+
 (deftest test-more-than-one-bytes-type-in-a-union
   (is (thrown-with-msg?
        #?(:clj ExceptionInfo :cljs js/Error)
        #"Unions may not contain more than one byte-array schema"
        (l/union-schema [l/bytes-schema (l/fixed-schema :foo 16)]))))
 
-(deftest test-serialisze-empty-map-multi-rec-union
+(deftest test-serialize-empty-map-multi-rec-union
   (is (thrown-with-msg?
        #?(:clj ExceptionInfo :cljs js/Error)
        #"Record data is missing key `:person/name`"
@@ -1045,7 +1054,7 @@
        #?(:clj ExceptionInfo :cljs js/Error)
        #"Unions may not contain more than one numeric map schema"
        (l/union-schema [(l/int-map-schema :im l/string-schema)
-                        (l/long-map-schema :im l/string-schema)]))))
+                        (l/long-map-schema :lm l/string-schema)]))))
 
 (deftest test-bad-fixed-map-size
   (is (thrown-with-msg?

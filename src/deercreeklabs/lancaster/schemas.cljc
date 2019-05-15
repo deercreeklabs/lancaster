@@ -281,7 +281,7 @@
   (when-not (sequential? member-schemas)
     (throw (ex-info (str "Arg to union-schema must be a sequence "
                          "of member schema objects or name keywords.")
-                    {:given-member-schemas member-schemas})))
+                    {:given-member-edn-schemas member-schemas})))
   (doseq [member-schema member-schemas]
     (when-not (schema-or-kw? member-schema)
       (throw
@@ -299,21 +299,28 @@
     (when (u/contains-union? schemas-to-check)
       (throw (ex-info (str "Illegal union. Unions cannnot immediately contain "
                            "other unions.")
-                      (u/sym-map member-schemas))))
+                      {:member-edn-schemas (map u/edn-schema member-schemas)})))
     (doseq [schema-type (set/union u/avro-primitive-types #{:map :array})]
       (when (u/more-than-one? #{schema-type} schemas-to-check)
         (throw (ex-info (str "Illegal union. Unions may not contain more than "
                              "one " (name schema-type) " schema.")
-                        (u/sym-map member-schemas)))))
+                        {:member-edn-schemas
+                         (map u/edn-schema member-schemas)}))))
     (when (u/more-than-one? u/avro-numeric-types schemas-to-check)
       (throw (ex-info (str "Illegal union. Unions may not contain more than "
                            "one numeric schema (int, long, float, or double).")
-                      (u/sym-map member-schemas))))
+                      {:member-edn-schemas (map u/edn-schema member-schemas)})))
     (when (u/more-than-one? u/avro-numeric-map-types schemas-to-check)
       (throw (ex-info (str "Illegal union. Unions may not contain more than "
                            "one numeric map schema (int-map  or long-map).")
-                      (u/sym-map member-schemas))))
+                      {:member-edn-schemas (map u/edn-schema member-schemas)})))
     (when (u/more-than-one? u/avro-byte-types schemas-to-check)
       (throw (ex-info (str "Illegal union. Unions may not contain more than "
                            "one byte-array schema (bytes or fixed).")
-                      (u/sym-map member-schemas))))))
+                      {:member-edn-schemas (map u/edn-schema member-schemas)})))
+
+    (when (u/more-than-one? #{:array :int-map :long-map} schemas-to-check)
+      (throw (ex-info (str "Illegal union. Unions may not contain more than "
+                           "one of these types: array, int-map, or long-map.")
+                      {:member-edn-schemas
+                       (map u/edn-schema member-schemas)})))))

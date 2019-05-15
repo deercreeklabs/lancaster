@@ -132,6 +132,12 @@
                         (u/sym-map full-path i k))))
       (edn-schema-at-path (:values edn-schema) full-path (inc i)))))
 
+(defmethod edn-schema-at-path :union
+  [edn-schema full-path i]
+  (if (>= i (count full-path))
+    edn-schema
+    :foo))
+
 (defn schema-at-path [schema path]
   (-> (u/edn-schema schema)
       (edn-schema-at-path path 0)
