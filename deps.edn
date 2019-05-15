@@ -2,7 +2,7 @@
  {camel-snake-kebab {:mvn/version "0.4.0"}
   cheshire {:mvn/version "5.8.1"}
   deercreeklabs/baracus {:mvn/version "0.2.0"}
-  mvxcvi/puget {:mvn/version "1.1.1"}
+  mvxcvi/puget {:mvn/version "1.1.2"}
   org.clojure/clojure {:mvn/version "1.10.0"}
   org.clojure/clojurescript {:mvn/version "1.10.520"}
   primitive-math {:mvn/version "0.1.6"}
@@ -21,10 +21,11 @@
                :main-opts
                ["-m" "nrepl.cmdline" "--middleware"
                 "[cider.nrepl/cider-middleware,cider.piggieback/wrap-cljs-repl]"]}
+
   :dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.8.2"}
                      org.clojure/tools.namespace {:mvn/version "0.2.11"}}}
 
   :test {:extra-paths ["test"]
-         :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-389"}
-                      lambdaisland/kaocha-cljs {:mvn/version "0.0-21"}
-                      lambdaisland/kaocha-cloverage {:mvn/version "0.0-22"}}}}}
+         :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-418"}
+                      lambdaisland/kaocha-cljs {:mvn/version "0.0-32"}
+                      lambdaisland/kaocha-cloverage {:mvn/version "0.0-32"}}}}}
