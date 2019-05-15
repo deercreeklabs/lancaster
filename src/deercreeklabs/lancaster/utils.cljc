@@ -78,17 +78,16 @@
 (def default-record-options {:all-fields-optional false
                              :key-ns-type :short})
 
-(def Nil (s/eq nil))
-(def KeyNsType (s/enum :none :short :fq))
-
-(def RecordOptionsMap (reduce (fn [acc k]
-                                (assoc acc (s/optional-key k) s/Any))
-                              {} (keys default-record-options)))
 (def EnumOptionsMap (reduce (fn [acc k]
                               (assoc acc (s/optional-key k) s/Any))
                             {} (keys default-enum-options)))
+(def KeyNsType (s/enum :none :short :fq))
+(def Nil (s/eq nil))
+(def RecordOptionsMap (reduce (fn [acc k]
+                                (assoc acc (s/optional-key k) s/Any))
+                              {} (keys default-record-options)))
 
-(defn pprintln [x]
+(defn pprint [x]
   #?(:clj (.write *out* (str (cprint-str x) "\n"))
      :cljs (pprint/pprint (str x "\n"))))
 
@@ -113,6 +112,20 @@
   []
   #?(:clj (System/currentTimeMillis)
      :cljs (.getTime (js/Date.))))
+
+(defn path-key? [k]
+  (or (keyword? k)
+      (string? k)
+      (integer? k)
+      (ba/byte-array? k)))
+
+(defn path? [x]
+  (and (sequential? x)
+       (reduce (fn [acc k]
+                 (if (path-key? k)
+                   acc
+                   (reduced false)))
+               true x)))
 
 (defn schema-name [clj-name]
   (-> (name clj-name)

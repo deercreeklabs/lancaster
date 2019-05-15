@@ -1,12 +1,7 @@
 (ns deercreeklabs.unit.edn-test
   (:require
-   [clojure.string :as str]
-   [clojure.test :refer [are deftest is use-fixtures]]
-   [deercreeklabs.lancaster :as l]
-   [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.unit.lancaster-test :as lt]
-   [schema.core :as s :include-macros true]))
-
+   [clojure.test :refer [are deftest is]]
+   [deercreeklabs.lancaster :as l]))
 
 (deftest test-edn->schema
   (are [edn] (= edn (-> edn l/edn->schema l/edn))

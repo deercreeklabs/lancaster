@@ -4,6 +4,7 @@
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.impl :as impl]
    [deercreeklabs.lancaster.schemas :as schemas]
+   [deercreeklabs.lancaster.sub :as sub]
    [deercreeklabs.lancaster.utils :as u]
    #?(:cljs [goog.math :as gm])
    [schema.core :as s :include-macros true])
@@ -236,6 +237,28 @@
      (ex-info "Argument to default-data must be a schema object."
               {:given-arg schema})))
   (u/default-data (edn schema)))
+
+(s/defn sub-schemas :- [LancasterSchema]
+  [schema :- LancasterSchema]
+  (when-not (satisfies? u/ILancasterSchema schema)
+    (throw
+     (ex-info "Argument to sub-schemas must be a schema object."
+              {:given-arg schema})))
+  (sub/sub-schemas schema))
+
+(s/defn schema-at-path :- LancasterSchema
+  [schema :- LancasterSchema
+   path :- [s/Any]]
+  (when-not (satisfies? u/ILancasterSchema schema)
+    (throw
+     (ex-info "First argument to schema-at-path must be a schema object."
+              {:given-arg schema})))
+  (when-not (u/path? path)
+    (throw
+     (ex-info (str "Second argument to schema-at-path must be a sequence of "
+                   "path keys, which must be keywords, strings, or integers.")
+              {:given-path path})))
+  (sub/schema-at-path schema path))
 
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 
