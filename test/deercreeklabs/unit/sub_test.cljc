@@ -89,10 +89,38 @@
     (is (= :deercreeklabs.unit.lancaster-test/sku-to-qty ret))))
 
 (l/def-record-schema foo-schema
-  [:a (l/map-schema l/int-schema)])
+  [:a l/int-schema])
 
 (l/def-record-schema bar-schema
-  [:a (l/map-schema l/string-schema)])
+  [:a l/string-schema])
 
 (l/def-map-schema map-of-fbs-schema
   (l/union-schema [foo-schema bar-schema]))
+
+(deftest test-schema-at-path-union-root
+  (let [path []
+        ret (-> (l/schema-at-path map-of-fbs-schema path)
+                (u/edn-schema)
+                (u/edn-schema->name-kw))]
+    (is (= :map ret))))
+
+(deftest test-schema-at-path-union-one-arg
+  (let [path ["a"]
+        ret (-> (l/schema-at-path map-of-fbs-schema path)
+                (u/edn-schema)
+                (u/edn-schema->name-kw))]
+    (is (= :union ret))))
+
+(deftest test-schema-at-path-union-two-args-int
+  (let [path ["a" :foo/a]
+        ret (-> (l/schema-at-path map-of-fbs-schema path)
+                (u/edn-schema)
+                (u/edn-schema->name-kw))]
+    (is (= :int ret))))
+
+(deftest test-schema-at-path-union-two-args-str
+  (let [path ["a" :bar/a]
+        ret (-> (l/schema-at-path map-of-fbs-schema path)
+                (u/edn-schema)
+                (u/edn-schema->name-kw))]
+    (is (= :string ret))))

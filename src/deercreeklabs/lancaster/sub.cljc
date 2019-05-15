@@ -67,7 +67,7 @@
                              "` is not a keyword.")
                         (u/sym-map full-path i k))))
           field (reduce (fn [acc field*]
-                          (if (= k (:name field*))
+                          (if (= (name k) (name (:name field*)))
                             (reduced field*)
                             acc))
                         nil (:fields edn-schema))]
@@ -132,11 +132,73 @@
                         (u/sym-map full-path i k))))
       (edn-schema-at-path (:values edn-schema) full-path (inc i)))))
 
+(defmulti key-schema (fn [edn-schema & rest]
+                       (u/get-avro-type edn-schema)))
+
+(defmethod key-schema :default
+  [parent-edn-schema k]
+  nil)
+
+(defn throw-unq-k-in-schema-at-path [edn-schema]
+  (throw (ex-info (str "Only records with qualified keys may be used inside"
+                       "unions in schema-at-path. Got: `" edn-schema "`.")
+                  (u/sym-map edn-schema))))
+
+(defmethod key-schema :record
+  [parent-edn-schema k]
+  (when (keyword? k)
+    (let [{:keys [key-ns-type]} parent-edn-schema
+          k-ns (namespace k)]
+      (when-not k-ns
+        (throw (ex-info (str "Only qualified keys may be used inside unions "
+                             "in schema-at-path. Got: `" k "`.")
+                        (u/sym-map parent-edn-schema k))))
+      (case key-ns-type
+        nil (throw-unq-k-in-schema-at-path parent-edn-schema)
+        :none (throw-unq-k-in-schema-at-path parent-edn-schema)
+        :short (let [rec-name (name (:name parent-edn-schema))]
+                 (when (= rec-name k-ns)
+                   (edn-schema-at-path parent-edn-schema [k] 0)))
+        :fq (let [name-kw (:name parent-edn-schema)
+                  rec-name (str (namespace name-kw) "." (name name-kw))]
+              (when (= rec-name k-ns)
+                (edn-schema-at-path parent-edn-schema [k] 0)))))))
+
+(defmethod key-schema :array
+  [parent-edn-schema k]
+  (when (integer? k)
+    (:items parent-edn-schema)))
+
+(defmethod key-schema :int-map
+  [parent-edn-schema k]
+  (when (integer? k)
+    (:values parent-edn-schema)))
+
+(defmethod key-schema :long-map
+  [parent-edn-schema k]
+  (when (integer? k)
+    (:values parent-edn-schema)))
+
+(defmethod key-schema :map
+  [parent-edn-schema k]
+  (when (string? k)
+    (:values parent-edn-schema)))
+
+(defn choose-member-edn-schema [union-edn-schema k]
+  (let [edn-schema (reduce (fn [acc member-schema]
+                             (if-let [s (key-schema member-schema k)]
+                               (reduced s)
+                               acc))
+                           nil union-edn-schema)]
+    (or edn-schema
+        (throw (ex-info (str "No matching schema in union for key `" k "`.")
+                        (u/sym-map union-edn-schema k))))))
+
 (defmethod edn-schema-at-path :union
   [edn-schema full-path i]
   (if (>= i (count full-path))
     edn-schema
-    :foo))
+    (choose-member-edn-schema edn-schema (nth full-path i))))
 
 (defn schema-at-path [schema path]
   (-> (u/edn-schema schema)
