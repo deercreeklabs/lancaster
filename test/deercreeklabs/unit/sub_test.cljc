@@ -6,25 +6,27 @@
    [deercreeklabs.unit.lancaster-test :as lt]))
 
 (deftest test-sub-schemas
-  (let [subs (l/sub-schemas lt/add-to-cart-rsp-schema)
-        edn-schemas (map u/edn-schema subs)
-        schema-names (map u/edn-schema->name-kw edn-schemas)
-        expected [:deercreeklabs.unit.lancaster-test/add-to-cart-rsp
-                  :deercreeklabs.unit.lancaster-test/a-fixed
-                  :int
-                  :deercreeklabs.unit.lancaster-test/why
-                  :bytes
-                  :deercreeklabs.unit.lancaster-test/add-to-cart-req]]
-    (is (= expected schema-names))))
+  (let [ret (->> (l/sub-schemas lt/add-to-cart-rsp-schema)
+                 (map u/edn-schema)
+                 (map u/edn-schema->name-kw)
+                 (set))
+        expected #{:deercreeklabs.unit.lancaster-test/add-to-cart-rsp
+                   :deercreeklabs.unit.lancaster-test/a-fixed
+                   :int
+                   :deercreeklabs.unit.lancaster-test/why
+                   :bytes
+                   :deercreeklabs.unit.lancaster-test/add-to-cart-req}]
+    (is (= expected ret))))
 
 (deftest test-sub-schemas-union
-  (let [subs (l/sub-schemas lt/person-or-dog-schema)
-        edn-schemas (map u/edn-schema subs)
-        schema-names (map u/edn-schema->name-kw edn-schemas)
-        expected [:union
-                  :deercreeklabs.unit.lancaster-test/person
-                  :deercreeklabs.unit.lancaster-test/dog]]
-    (is (= expected schema-names))))
+  (let [ret (->> (l/sub-schemas lt/person-or-dog-schema)
+                 (map u/edn-schema)
+                 (map u/edn-schema->name-kw)
+                 (set))
+        expected #{:union
+                   :deercreeklabs.unit.lancaster-test/person
+                   :deercreeklabs.unit.lancaster-test/dog}]
+    (is (= expected ret))))
 
 (deftest test-schema-at-path-nested-recs
   (let [path [:req :sku]
