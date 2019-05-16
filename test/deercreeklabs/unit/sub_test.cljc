@@ -5,6 +5,34 @@
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.unit.lancaster-test :as lt]))
 
+(l/def-record-schema user-schema
+  [:name l/string-schema]
+  [:nickname l/string-schema])
+
+(l/def-int-map-schema users-schema
+  user-schema)
+
+(l/def-record-schema msg-schema
+  [:user user-schema]
+  [:text l/string-schema])
+
+(l/def-record-schema sys-state-schema
+  [:msgs (l/array-schema msg-schema)]
+  [:users users-schema])
+
+(deftest test-sub-schemas-complex
+  (let [ret (->> (l/sub-schemas sys-state-schema)
+                 (map u/edn-schema)
+                 (map u/edn-schema->name-kw)
+                 (set))
+        expected #{:array
+                   :string
+                   :deercreeklabs.unit.sub-test/msg
+                   :deercreeklabs.unit.sub-test/sys-state
+                   :deercreeklabs.unit.sub-test/user
+                   :deercreeklabs.unit.sub-test/users}]
+    (is (= expected ret))))
+
 (deftest test-sub-schemas
   (let [ret (->> (l/sub-schemas lt/add-to-cart-rsp-schema)
                  (map u/edn-schema)

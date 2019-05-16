@@ -14,26 +14,27 @@
 (defmethod edn-sub-schemas :record
   [edn-schema]
   (reduce (fn [acc {:keys [type]}]
-            (set/union acc (edn-sub-schemas type)))
+            (let [sub-schemas (edn-sub-schemas type)]
+              (set/union acc sub-schemas)))
           #{edn-schema} (:fields edn-schema)))
 
 (defmethod edn-sub-schemas :array
   [edn-schema]
-  (->> (:items edn-schema)
-       (edn-sub-schemas)
-       (conj edn-schema)))
+  (-> (:items edn-schema)
+      (edn-sub-schemas)
+      (conj edn-schema)))
 
 (defmethod edn-sub-schemas :map
   [edn-schema]
-  (->> (:values edn-schema)
-       (edn-sub-schemas)
-       (conj edn-schema)))
+  (-> (:values edn-schema)
+      (edn-sub-schemas)
+      (conj edn-schema)))
 
 (defmethod edn-sub-schemas :flex-map
   [edn-schema]
-  (->> (:values edn-schema)
-       (edn-sub-schemas)
-       (conj edn-schema)))
+  (-> (:values edn-schema)
+      (edn-sub-schemas)
+      (conj edn-schema)))
 
 (defmethod edn-sub-schemas :union
   [edn-schema]
