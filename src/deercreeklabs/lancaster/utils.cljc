@@ -897,7 +897,9 @@
                   (nil? (:empty-map acc)) (assoc :empty-map branch-info))
 
                 :name-keyword
-                (assoc acc sch branch-info)
+                (cond-> (assoc acc sch branch-info)
+                  (qualified-keyword? sch) (assoc (keyword (name sch))
+                                                  branch-info ))
 
                 ;; else
                 (reduce (fn [acc* data-type]
@@ -959,7 +961,7 @@
              (ex-info (str "Data type `" data-type "` is not in the "
                            "union schema. Path: " path)
                       (sym-map data-type data path type-key type-keys
-                               single-rec?)))))
+                               single-rec? edn-schema)))))
         (write-long-varint-zz os branch)
         (serializer os data path)))))
 

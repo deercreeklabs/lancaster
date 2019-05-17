@@ -136,7 +136,7 @@
         (if (= :null (first edn-schema))
           schema
           (schemas/edn-schema->lancaster-schema
-           (vec (concat [:null] edn-schema))))))))
+           (vec (cons :null edn-schema))))))))
 
 (s/defn serialize :- ba/ByteArray
   "Serializes data to a byte array, using the given Lancaster schema."
