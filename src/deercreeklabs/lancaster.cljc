@@ -206,6 +206,12 @@
   [schema :- LancasterSchema]
   (u/json-schema schema))
 
+(s/defn name-kw :- s/Keyword
+  "Returns the name keyword for the given Lancaster schema."
+  [schema :- LancasterSchema]
+  (-> (u/edn-schema schema)
+      (u/edn-schema->name-kw)))
+
 (s/defn pcf :- s/Str
   "Returns a JSON string containing the Avro Parsing Canonical Form of
   the given Lancaster schema."
