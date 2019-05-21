@@ -202,6 +202,11 @@
     (choose-member-edn-schema edn-schema (nth full-path i))))
 
 (defn schema-at-path [schema path]
-  (-> (u/edn-schema schema)
-      (edn-schema-at-path path 0)
-      (schemas/edn-schema->lancaster-schema)))
+  (let [top-edn-schema (u/edn-schema schema)
+        path-edn-schema (edn-schema-at-path top-edn-schema path 0)
+        avro-type (u/get-avro-type path-edn-schema)
+        sub-edn-schema (if (not= :name-keyword avro-type)
+                         path-edn-schema
+                         (-> (u/make-name->edn-schema top-edn-schema)
+                             (get path-edn-schema)))]
+    (schemas/edn-schema->lancaster-schema sub-edn-schema)))

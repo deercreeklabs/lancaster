@@ -85,6 +85,10 @@
   ([edn-schema*]
    (edn-schema->lancaster-schema edn-schema* nil))
   ([edn-schema* json-schema*]
+   (when (= :name-keyword (u/get-avro-type edn-schema*))
+     (throw (ex-info (str "Can't construct schema from name keyword: `"
+                          edn-schema* "`. Must supply a full edn schema.")
+                     {:given-edn-schema edn-schema*})))
    (let [name->edn-schema (u/make-name->edn-schema edn-schema*)
          edn-schema (u/ensure-defaults (fix-repeated-schemas edn-schema*)
                                        name->edn-schema)

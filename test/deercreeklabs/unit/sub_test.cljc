@@ -20,6 +20,19 @@
   [:msgs (l/array-schema msg-schema)]
   [:users users-schema])
 
+(l/def-record-schema foo-schema
+  [:a l/int-schema])
+
+(l/def-record-schema bar-schema
+  [:a l/string-schema])
+
+(l/def-record-schema foo-foos-schema
+  [:foo foo-schema]
+  [:foos (l/map-schema foo-schema)])
+
+(l/def-map-schema map-of-fbs-schema
+  (l/union-schema [foo-schema bar-schema]))
+
 (deftest test-sub-schemas-complex
   (let [ret (->> (l/sub-schemas sys-state-schema)
                  (map u/edn-schema)
@@ -118,15 +131,6 @@
                 (u/edn-schema->name-kw))]
     (is (= :deercreeklabs.unit.lancaster-test/sku-to-qty ret))))
 
-(l/def-record-schema foo-schema
-  [:a l/int-schema])
-
-(l/def-record-schema bar-schema
-  [:a l/string-schema])
-
-(l/def-map-schema map-of-fbs-schema
-  (l/union-schema [foo-schema bar-schema]))
-
 (deftest test-schema-at-path-union-root
   (let [path []
         ret (-> (l/schema-at-path map-of-fbs-schema path)
@@ -154,3 +158,10 @@
                 (u/edn-schema)
                 (u/edn-schema->name-kw))]
     (is (= :string ret))))
+
+(deftest test-schema-at-path-repeated-schema
+  (let [path [:foos "x"]
+        ret (-> (l/schema-at-path foo-foos-schema path)
+                (u/edn-schema)
+                (u/edn-schema->name-kw))]
+    (is (= :deercreeklabs.unit.sub-test/foo ret))))
