@@ -42,13 +42,16 @@
       (conj edn-schema)))
 
 (defn sub-schemas [schema]
-  (let [edn-schema (u/edn-schema schema)
-        avro-type (u/get-avro-type edn-schema)]
-    (if-not (u/avro-container-types avro-type)
+  (let [top-edn-schema (u/edn-schema schema)]
+    (if-not (u/avro-container-types (u/get-avro-type top-edn-schema))
       [schema]
-      (->> (edn-sub-schemas edn-schema)
-           (map schemas/edn-schema->lancaster-schema)))))
-
+      (map (fn [edn-sub-schema]
+             (let [es (if (not= :name-keyword (u/get-avro-type edn-sub-schema))
+                        edn-sub-schema
+                        (-> (u/make-name->edn-schema top-edn-schema)
+                            (get edn-sub-schema)))]
+               (schemas/edn-schema->lancaster-schema es)))
+           (edn-sub-schemas top-edn-schema)))))
 
 (defmulti edn-schema-at-path (fn [edn-schema & rest]
                                (u/get-avro-type edn-schema)))

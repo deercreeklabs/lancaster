@@ -65,8 +65,19 @@
                  (map u/edn-schema->name-kw)
                  (set))
         expected #{:union
-                   :deercreeklabs.unit.lancaster-test/person
-                   :deercreeklabs.unit.lancaster-test/dog}]
+                   :deercreeklabs.unit.lancaster-test/dog
+                   :deercreeklabs.unit.lancaster-test/person}]
+    (is (= expected ret))))
+
+(deftest test-sub-schemas-repeated-schemas
+  (let [ret (->> (l/sub-schemas foo-foos-schema)
+                 (map u/edn-schema)
+                 (map u/edn-schema->name-kw)
+                 (set))
+        expected #{:int
+                   :map
+                   :deercreeklabs.unit.sub-test/foo
+                   :deercreeklabs.unit.sub-test/foo-foos}]
     (is (= expected ret))))
 
 (deftest test-schema-at-path-nested-recs

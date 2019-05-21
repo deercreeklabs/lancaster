@@ -239,6 +239,7 @@
   (u/default-data (edn schema)))
 
 (s/defn sub-schemas :- [LancasterSchema]
+  "Returns the unique sub schemas of the given Lancaster schema"
   [schema :- LancasterSchema]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
