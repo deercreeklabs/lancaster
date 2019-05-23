@@ -4,9 +4,9 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
+   [deercreeklabs.lancaster.deser :as deser]
    [deercreeklabs.lancaster.fingerprint :as fingerprint]
    [deercreeklabs.lancaster.impl :as impl]
-   [deercreeklabs.lancaster.resolution :as resolution]
    [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
    [deercreeklabs.lancaster.utils :as u]
    #?(:clj [primitive-math :as pm])
@@ -14,15 +14,14 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-
 (def RecordFieldDef [(s/one s/Keyword "field-name")
                      (s/one (s/protocol u/ILancasterSchema) "field-schema")
                      (s/optional s/Any "field-default")])
 
 (defrecord LancasterSchema
-    [edn-schema json-schema parsing-canonical-form
-     fingerprint64 plumatic-schema serializer deserializer default-data-size
-     *name->serializer *name->deserializer *edn->resolving-deserializer]
+    [edn-schema name->edn-schema json-schema parsing-canonical-form
+     fingerprint64 plumatic-schema serializer default-data-size
+     *name->serializer *writer-fp->deserializer]
   u/ILancasterSchema
   (serialize [this data]
     (let [os (impl/output-stream default-data-size)]
@@ -31,16 +30,25 @@
   (serialize [this os data]
     (serializer os data []))
   (deserialize [this writer-schema is]
-    (let [writer-edn-schema (:edn-schema writer-schema)
-          writer-pcf (:parsing-canonical-form writer-schema)]
-      (if (= writer-pcf parsing-canonical-form)
-        (deserializer is)
-        (if-let [rd (@*edn->resolving-deserializer writer-edn-schema)]
-          (rd is)
-          (let [rd (resolution/resolving-deserializer writer-edn-schema this
-                                                      *name->deserializer)]
-            (swap! *edn->resolving-deserializer assoc writer-edn-schema rd)
-            (rd is))))))
+    (try
+      (let [writer-fp (u/fingerprint64 writer-schema)
+            deser (or (@*writer-fp->deserializer writer-fp)
+                      (let [deser* (deser/make-deserializer
+                                    (u/edn-schema writer-schema)
+                                    edn-schema name->edn-schema (atom {}))]
+                        (swap! *writer-fp->deserializer assoc writer-fp deser*)
+                        deser*))]
+        (deser is))
+      (catch #?(:clj Exception :cljs js/Error) e
+        (if-not (u/match-exception? e)
+          (throw e)
+          (let [msg (u/ex-msg e)]
+            (throw (ex-info (str "Reader and writer schemas do not match. "
+                                 msg)
+                            {:writer-edn-schema (u/edn-schema writer-schema)
+                             :reader-edn-schema edn-schema
+                             :orig-e e
+                             :orig-msg msg})))))))
   (edn-schema [this]
     edn-schema)
   (json-schema [this]
@@ -102,17 +110,15 @@
                                                         name->edn-schema)
          *name->serializer (u/make-initial-*name->f
                             #(u/make-serializer %1 name->edn-schema %2))
-         *name->deserializer (u/make-initial-*name->f u/make-deserializer)
+         *writer-fp->deserializer (atom {})
          serializer (u/make-serializer edn-schema name->edn-schema
                                        *name->serializer)
-         deserializer (u/make-deserializer edn-schema *name->deserializer)
          default-data-size (u/make-default-data-size edn-schema
-                                                     name->edn-schema)
-         *edn->resolving-deserializer (atom {})]
+                                                     name->edn-schema)]
      (->LancasterSchema
-      edn-schema json-schema parsing-canonical-form fingerprint64
-      plumatic-schema serializer deserializer default-data-size
-      *name->serializer *name->deserializer *edn->resolving-deserializer))))
+      edn-schema name->edn-schema json-schema parsing-canonical-form
+      fingerprint64 plumatic-schema serializer default-data-size
+      *name->serializer *writer-fp->deserializer))))
 
 (defn json-schema->lancaster-schema [json-schema]
   (let [edn-schema (-> json-schema

@@ -290,3 +290,51 @@
         encoded (l/serialize w-schema data)
         decoded (l/deserialize r-schema w-schema encoded)]
     (is (= :test/b decoded))))
+
+(deftest test-union-evolution-1
+  (let [union-a-schema (l/union-schema [l/string-schema l/int-schema])
+        union-b-schema (l/union-schema [l/int-schema l/string-schema])
+        rt #(->> (l/serialize union-a-schema %)
+                 (l/deserialize union-b-schema union-a-schema))
+        data-1 1
+        data-a "a"]
+    (is (= data-1 (rt data-1)))
+    (is (= data-a (rt data-a)))))
+
+(deftest test-union-evolution-2
+  (let [union-a-schema (l/union-schema [l/string-schema l/int-schema])
+        union-b-schema (l/union-schema [l/int-schema l/string-schema])
+        rt #(->> (l/serialize union-b-schema %)
+                 (l/deserialize union-a-schema union-b-schema))
+        data-1 1
+        data-a "a"]
+    (is (= data-1 (rt data-1)))
+    (is (= data-a (rt data-a)))))
+
+(deftest test-union-evolution-inside-rec
+  (let [union-a-schema (l/union-schema [l/string-schema l/int-schema])
+        union-b-schema (l/union-schema [l/int-schema l/string-schema])
+        w-schema (l/record-schema ::rec
+                                  [[:v union-a-schema]])
+        r-schema (l/record-schema ::rec
+                                  [[:v union-b-schema]])
+        data {:rec/v 1}
+        encoded (l/serialize w-schema data)
+        decoded (l/deserialize r-schema w-schema encoded)]
+    (is (= data decoded))))
+
+(deftest test-enum-evolution-implicit-default
+  (let [w-schema (l/enum-schema ::test [:a :b :c :d])
+        r-schema (l/enum-schema ::test [:a :b :c])
+        data :test/d
+        encoded (l/serialize w-schema data)
+        decoded (l/deserialize r-schema w-schema encoded)]
+    (is (= :test/a decoded))))
+
+(deftest test-enum-evolution-explicit-default
+  (let [w-schema (l/enum-schema ::test [:a :b :c :d])
+        r-schema (l/enum-schema ::test {:default :c} [:a :b :c])
+        data :test/d
+        encoded (l/serialize w-schema data)
+        decoded (l/deserialize r-schema w-schema encoded)]
+    (is (= :test/c decoded))))

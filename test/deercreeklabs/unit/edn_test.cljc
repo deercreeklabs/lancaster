@@ -26,7 +26,6 @@
                :type :string
                :default ""}]}) )
 
-
 (deftest test-name-kw
   (let [cases [[l/string-schema :string]
                [l/int-schema :int]

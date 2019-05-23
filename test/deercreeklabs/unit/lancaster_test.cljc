@@ -219,9 +219,14 @@
   (is (= {:name :deercreeklabs.unit.lancaster-test/why
           :key-ns-type :short
           :type :enum
-          :symbols [:all :stock :limit]}
+          :symbols [:all :stock :limit]
+          :default :all}
          (l/edn why-schema)))
   #?(:clj (is (fp-matches? why-schema)))
+  (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Why\",\"type\":"
+              "\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"],\"default\":"
+              "\"all\"}")
+         (l/json why-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Why\",\"type\":"
               "\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}")
          (l/pcf why-schema)))
@@ -264,19 +269,21 @@
                    {:name :qty-added :type :int :default -1}
                    {:name :current-qty :type :int :default -1}
                    {:name :req
-                    :type {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
-                           :type :record
-                           :key-ns-type :short
-                           :fields [{:name :sku :type :int :default -1}
-                                    {:name :qty-requested
-                                     :type :int
-                                     :default 0}]}
+                    :type
+                    {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
+                     :type :record
+                     :key-ns-type :short
+                     :fields [{:name :sku :type :int :default -1}
+                              {:name :qty-requested
+                               :type :int
+                               :default 0}]}
                     :default #:add-to-cart-req{:sku 10 :qty-requested 1}}
                    {:name :the-reason-why
                     :type {:name :deercreeklabs.unit.lancaster-test/why
                            :type :enum
                            :key-ns-type :short
-                           :symbols [:all :stock :limit]}
+                           :symbols [:all :stock :limit]
+                           :default :all}
                     :default :why/stock}
                    {:name :data
                     :type
@@ -514,11 +521,11 @@
                      {:name :qty-requested :type :int :default 0}]}
              :default #:add-to-cart-req{:sku 10 :qty-requested 1}}
             {:name :the-reason-why
-             :type
-             {:name :deercreeklabs.unit.lancaster-test/why
-              :type :enum
-              :key-ns-type :short
-              :symbols [:all :stock :limit]}
+             :type {:name :deercreeklabs.unit.lancaster-test/why
+                    :type :enum
+                    :key-ns-type :short
+                    :symbols [:all :stock :limit]
+                    :default :all}
              :default :why/stock}
             {:name :data
              :type
@@ -579,7 +586,8 @@
              :type {:name :deercreeklabs.unit.lancaster-test/why
                     :type :enum
                     :key-ns-type :short
-                    :symbols [:all :stock :limit]}
+                    :symbols [:all :stock :limit]
+                    :default :all}
              :default :why/stock}
             {:name :data
              :type
@@ -777,7 +785,7 @@
   (is (= "-3297333764539234889"
          (u/long->str (l/fingerprint64 tree-schema)))))
 
-(deftest test-recursive-schema-serdes
+(deftest ^:this test-recursive-schema-serdes
   (let [data #:tree{:value 5
                     :right #:tree{:value -10
                                   :right #:tree{:value -20
@@ -808,11 +816,11 @@
             :type {:type :array :items :string}
             :default []}
            {:name :why
-            :type
-            {:name :deercreeklabs.unit.lancaster-test/why
-             :type :enum
-             :key-ns-type :short
-             :symbols [:all :stock :limit]}
+            :type {:name :deercreeklabs.unit.lancaster-test/why
+                   :type :enum
+                   :key-ns-type :short
+                   :symbols [:all :stock :limit]
+                   :default :all}
             :default :all}]}
          (l/edn rec-w-array-and-enum-schema)))
   (is (= "-513897484330170713"
