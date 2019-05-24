@@ -348,7 +348,8 @@
 
 (defn make-recursive-deserializer
   [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
-  (if-not (u/edn-schemas-match? writer-edn-schema reader-edn-schema)
+  (if-not (u/edn-schemas-match? writer-edn-schema reader-edn-schema
+                                name->edn-schema)
     (throw (ex-info "Reader and writer schemas do not match."
                     (u/sym-map writer-edn-schema reader-edn-schema)))
     (fn deserialize [is]

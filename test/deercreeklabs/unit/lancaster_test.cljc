@@ -785,6 +785,9 @@
   (is (= "-3297333764539234889"
          (u/long->str (l/fingerprint64 tree-schema)))))
 
+(deftest test-edn-schemas-match?-recursive-schema
+  (is (u/edn-schemas-match? (l/edn tree-schema) (l/edn tree-schema) {})))
+
 (deftest test-recursive-schema-serdes
   (let [data #:tree{:value 5
                     :right #:tree{:value -10

@@ -112,7 +112,7 @@
     (is (= expected orig-edn))
     (is (= expected rt-edn))))
 
-(deftest ^:this test-record-pcf-rt-nested-rec
+(deftest test-record-pcf-rt-nested-rec
   (let [orig-edn (l/edn msg-schema)
         rt-edn (-> (l/pcf msg-schema)
                    (l/json->schema)
