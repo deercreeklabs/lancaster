@@ -785,7 +785,7 @@
   (is (= "-3297333764539234889"
          (u/long->str (l/fingerprint64 tree-schema)))))
 
-(deftest ^:this test-recursive-schema-serdes
+(deftest test-recursive-schema-serdes
   (let [data #:tree{:value 5
                     :right #:tree{:value -10
                                   :right #:tree{:value -20
@@ -977,38 +977,6 @@
        (l/record-schema :test-schema
                         [[:int-field l/int-schema]
                          [:int-field l/int-schema]]))))
-
-(deftest test-round-trip-json-schema
-  (let [json-schema (str "{\"type\":\"record\",\"name\":"
-                         "\"StringMinimalExample\",\"namespace\":"
-                         "\"com.piotr-yuxuan\",\"fields\":[{\"name\":"
-                         "\"someOtherField\",\"type\":[\"null\",\"long\"]},"
-                         "{\"name\":\"url\",\"type\":{\"type\":\"string\","
-                         "\"avro.java.string\":\"String\"}}]}")
-        schema (l/json->schema json-schema)
-        rt-json-schema (l/json schema)]
-    (is (= json-schema rt-json-schema))))
-
-(deftest test-json-schema-w-evolution-no-default
-  (let [data {:test-rec/a 1}
-        writer-schema (l/record-schema ::test-rec [[:a l/int-schema]])
-        reader-json (str
-                     "{\"name\":\"deercreeklabs.unit.lancaster_test.TestRec\","
-                     "\"type\":\"record\",\"fields\":["
-                     "{\"name\":\"a\",\"type\":\"int\"},"
-                     "{\"name\":\"b\",\"type\":\"string\"}]}")
-        reader-schema (l/json->schema reader-json)
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (assoc data :test-rec/b "")]
-    (is (= expected decoded))))
-
-
-#?(:clj
-   (deftest test-issue-4
-     (let [json (slurp "test/example.avsc")
-           schema (l/json->schema json)]
-       (is (= json (l/json schema))))))
 
 (deftest test-serialize-bad-union-member
   (let [schema (l/union-schema [l/null-schema l/int-schema])]

@@ -284,7 +284,8 @@
     (reduce (fn [acc field]
               (let [{field-name :name
                      field-type :type
-                     field-default :default} field
+                     field-default* :default} field
+                    field-default (or field-default* (default-data field-type))
                     field-schema (ensure-edn-schema field-type)
                     ns-field-name (ns-k key-ns-type name field-name)
                     v (if default-record
@@ -1468,10 +1469,13 @@
 
 (defmethod avro-schema->edn-schema :enum
   [avro-schema]
-  (merge default-enum-options
-         (-> (avro-name->edn-name avro-schema)
-             (update :type keyword)
-             (update :symbols #(mapv csk/->kebab-case-keyword %)))))
+  (let [m (avro-name->edn-name avro-schema)
+        symbols (mapv csk/->kebab-case-keyword (:symbols m))]
+    (-> m
+        (update :type keyword)
+        (assoc :symbols symbols)
+        (assoc :default (first symbols))
+        (assoc :key-ns-type (:key-ns-type default-enum-options)))))
 
 (defmethod avro-schema->edn-schema :fixed
   [avro-schema]
@@ -1485,10 +1489,10 @@
 
 (defmethod avro-schema->edn-schema :record
   [avro-schema]
-  (merge default-record-options
-         (-> (avro-name->edn-name avro-schema)
-             (update :type keyword)
-             (update :fields #(mapv avro-field->edn-field %)))))
+  (-> (avro-name->edn-name avro-schema)
+      (update :type keyword)
+      (update :fields #(mapv avro-field->edn-field %))
+      (assoc :key-ns-type (:key-ns-type default-record-options))))
 
 (defmethod avro-schema->edn-schema :union
   [avro-union-schema]
@@ -1529,6 +1533,12 @@
           false reader-edn-schema))
 
 (defn edn-schemas-match? [writer-edn-schema reader-edn-schema]
+  (when (nil? writer-edn-schema)
+    (throw (ex-info "writer-edn-schema is nil."
+                    (sym-map writer-edn-schema reader-edn-schema))))
+  (when (nil? reader-edn-schema)
+    (throw (ex-info "reader-edn-schema is nil."
+                    (sym-map writer-edn-schema reader-edn-schema))))
   (let [writer-type (get-avro-type writer-edn-schema)
         reader-type (get-avro-type reader-edn-schema)]
     (or
