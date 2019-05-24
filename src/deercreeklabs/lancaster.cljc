@@ -260,11 +260,14 @@
     (throw
      (ex-info "First argument to schema-at-path must be a schema object."
               {:given-arg schema})))
-  (when-not (u/path? path)
-    (throw
-     (ex-info (str "Second argument to schema-at-path must be a sequence of "
-                   "path keys, which must be keywords, strings, or integers.")
-              {:given-path path})))
+  (if (nil? path)
+    schema
+    (when-not (u/path? path)
+      (throw
+       (ex-info
+        (str "Second argument to schema-at-path must be nil or a sequence of "
+             "path keys, which must be keywords, strings, or integers.")
+        {:given-path path}))))
   (sub/schema-at-path schema path))
 
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;

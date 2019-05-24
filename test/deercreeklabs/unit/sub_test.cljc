@@ -176,3 +176,8 @@
                 (u/edn-schema)
                 (u/edn-schema->name-kw))]
     (is (= :deercreeklabs.unit.sub-test/foo ret))))
+
+(deftest test-schema-at-path-nil-path
+  (let [ret (-> (l/schema-at-path foo-foos-schema nil)
+                (l/edn))]
+    (is (= (l/edn foo-foos-schema) ret))))
