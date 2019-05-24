@@ -279,18 +279,21 @@
   (byte-array->byte-str (or default
                             (ba/byte-array (take num-bytes (repeat 0))))))
 
-(defn make-default-record [record-edn-schema default-record]
+(defn make-default-record [record-edn-schema default-record name->edn-schema]
   (let [{:keys [fields key-ns-type name]} record-edn-schema]
     (reduce (fn [acc field]
               (let [{field-name :name
                      field-type :type
                      field-default* :default} field
-                    field-default (or field-default* (default-data field-type))
+                    field-default (or field-default*
+                                      (default-data field-type nil
+                                                    name->edn-schema))
                     field-schema (ensure-edn-schema field-type)
                     ns-field-name (ns-k key-ns-type name field-name)
                     v (if default-record
                         (default-data field-schema
-                                      (ns-field-name default-record))
+                                      (ns-field-name default-record)
+                                      name->edn-schema)
                         field-default)]
                 (assoc acc ns-field-name v)))
             {} fields)))
@@ -303,7 +306,7 @@
   ([edn-schema field-default name->edn-schema]
    (let [avro-type (get-avro-type edn-schema)]
      (case avro-type
-       :record (make-default-record edn-schema field-default)
+       :record (make-default-record edn-schema field-default name->edn-schema)
        :union (default-data (first edn-schema) field-default)
        :fixed (make-default-fixed-or-bytes (:size edn-schema) field-default)
        :bytes (make-default-fixed-or-bytes 0 field-default)
