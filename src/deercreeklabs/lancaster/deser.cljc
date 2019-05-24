@@ -3,7 +3,10 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
-   [deercreeklabs.lancaster.utils :as u]))
+   [deercreeklabs.lancaster.utils :as u]
+   #?(:cljs [goog.math :as gm])))
+
+#?(:cljs (def Long gm/Long))
 
 (defn check-names [writer-edn-schema reader-edn-schema]
   (let [writer-name (:name writer-edn-schema)
@@ -56,12 +59,12 @@
 (defmethod make-deserializer [:int :float]
   [writer-edn-schema reader-edn-schema & _]
   (fn deserialize [is]
-    (#?(:clj float :cljs .toNumber) (u/read-long-varint-zz is))))
+    (float (u/read-long-varint-zz is))))
 
 (defmethod make-deserializer [:int :double]
   [writer-edn-schema reader-edn-schema & _]
   (fn deserialize [is]
-    (#?(:clj double :cljs .toNumber) (u/read-long-varint-zz is))))
+    (double (u/read-long-varint-zz is))))
 
 (defmethod make-deserializer [:long :long]
   [writer-edn-schema reader-edn-schema & _]
@@ -71,12 +74,20 @@
 (defmethod make-deserializer [:long :float]
   [writer-edn-schema reader-edn-schema & _]
   (fn deserialize [is]
-    (#?(:clj float :cljs .toNumber) (u/read-long-varint-zz is))))
+    (let [l (u/read-long-varint-zz is)]
+      #?(:clj (float l)
+         :cljs (if (number? l)
+                 l
+                 (.toNumber ^Long l))))))
 
 (defmethod make-deserializer [:long :double]
   [writer-edn-schema reader-edn-schema & _]
   (fn deserialize [is]
-    (#?(:clj double :cljs .toNumber) (u/read-long-varint-zz is))))
+    (let [l (u/read-long-varint-zz is)]
+      #?(:clj (double l)
+         :cljs (if (number? l)
+                 l
+                 (.toNumber ^Long l))))))
 
 (defmethod make-deserializer [:float :float]
   [writer-edn-schema reader-edn-schema & _]

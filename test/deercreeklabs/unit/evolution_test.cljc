@@ -17,11 +17,8 @@
               789 2}
         encoded (l/serialize lt/sku-to-qty-schema data)
         decoded (l/deserialize lt/sku-to-qty-v2-schema
-                               lt/sku-to-qty-schema encoded)
-        expected (reduce-kv (fn [acc k v]
-                              (assoc acc k (u/int->long v)))
-                            {} data)]
-    (is (= expected decoded))))
+                               lt/sku-to-qty-schema encoded)]
+    (is (= data decoded))))
 
 (deftest test-record-schema-evolution-add-field
   (let [data #:add-to-cart-req{:sku 789
@@ -171,62 +168,62 @@
         reader-schema l/long-schema
         encoded-orig (l/serialize writer-schema data)
         decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
-    (is (= "10" (u/long->str decoded-new)))))
+    (is (= data decoded-new))))
 
 (deftest test-schema-evolution-int-to-float
-  (let [data 10
-        writer-schema l/int-schema
-        reader-schema l/float-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
-    (is (= (float data) decoded-new))))
+(let [data 10
+      writer-schema l/int-schema
+      reader-schema l/float-schema
+      encoded-orig (l/serialize writer-schema data)
+      decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
+  (is (= (float data) decoded-new))))
 
 (deftest test-schema-evolution-int-to-double
-  (let [data 10
-        writer-schema l/int-schema
-        reader-schema l/float-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
-    (is (= (double data) decoded-new))))
+(let [data 10
+      writer-schema l/int-schema
+      reader-schema l/float-schema
+      encoded-orig (l/serialize writer-schema data)
+      decoded-new (l/deserialize reader-schema writer-schema encoded-orig)]
+  (is (= (double data) decoded-new))))
 
 (deftest test-schema-evolution-long-to-float
-  (let [data (u/ints->long 12345 6789)
-        writer-schema l/long-schema
-        reader-schema l/float-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded-orig)
-        expected 5.3021371E13
-        rel-err (lt/rel-err expected decoded)]
-    (is (> 0.00000001 rel-err))))
+(let [data (u/ints->long 12345 6789)
+      writer-schema l/long-schema
+      reader-schema l/float-schema
+      encoded-orig (l/serialize writer-schema data)
+      decoded (l/deserialize reader-schema writer-schema encoded-orig)
+      expected 5.3021371E13
+      rel-err (lt/rel-err expected decoded)]
+  (is (> 0.00000001 rel-err))))
 
 (deftest test-schema-evolution-long-to-double
-  (let [data (u/ints->long -12345 -6789)
-        writer-schema l/long-schema
-        reader-schema l/double-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded-orig)
-        expected (double -53017076308613)
-        rel-err (lt/rel-err expected decoded)]
-    (is (> 0.00000001 rel-err))))
+(let [data (u/ints->long -12345 -6789)
+      writer-schema l/long-schema
+      reader-schema l/double-schema
+      encoded-orig (l/serialize writer-schema data)
+      decoded (l/deserialize reader-schema writer-schema encoded-orig)
+      expected (double -53017076308613)
+      rel-err (lt/rel-err expected decoded)]
+  (is (> 0.00000001 rel-err))))
 
 (deftest test-schema-evolution-float-to-double
-  (let [data (float 1234.5789)
-        writer-schema l/float-schema
-        reader-schema l/double-schema
-        encoded-orig (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded-orig)
-        rel-err (lt/rel-err data decoded)]
-    (is (> 0.0000001 rel-err))))
+(let [data (float 1234.5789)
+      writer-schema l/float-schema
+      reader-schema l/double-schema
+      encoded-orig (l/serialize writer-schema data)
+      decoded (l/deserialize reader-schema writer-schema encoded-orig)
+      rel-err (lt/rel-err data decoded)]
+  (is (> 0.0000001 rel-err))))
 
 (deftest test-schema-evolution-string-to-bytes
-  (let [data "Hello, World!"
-        writer-schema l/string-schema
-        reader-schema l/bytes-schema
-        encoded (l/serialize writer-schema data)
-        decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (ba/byte-array [72 101 108 108 111 44
-                                 32 87 111 114 108 100 33])]
-    (is (ba/equivalent-byte-arrays? expected decoded))))
+(let [data "Hello, World!"
+      writer-schema l/string-schema
+      reader-schema l/bytes-schema
+      encoded (l/serialize writer-schema data)
+      decoded (l/deserialize reader-schema writer-schema encoded)
+      expected (ba/byte-array [72 101 108 108 111 44
+                               32 87 111 114 108 100 33])]
+  (is (ba/equivalent-byte-arrays? expected decoded))))
 
 (deftest test-schema-evolution-int-array-to-float-array
   (let [data [1 2 3]
