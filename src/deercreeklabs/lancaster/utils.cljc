@@ -273,7 +273,7 @@
   (let [msg (ex-msg e)]
     (or (str/includes? msg "do not match")
         (str/includes? msg "No schemas in reader union schema match writer.")
-        (str/includes? msg "No method in multimethod 'make-deserializer'"))))
+        (re-find #"No method in multimethod.*make-deserializer" msg))))
 
 (defn make-default-fixed-or-bytes [num-bytes default]
   (byte-array->byte-str (or default
