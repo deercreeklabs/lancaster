@@ -254,38 +254,6 @@
                    "or a name keyword.")
               {:given-values-schema values-schema}))))
 
-(defmethod validate-schema-args :int-map
-  [schema-type values-schema]
-  (when-not (schema-or-kw? values-schema)
-    (throw
-     (ex-info (str "Second arg to int-map-schema must be a schema object "
-                   "or a name keyword indicating the value schema of the "
-                   "int-map.")
-              {:given-values-schema values-schema}))))
-
-(defmethod validate-schema-args :long-map
-  [schema-type values-schema]
-  (when-not (schema-or-kw? values-schema)
-    (throw
-     (ex-info (str "Second arg to long-map-schema must be a schema object "
-                   "or a name keyword indicating the value schema of the "
-                   "long-map.")
-              {:given-values-schema values-schema}))))
-
-(defmethod validate-schema-args :fixed-map
-  [schema-type [key-size values-schema]]
-  (when-not (and (int? key-size) (pos? key-size))
-    (throw
-     (ex-info (str "Second argument to fixed-map-schema must be a positive "
-                   "integer indicating the size of the keys.")
-              (u/sym-map key-size))))
-  (when-not (schema-or-kw? values-schema)
-    (throw
-     (ex-info (str "Third arg to fixed-map-schema must be a schema object "
-                   "or a name keyword indicating the value schema of the "
-                   "fixed-map.")
-              {:given-values-schema values-schema}))))
-
 (defmethod validate-schema-args :union
   [schema-type member-schemas]
   (when-not (sequential? member-schemas)
@@ -301,8 +269,7 @@
   (let [schemas-to-check (reduce (fn [acc sch]
                                    (if-not (keyword? sch)
                                      (conj acc (u/edn-schema sch))
-                                     (if (or (u/avro-primitive-types sch)
-                                             (u/avro-flex-map-types sch))
+                                     (if (u/avro-primitive-types sch)
                                        (conj acc sch)
                                        acc)))
                                  [] member-schemas)]
@@ -320,17 +287,8 @@
       (throw (ex-info (str "Illegal union. Unions may not contain more than "
                            "one numeric schema (int, long, float, or double).")
                       {:member-edn-schemas (map u/edn-schema member-schemas)})))
-    (when (u/more-than-one? u/avro-numeric-map-types schemas-to-check)
-      (throw (ex-info (str "Illegal union. Unions may not contain more than "
-                           "one numeric map schema (int-map  or long-map).")
-                      {:member-edn-schemas (map u/edn-schema member-schemas)})))
     (when (u/more-than-one? u/avro-byte-types schemas-to-check)
       (throw (ex-info (str "Illegal union. Unions may not contain more than "
                            "one byte-array schema (bytes or fixed).")
-                      {:member-edn-schemas (map u/edn-schema member-schemas)})))
-
-    (when (u/more-than-one? #{:array :int-map :long-map} schemas-to-check)
-      (throw (ex-info (str "Illegal union. Unions may not contain more than "
-                           "one of these types: array, int-map, or long-map.")
                       {:member-edn-schemas
                        (map u/edn-schema member-schemas)})))))

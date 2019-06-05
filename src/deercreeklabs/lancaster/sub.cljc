@@ -5,11 +5,17 @@
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]))
 
-(defmulti edn-sub-schemas u/avro-type-dispatch)
+(defmulti edn-sub-schemas u/avro-type-dispatch-lt)
 
 (defmethod edn-sub-schemas :default
   [edn-schema]
   #{edn-schema})
+
+(defmethod edn-sub-schemas :logical-type
+  [edn-schema]
+  (let [{:keys [edn-sub-schemas]} edn-schema]
+    (cond->  #{edn-schema}
+      edn-sub-schemas (set/union edn-sub-schemas))))
 
 (defmethod edn-sub-schemas :record
   [edn-schema]
@@ -25,12 +31,6 @@
       (conj edn-schema)))
 
 (defmethod edn-sub-schemas :map
-  [edn-schema]
-  (-> (:values edn-schema)
-      (edn-sub-schemas)
-      (conj edn-schema)))
-
-(defmethod edn-sub-schemas :flex-map
   [edn-schema]
   (-> (:values edn-schema)
       (edn-sub-schemas)
@@ -53,12 +53,27 @@
                (schemas/edn-schema->lancaster-schema es)))
            (edn-sub-schemas top-edn-schema)))))
 
-(defmulti edn-schema-at-path (fn [edn-schema & rest]
-                               (u/get-avro-type edn-schema)))
+(defmulti edn-schema-at-path u/avro-type-dispatch-lt)
 
 (defmethod edn-schema-at-path :default
   [edn-schema full-path i]
   edn-schema)
+
+(defmethod edn-schema-at-path :logical-type
+  [edn-schema full-path i]
+  (if (>= i (count full-path))
+    edn-schema
+    (let [k (nth full-path i)
+          {:keys [logical-type valid-k? k->child-edn-schema]} edn-schema]
+      (if (and valid-k? k->child-edn-schema)
+        (if (valid-k? k)
+          (k->child-edn-schema k)
+          (throw (ex-info (str "Key `" k "` is not a valid key for logical "
+                               "type `" logical-type "`.")
+                          (u/sym-map k full-path i edn-schema logical-type))))
+        (throw (ex-info (str "Logical type `" logical-type "` does not support "
+                             "children, but path points to children.")
+                        (u/sym-map k full-path i edn-schema logical-type)))))))
 
 (defmethod edn-schema-at-path :record
   [edn-schema full-path i]
@@ -103,41 +118,7 @@
                         (u/sym-map full-path i k))))
       (edn-schema-at-path (:values edn-schema) full-path (inc i)))))
 
-(defmethod edn-schema-at-path :int-map
-  [edn-schema full-path i]
-  (if (>= i (count full-path))
-    edn-schema
-    (let [k (nth full-path i)]
-      (when-not (integer? k)
-        (throw (ex-info (str "Path points to an int-map, but key `" k
-                             "` is not a integer.")
-                        (u/sym-map full-path i k))))
-      (edn-schema-at-path (:values edn-schema) full-path (inc i)))))
-
-(defmethod edn-schema-at-path :long-map
-  [edn-schema full-path i]
-  (if (>= i (count full-path))
-    edn-schema
-    (let [k (nth full-path i)]
-      (when-not (integer? k)
-        (throw (ex-info (str "Path points to a long-map, but key `" k
-                             "` is not a integer.")
-                        (u/sym-map full-path i k))))
-      (edn-schema-at-path (:values edn-schema) full-path (inc i)))))
-
-(defmethod edn-schema-at-path :fixed-map
-  [edn-schema full-path i]
-  (if (>= i (count full-path))
-    edn-schema
-    (let [k (nth full-path i)]
-      (when-not (ba/byte-array? k)
-        (throw (ex-info (str "Path points to a fixed-map, but key `" k
-                             "` is not a byte array.")
-                        (u/sym-map full-path i k))))
-      (edn-schema-at-path (:values edn-schema) full-path (inc i)))))
-
-(defmulti key-schema (fn [edn-schema & rest]
-                       (u/get-avro-type edn-schema)))
+(defmulti key-schema u/avro-type-dispatch-lt)
 
 (defmethod key-schema :default
   [parent-edn-schema k]
@@ -172,21 +153,6 @@
   [parent-edn-schema k]
   (when (integer? k)
     (:items parent-edn-schema)))
-
-(defmethod key-schema :int-map
-  [parent-edn-schema k]
-  (when (integer? k)
-    (:values parent-edn-schema)))
-
-(defmethod key-schema :long-map
-  [parent-edn-schema k]
-  (when (integer? k)
-    (:values parent-edn-schema)))
-
-(defmethod key-schema :map
-  [parent-edn-schema k]
-  (when (string? k)
-    (:values parent-edn-schema)))
 
 (defn choose-member-edn-schema [union-edn-schema k]
   (let [edn-schema (reduce (fn [acc member-schema]

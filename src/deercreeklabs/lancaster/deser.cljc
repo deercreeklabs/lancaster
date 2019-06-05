@@ -21,6 +21,9 @@
     (let [writer-type (u/get-avro-type writer-edn-schema)
           reader-type (u/get-avro-type reader-edn-schema)]
       (cond
+        (:logical-type reader-edn-schema)
+        :logical-type
+
         (and (= :union writer-type) (not= :union reader-type))
         [:union :other]
 
@@ -192,43 +195,21 @@
                                (assoc! acc k v)))
                            m (range count)))))))))
 
-;; TODO: Replace these *-maps with logical types
-
-(defn make-flex-map-deserializer
-  [writer-edn-schema reader-edn-schema name->edn-schema *deserializers xf-ks]
-  (let [writer-rec (u/flex-map-edn-schema->record-edn-schema writer-edn-schema)
-        reader-rec (u/flex-map-edn-schema->record-edn-schema reader-edn-schema)
-        deser-rec (make-deserializer writer-rec reader-rec name->edn-schema
-                                     *deserializers)
+(defmethod make-deserializer :logical-type
+  [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
+  (let [{:keys [logical-type avro->lt]} reader-edn-schema
+        _ (when-not avro->lt
+            (throw (ex-info (str "Logical type `" logical-type "` is missing "
+                                 "a `avro->lt` attribute.")
+                            (u/sym-map logical-type reader-edn-schema))))
+        deser (make-deserializer
+               writer-edn-schema (u/strip-lt-attrs reader-edn-schema)
+               name->edn-schema *deserializers)
         deserializer (fn deserialize [is]
-                       (let [{:keys [ks vs]} (deser-rec is)
-                             ks* (map xf-ks ks)]
-                         (zipmap ks* vs)))]
+                       (avro->lt (deser is)))]
     (swap! *deserializers assoc [writer-edn-schema reader-edn-schema]
            deserializer)
     deserializer))
-
-(defmethod make-deserializer [:int-map :int-map]
-  [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
-  (make-flex-map-deserializer writer-edn-schema reader-edn-schema
-                              name->edn-schema *deserializers identity))
-
-(defmethod make-deserializer [:long-map :long-map]
-  [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
-  (make-flex-map-deserializer writer-edn-schema reader-edn-schema
-                              name->edn-schema *deserializers identity))
-
-(defmethod make-deserializer [:int-map :long-map]
-  [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
-  (let [xf-ks #?(:clj long
-                 :cljs #(.fromNumber u/Long) %)]
-    (make-flex-map-deserializer writer-edn-schema reader-edn-schema
-                                name->edn-schema *deserializers xf-ks)))
-
-(defmethod make-deserializer [:fixed-map :fixed-map]
-  [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
-  (make-flex-map-deserializer writer-edn-schema reader-edn-schema
-                              name->edn-schema *deserializers identity))
 
 (defmethod make-deserializer [:array :array]
   [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]

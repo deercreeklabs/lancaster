@@ -9,16 +9,13 @@
   [:name l/string-schema]
   [:nickname l/string-schema])
 
-(l/def-int-map-schema users-schema
-  user-schema)
-
 (l/def-record-schema msg-schema
   [:user user-schema]
   [:text l/string-schema])
 
 (l/def-record-schema sys-state-schema
   [:msgs (l/array-schema msg-schema)]
-  [:users users-schema])
+  [:users (l/array-schema user-schema)])
 
 (l/def-record-schema foo-schema
   [:a l/int-schema])
@@ -42,8 +39,7 @@
                    :string
                    :deercreeklabs.unit.sub-test/msg
                    :deercreeklabs.unit.sub-test/sys-state
-                   :deercreeklabs.unit.sub-test/user
-                   :deercreeklabs.unit.sub-test/users}]
+                   :deercreeklabs.unit.sub-test/user}]
     (is (= expected ret))))
 
 (deftest test-sub-schemas
@@ -134,13 +130,6 @@
                 (u/edn-schema)
                 (u/edn-schema->name-kw))]
     (is (= :int ret))))
-
-(deftest test-schema-at-path-int-map
-  (let [path []
-        ret (-> (l/schema-at-path lt/sku-to-qty-schema path)
-                (u/edn-schema)
-                (u/edn-schema->name-kw))]
-    (is (= :deercreeklabs.unit.lancaster-test/sku-to-qty ret))))
 
 (deftest test-schema-at-path-union-root
   (let [path []

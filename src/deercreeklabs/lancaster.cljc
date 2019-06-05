@@ -92,31 +92,6 @@
   [values-schema :- LancasterSchema]
   (schemas/schema :map nil values-schema))
 
-(s/defn int-map-schema :- LancasterSchema
-  "Creates a Lancaster schema object representing a map of `int` keys
-   to values described by the given `values-schema`.
-   Differs from map-schema, which only allows string keys."
-  [name-kw :- s/Keyword
-   values-schema :- LancasterSchema]
-  (schemas/schema :int-map name-kw values-schema))
-
-(s/defn long-map-schema :- LancasterSchema
-  "Creates a Lancaster schema object representing a map of `long` keys
-   to values described by the given `values-schema`.
-   Differs from map-schema, which only allows string keys."
-  [name-kw :- s/Keyword
-   values-schema :- LancasterSchema]
-  (schemas/schema :long-map name-kw values-schema))
-
-(s/defn fixed-map-schema :- LancasterSchema
-  "Creates a Lancaster schema object representing a map of `fixed` keys
-   to values described by the given `values-schema`.
-   Differs from map-schema, which only allows string keys."
-  [name-kw :- s/Keyword
-   key-size :- s/Int
-   values-schema :- LancasterSchema]
-  (schemas/schema :fixed-map name-kw [key-size values-schema]))
-
 (s/defn union-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro union
    with the given member schemas."
@@ -245,7 +220,8 @@
   (u/default-data (edn schema)))
 
 (s/defn sub-schemas :- [LancasterSchema]
-  "Returns the unique sub schemas of the given Lancaster schema"
+  "Returns the unique sub schemas of the given Lancaster schema.
+   Includes the given schema."
   [schema :- LancasterSchema]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
@@ -270,6 +246,15 @@
         {:given-path path}))))
   (sub/schema-at-path schema path))
 
+(s/defn schema-type :- s/Keyword
+  "Returns the Avro type of the given schema"
+  [schema :- LancasterSchema]
+  (when-not (satisfies? u/ILancasterSchema schema)
+    (throw
+     (ex-info "Argument to `schema-type` must be a schema object."
+              {:given-arg schema})))
+  (u/get-avro-type (u/edn-schema schema)))
+
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 
 (defmacro def-record-schema
@@ -291,86 +276,36 @@
                        [~opts (vector ~@fields)]))))
 
 (defmacro def-enum-schema
-  "Defines a var whose value is a Lancaster enum schema object"
-  [clj-name & args]
-  (when-not (pos? (count args))
-    (throw
-     (ex-info "Missing symbol-keywords sequence in def-enum-schema."
-              (u/sym-map clj-name args))))
-  (let [ns-name (str (or
-                      (:name (:ns &env)) ;; cljs
-                      *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)
-        [opts symbol-keywords] (if (map? (first args))
-                                 [(first args) (rest args)]
-                                 [nil args])]
-    `(def ~clj-name
-       (schemas/schema :enum ~ns-name ~schema-name
-                       [~opts (vector ~@symbol-keywords)]))))
+"Defines a var whose value is a Lancaster enum schema object"
+[clj-name & args]
+(when-not (pos? (count args))
+(throw
+(ex-info "Missing symbol-keywords sequence in def-enum-schema."
+         (u/sym-map clj-name args))))
+(let [ns-name (str (or
+                    (:name (:ns &env)) ;; cljs
+                    *ns*))             ;; clj
+schema-name (u/schema-name clj-name)
+[opts symbol-keywords] (if (map? (first args))
+                         [(first args) (rest args)]
+                         [nil args])]
+`(def ~clj-name
+(schemas/schema :enum ~ns-name ~schema-name
+                [~opts (vector ~@symbol-keywords)]))))
 
 (defmacro def-fixed-schema
-  "Defines a var whose value is a Lancaster fixed schema object"
-  [clj-name size]
-  (when-not (and (pos? size) (integer? size))
-    (throw
-     (ex-info "Second argument to def-fixed-schema must be a positive integer."
-              (u/sym-map clj-name size))))
-  (let [ns-name (str (or
-                      (:name (:ns &env)) ;; cljs
-                      *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)]
-    `(def ~clj-name
-       (schemas/schema :fixed ~ns-name ~schema-name ~size))))
-
-(defmacro def-int-map-schema
-  "Defines a var whose value is a Lancaster int-map schema object"
-  [clj-name values-schema]
-  (let [ns-name (str (or
-                      (:name (:ns &env)) ;; cljs
-                      *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)]
-    (when-not values-schema
-      (throw
-       (ex-info (str "Second argument to def-int-map-schema must be a "
-                     "schema object.")
-                (u/sym-map clj-name values-schema))))
-    `(def ~clj-name
-       (schemas/schema :int-map ~ns-name ~schema-name ~values-schema))))
-
-(defmacro def-long-map-schema
-  "Defines a var whose value is a Lancaster long-map schema object"
-  [clj-name values-schema]
-  (let [ns-name (str (or
-                      (:name (:ns &env)) ;; cljs
-                      *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)]
-    (when-not values-schema
-      (throw
-       (ex-info (str "Second argument to def-long-map-schema must be a "
-                     "schema object.")
-                (u/sym-map clj-name values-schema))))
-    `(def ~clj-name
-       (schemas/schema :long-map ~ns-name ~schema-name ~values-schema))))
-
-(defmacro def-fixed-map-schema
-  "Defines a var whose value is a Lancaster fixed-map schema object"
-  [clj-name key-size values-schema]
-  (let [ns-name (str (or
-                      (:name (:ns &env)) ;; cljs
-                      *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)]
-    (throw
-     (ex-info (str "Second argument to def-fixed-map-schema must be a positive "
-                   "integer indicating the size of the keys.")
-              (u/sym-map clj-name key-size)))
-    (when-not values-schema
-      (throw
-       (ex-info (str "Third argument to def-fixed-map-schema must be a "
-                     "schema object.")
-                (u/sym-map clj-name values-schema))))
-    `(def ~clj-name
-       (schemas/schema :fixed-map ~ns-name ~schema-name
-                       [~key-size ~values-schema]))))
+"Defines a var whose value is a Lancaster fixed schema object"
+[clj-name size]
+(when-not (and (pos? size) (integer? size))
+(throw
+(ex-info "Second argument to def-fixed-schema must be a positive integer."
+         (u/sym-map clj-name size))))
+(let [ns-name (str (or
+                    (:name (:ns &env)) ;; cljs
+                    *ns*))             ;; clj
+schema-name (u/schema-name clj-name)]
+`(def ~clj-name
+(schemas/schema :fixed ~ns-name ~schema-name ~size))))
 
 (defmacro def-array-schema
   "Defines a var whose value is a Lancaster array schema object"

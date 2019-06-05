@@ -11,14 +11,6 @@
      (:import
       (clojure.lang ExceptionInfo))))
 
-(deftest test-plumatic-fixed-map
-  (let [child-schema (l/fixed-map-schema ::child 2 l/boolean-schema)
-        schema (l/array-schema child-schema)
-        pschema (l/plumatic-schema schema)
-        data [{(ba/byte-array [1 2]) true
-               (ba/byte-array [3 4]) false}]]
-    (is (nil? (s/check pschema data)))))
-
 (deftest test-plumatic-primitives
   (is (= u/Nil (l/plumatic-schema l/null-schema)))
   (is (= s/Bool (l/plumatic-schema l/boolean-schema)))

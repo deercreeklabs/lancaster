@@ -11,7 +11,7 @@
   [:name l/string-schema]
   [:nickname l/string-schema])
 
-(l/def-int-map-schema users-schema
+(l/def-array-schema users-schema
   user-schema)
 
 (l/def-record-schema msg-schema

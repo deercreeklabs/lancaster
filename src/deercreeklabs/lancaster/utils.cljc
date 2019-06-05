@@ -64,12 +64,9 @@
   (reset-to-mark! [this]))
 
 (def ^:dynamic **enclosing-namespace** nil)
-(def avro-container-types #{:record :array :map :union
-                            :int-map :long-map :fixed-map})
-(def avro-flex-map-types #{:int-map :long-map :fixed-map})
-(def avro-map-types #{:record :map :int-map :long-map :fixed-map })
-(def avro-numeric-map-types #{:int-map :long-map})
-(def avro-named-types #{:record :fixed :enum :int-map :long-map :fixed-map})
+(def avro-container-types #{:record :array :map :union})
+(def avro-map-types #{:record :map})
+(def avro-named-types #{:record :fixed :enum})
 (def avro-numeric-types #{:int :long :float :double})
 (def avro-byte-types #{:bytes :fixed})
 (def avro-primitive-types #{:null :boolean :int :long :float :double
@@ -209,6 +206,10 @@
                                edn-schema)
                           (sym-map edn-schema)))))
 
+(defn strip-lt-attrs [edn-schema]
+  (dissoc edn-schema :logical-type :lt->avro :avro->lt :lt?
+          :valid-k? :k->child-edn-schema :edn-sub-schemas :plumatic-schema))
+
 (defn key-info [parent-name-kw k]
   (let [unq-k (keyword (name k))
         short-q-k (keyword (name parent-name-kw) (name unq-k))
@@ -322,9 +323,6 @@
              :enum (first (:symbols edn-schema))
              :array []
              :map {}
-             :int-map {}
-             :long-map {}
-             :fixed-map {}
              :name-keyword (default-data (name->edn-schema edn-schema)
                                          field-default
                                          name->edn-schema)))))))
@@ -332,15 +330,18 @@
 (defn first-arg-dispatch [first-arg & rest-of-args]
   first-arg)
 
-(defn avro-type-dispatch [edn-schema & args]
+(defn avro-type-dispatch-lt [edn-schema & args]
   (let [avro-type (get-avro-type edn-schema)]
-    (if (avro-flex-map-types avro-type)
-      :flex-map
+    (if (:logical-type edn-schema)
+      :logical-type
       avro-type)))
 
-(defmulti make-serializer avro-type-dispatch)
-(defmulti edn-schema->avro-schema avro-type-dispatch)
-(defmulti edn-schema->plumatic-schema avro-type-dispatch)
+(defn avro-type-dispatch [edn-schema & args]
+  (get-avro-type edn-schema))
+
+(defmulti make-serializer avro-type-dispatch-lt)
+(defmulti edn-schema->avro-schema avro-type-dispatch-lt)
+(defmulti edn-schema->plumatic-schema avro-type-dispatch-lt)
 (defmulti make-default-data-size avro-type-dispatch)
 (defmulti make-edn-schema first-arg-dispatch)
 
@@ -464,16 +465,6 @@
 (defn int->long [int]
   #?(:clj (clojure.core/long int)
      :cljs (.fromInt Long int)))
-
-(defn fm-edn-schema->key-edn-schema [fm-edn-schema]
-  (case (:type fm-edn-schema)
-    :int-map :int
-    :long-map :long
-    :fixed-map {:name (let [fm-name-kw (:name fm-edn-schema)]
-                        (keyword (namespace fm-name-kw)
-                                 (str (name fm-name-kw) "-key")))
-                :type :fixed
-                :size (:size fm-edn-schema)}))
 
 (defn more-than-one? [schema-set edn-schemas]
   (> (count (keep #(schema-set (get-avro-type %)) edn-schemas))
@@ -724,24 +715,17 @@
           (serialize-value os v (conj path k))))
       (write-byte os 0))))
 
-(defn flex-map-edn-schema->record-edn-schema [fm-edn-schema]
-  (let [{:keys  [name values]} fm-edn-schema
-        key-schema (fm-edn-schema->key-edn-schema fm-edn-schema)
-        opts {:key-ns-type :none}
-        fields [[:ks (make-edn-schema :array nil key-schema)]
-                [:vs (make-edn-schema :array nil values)]]]
-    (make-edn-schema :record name [opts fields])))
-
-(defmethod make-serializer :flex-map
+(defmethod make-serializer :logical-type
   [edn-schema name->edn-schema *name->serializer]
-  (let [ser-rec (-> (flex-map-edn-schema->record-edn-schema edn-schema)
-                    (make-serializer name->edn-schema *name->serializer))]
+  (let [{:keys [lt->avro logical-type]} edn-schema
+        _ (when-not lt->avro
+            (throw (ex-info (str "Logical type `" logical-type "` is missing "
+                                 "a `lt->avro` attribute.")
+                            (sym-map logical-type edn-schema))))
+        ser (make-serializer (strip-lt-attrs edn-schema)
+                             name->edn-schema *name->serializer)]
     (fn serialize [os data path]
-      (when-not (map? data)
-        (throw-invalid-data-error edn-schema data path))
-      (let [ks (keys data)
-            vs (vals data)]
-        (ser-rec os (sym-map ks vs) path)))))
+      (ser os (lt->avro data) path))))
 
 (defmethod make-serializer :array
   [edn-schema name->edn-schema *name->serializer]
@@ -781,44 +765,37 @@
 
 (defn make-type->branch-info
   [edn-schema single-rec? name->edn-schema *name->serializer]
-  (reduce (fn [acc i]
-            (let [sch (nth edn-schema i)
-                  avro-type (get-avro-type sch)
+  (reduce (fn [acc [i sch]]
+            (let [avro-type (get-avro-type sch)
                   serializer (make-serializer sch name->edn-schema
                                               *name->serializer)
                   branch-info [i serializer]]
-              (case avro-type
-                :map
-                (cond-> (assoc acc :map branch-info)
-                  (nil? (:empty-map acc)) (assoc :empty-map branch-info))
+              (if-let [lt (:logical-type sch)]
+                (assoc acc lt branch-info)
+                (case avro-type
+                  :map
+                  (cond-> (assoc acc :map branch-info)
+                    (nil? (:empty-map acc)) (assoc :empty-map branch-info))
 
-                :record
-                (let [fq-name (:name sch)
-                      short-name (keyword (name fq-name))]
-                  (cond-> (if single-rec?
-                            (assoc acc :record branch-info)
-                            (assoc acc short-name branch-info
-                                   fq-name branch-info))
-                    (nil? (:empty-map acc)) (assoc :empty-map branch-info)))
+                  :record
+                  (let [fq-name (:name sch)
+                        short-name (keyword (name fq-name))]
+                    (cond-> (if single-rec?
+                              (assoc acc :record branch-info)
+                              (assoc acc short-name branch-info
+                                     fq-name branch-info))
+                      (nil? (:empty-map acc)) (assoc :empty-map branch-info)))
 
-                :int-map
-                (cond-> (assoc acc :numeric-map branch-info)
-                  (nil? (:empty-map acc)) (assoc :empty-map branch-info))
+                  :name-keyword
+                  (cond-> (assoc acc sch branch-info)
+                    (qualified-keyword? sch) (assoc (keyword (name sch))
+                                                    branch-info ))
 
-                :long-map
-                (cond-> (assoc acc :numeric-map branch-info)
-                  (nil? (:empty-map acc)) (assoc :empty-map branch-info))
-
-                :name-keyword
-                (cond-> (assoc acc sch branch-info)
-                  (qualified-keyword? sch) (assoc (keyword (name sch))
-                                                  branch-info ))
-
-                ;; else
-                (reduce (fn [acc* data-type]
-                          (assoc acc* data-type branch-info))
-                        acc (avro-type->data-types avro-type)))))
-          {} (range (count edn-schema))))
+                  ;; else
+                  (reduce (fn [acc* data-type]
+                            (assoc acc* data-type branch-info))
+                          acc (avro-type->data-types avro-type))))))
+          {} (map-indexed vector edn-schema)))
 
 (defn throw-ambiguous-record [data path]
   (throw
@@ -829,43 +806,59 @@
                  "\nRecord: " data "\nPath: " path)
             (sym-map data path))))
 
-(defn get-type-key [data path single-rec?]
-  (if-not (map? data)
-    (type data)
-    (if-let [m (meta data)]
-      (or (m :short-name) (m :fq-name))
-      (let [[k v] (first data)]
-        (cond
-          (keyword? k)
-          (if single-rec?
-            :record
-            (or (k->record-name k)
-                (throw-ambiguous-record data path)))
+(defn get-type-key [data path single-rec? test-type-key-pairs]
+  (or (reduce (fn [acc [test type-key]]
+                (if (test data)
+                  (reduced type-key)
+                  acc))
+              nil test-type-key-pairs)
+      (if-not (map? data)
+        (type data)
+        (if-let [m (meta data)]
+          (or (m :short-name) (m :fq-name))
+          (let [[k v] (first data)]
+            (cond
+              (keyword? k)
+              (if single-rec?
+                :record
+                (or (k->record-name k)
+                    (throw-ambiguous-record data path)))
 
-          (nil? k)
-          (if (nil? v)
-            :empty-map
-            (throw (ex-info (str "Illegal nil key in record or map. Path: " path
-                                 "Data: " data ".")
-                            (sym-map data path))))
+              (string? k)
+              :map
 
-          (string? k)
-          :map
-
-          (int? k)
-          :numeric-map)))))
+              (nil? k)
+              (if (nil? v)
+                :empty-map
+                (throw (ex-info (str "Illegal nil key in record or map. Path: "
+                                     path "Data: " data ".")
+                                (sym-map data path))))))))))
 
 (defn count-recs [union-edn-schema]
   (count (filter #(= :record (get-avro-type %)) union-edn-schema)))
+
+(defn make-test-type-key-pairs [union-schema]
+  (reduce (fn [acc child-schema]
+            (let [{:keys [logical-type lt?]} child-schema]
+              (if-not logical-type
+                acc
+                (do
+                  (when-not lt?
+                    (throw (ex-info (str "Logical type `" logical-type "` is "
+                                         "missing a `lt?` attribute.")
+                                    (sym-map logical-type edn-schema))))
+                  (conj acc [lt? logical-type])))))
+          [] union-schema))
 
 (defmethod make-serializer :union
   [edn-schema name->edn-schema *name->serializer]
   (let [single-rec? (= 1 (count-recs edn-schema))
         type->branch-info (make-type->branch-info edn-schema single-rec?
                                                   name->edn-schema
-                                                  *name->serializer)]
+                                                  *name->serializer)
+        test-type-key-pairs (make-test-type-key-pairs edn-schema)]
     (fn serialize [os data path]
-      (let [type-key (get-type-key data path single-rec?)
+      (let [type-key (get-type-key data path single-rec? test-type-key-pairs)
             [branch serializer] (type->branch-info type-key)]
         (when-not branch
           (let [data-type (type data)
@@ -997,13 +990,10 @@
   [edn-schema name->edn-schema]
   {s/Str (edn-schema->plumatic-schema (:values edn-schema) name->edn-schema)})
 
-(defmethod edn-schema->plumatic-schema :flex-map
+(defmethod edn-schema->plumatic-schema :logical-type
   [edn-schema name->edn-schema]
-  (let [{:keys [values]} edn-schema
-        keys (fm-edn-schema->key-edn-schema edn-schema)
-        k-pschema (edn-schema->plumatic-schema keys name->edn-schema)
-        v-pschema (edn-schema->plumatic-schema values name->edn-schema)]
-    {k-pschema v-pschema}))
+  (let [{:keys [plumatic-schema]} edn-schema]
+    (or plumatic-schema s/Any)))
 
 (defmethod edn-schema->plumatic-schema :record
   [edn-schema name->edn-schema]
@@ -1042,9 +1032,6 @@
    :array sequential?
    :map map?
    :record map?
-   :int-map map?
-   :long-map map?
-   :fixed-map map?
    nil (constantly true)})
 
 (defn edn-schema->pred [edn-schema name->edn-schema]
@@ -1190,11 +1177,6 @@
   [edn-schema]
   (update edn-schema :values edn-schema->avro-schema))
 
-(defmethod edn-schema->avro-schema :flex-map
-  [edn-schema]
-  (-> (flex-map-edn-schema->record-edn-schema edn-schema)
-      (edn-schema->avro-schema)))
-
 (defmethod edn-schema->avro-schema :union
   [edn-schema]
   (mapv edn-schema->avro-schema edn-schema))
@@ -1206,6 +1188,12 @@
 (defmethod edn-schema->avro-schema :default
   [edn-schema]
   edn-schema)
+
+(defmethod edn-schema->avro-schema :logical-type
+  [edn-schema]
+  (let [{:keys [logical-type]} edn-schema
+        avro-schema (edn-schema->avro-schema (strip-lt-attrs edn-schema))]
+    (assoc avro-schema :logicalType logical-type)))
 
 (defmethod make-default-data-size :null
   [edn-schema name->edn-schema]
@@ -1264,13 +1252,6 @@
   (* 10 (+ 10 ;; key
            (int (make-default-data-size (:values edn-schema)
                                         name->edn-schema)))))
-
-(defmethod make-default-data-size :flex-map
-  [edn-schema name->edn-schema]
-  (let [{:keys [values]} edn-schema
-        keys (fm-edn-schema->key-edn-schema edn-schema)]
-    (* 10 (+ (int (make-default-data-size keys name->edn-schema))
-             (int (make-default-data-size values name->edn-schema))))))
 
 (defmethod make-default-data-size :union
   [edn-schema name->edn-schema]
@@ -1351,25 +1332,6 @@
   [schema-type name-kw values]
   {:type :map
    :values (ensure-edn-schema values)})
-
-(defmethod make-edn-schema :int-map
-  [schema-type name-kw vs]
-  {:name (qualify-name-kw name-kw)
-   :type :int-map
-   :values (ensure-edn-schema vs)})
-
-(defmethod make-edn-schema :long-map
-  [schema-type name-kw vs]
-  {:name (qualify-name-kw name-kw)
-   :type :long-map
-   :values (ensure-edn-schema vs)})
-
-(defmethod make-edn-schema :fixed-map
-  [schema-type name-kw [size vs]]
-  {:name (qualify-name-kw name-kw)
-   :type :fixed-map
-   :size size
-   :values (ensure-edn-schema vs)})
 
 (defmethod make-edn-schema :union
   [schema-type name-kw member-schemas]

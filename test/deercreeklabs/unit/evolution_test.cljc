@@ -11,15 +11,6 @@
      (:import
       (clojure.lang ExceptionInfo))))
 
-(deftest test-int-map-evolution
-  (let [data {123 10
-              456 100
-              789 2}
-        encoded (l/serialize lt/sku-to-qty-schema data)
-        decoded (l/deserialize lt/sku-to-qty-v2-schema
-                               lt/sku-to-qty-schema encoded)]
-    (is (= data decoded))))
-
 (deftest test-record-schema-evolution-add-field
   (let [data #:add-to-cart-req{:sku 789
                                :qty-requested 10}

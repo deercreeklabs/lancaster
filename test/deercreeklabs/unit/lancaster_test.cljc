@@ -121,11 +121,6 @@
   [:name-to-age ages-schema]
   [:what l/string-schema])
 
-(l/def-int-map-schema sku-to-qty-schema
-  l/int-schema)
-
-(def sku-to-qty-v2-schema (l/int-map-schema ::sku-to-qty l/long-schema))
-
 (l/def-map-schema nested-map-schema
   add-to-cart-rsp-schema)
 
@@ -426,51 +421,6 @@
                          67 104 97 100 -78 1 0])
          encoded))
     (is (= data decoded))))
-
-(deftest test-int-map-schema
-  (is (= {:name :deercreeklabs.unit.lancaster-test/sku-to-qty,
-          :type :int-map
-          :values :int}
-         (l/edn sku-to-qty-schema)))
-  #?(:clj (is (fp-matches? sku-to-qty-schema)))
-  (is (= (str
-          "{\"name\":\"deercreeklabs.unit.lancaster_test.SkuToQty\",\"type\":"
-          "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\":"
-          "\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":{\"type\":"
-          "\"array\",\"items\":\"int\"}}]}")
-         (l/pcf sku-to-qty-schema)))
-  (is (= "-9158083726900567523"
-         (u/long->str (l/fingerprint64 sku-to-qty-schema)))))
-
-(deftest test-embedded-int-map-pcf
-  (let [fms (l/int-map-schema :i-to-i l/int-schema)
-        rs (l/record-schema :r [[:fm fms]])
-        pcf (l/pcf rs)
-        expected (str "{\"name\":\"R\",\"type\":\"record\",\"fields\":[{"
-                      "\"name\":\"fm\",\"type\":{\"name\":\"IToI\",\"type\":"
-                      "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{"
-                      "\"type\":\"array\",\"items\":\"int\"}},{\"name\":\"vs\""
-                      ",\"type\":{\"type\":\"array\",\"items\":\"int\"}}]}}]}")]
-    (is (= expected pcf))))
-
-(deftest test-int-map-schema-serdes
-  (let [data {123 10
-              456 100
-              789 2}
-        encoded (l/serialize sku-to-qty-schema data)
-        decoded (l/deserialize-same sku-to-qty-schema encoded)]
-    (is (ba/equivalent-byte-arrays?
-         (ba/byte-array [6 -10 1 -112 7 -86 12 0 6 20 -56 1 4 0])
-         encoded))
-    (is (= data decoded))))
-
-(deftest test-maybe-int-map
-  (let [int-map-schema (l/int-map-schema :i-to-i l/int-schema)
-        maybe-schema (l/maybe int-map-schema)
-        data1 {1 1}
-        data2 nil]
-    (is (round-trip? maybe-schema data1))
-    (is (round-trip? maybe-schema data2))))
 
 (deftest test-def-array-schema
   #?(:clj (is (fp-matches? simple-array-schema)))
@@ -1002,15 +952,6 @@
        #"Unions may not contain more than one numeric schema"
        (l/union-schema [l/int-schema l/float-schema]))))
 
-(l/def-int-map-schema im-schema
-  l/string-schema)
-
-(deftest test-int-map-w-array-in-a-union
-  (is (thrown-with-msg?
-       #?(:clj ExceptionInfo :cljs js/Error)
-       #"more than one of these types: array, int-map, or long-map"
-       (l/union-schema [im-schema (l/array-schema l/int-schema)]))))
-
 (deftest test-more-than-one-bytes-type-in-a-union
   (is (thrown-with-msg?
        #?(:clj ExceptionInfo :cljs js/Error)
@@ -1027,19 +968,6 @@
   (let [schema (l/union-schema [(l/map-schema l/int-schema) person-schema])]
     (is (round-trip? schema {"foo" 1}))
     (is (round-trip? schema #:person{:name "Chad" :age 18}))))
-
-(deftest test-more-than-one-numeric-map-type-in-a-union
-  (is (thrown-with-msg?
-       #?(:clj ExceptionInfo :cljs js/Error)
-       #"Unions may not contain more than one numeric map schema"
-       (l/union-schema [(l/int-map-schema :im l/string-schema)
-                        (l/long-map-schema :lm l/string-schema)]))))
-
-(deftest test-bad-fixed-map-size
-  (is (thrown-with-msg?
-       #?(:clj ExceptionInfo :cljs js/Error)
-       #"Second argument to fixed-map-schema must be a positive integer"
-       (l/fixed-map-schema ::bar -1 l/string-schema))))
 
 (deftest test-bad-enum-opts
   (s/without-fn-validation ;; Allow built-in handlers to throw
