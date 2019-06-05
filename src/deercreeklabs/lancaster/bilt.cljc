@@ -14,7 +14,7 @@
     (zipmap ks vs)))
 
 (defn flex-map-schema
-  [logical-type name-kw key-schema values-schema valid-k?]
+  [logical-type key-schema values-schema valid-k?]
   (let [key-edn-schema (l/edn key-schema)
         values-edn-schema (l/edn values-schema)
         fields [{:name :ks
@@ -29,6 +29,11 @@
         vn->es (u/make-name->edn-schema values-edn-schema)
         kp-schema (u/edn-schema->plumatic-schema key-edn-schema kn->es)
         vp-schema (u/edn-schema->plumatic-schema values-edn-schema vn->es)
+        name-kw (keyword (namespace ::x)
+                         (str (name (u/edn-schema->name-kw key-edn-schema))
+                              "-to-"
+                              (name (u/edn-schema->name-kw key-edn-schema))
+                              "-flex-map"))
         edn-schema {:name name-kw
                     :type :record
                     :key-ns-type :none
@@ -49,42 +54,38 @@
   "Creates a Lancaster schema object representing a map of `int` keys
    to values described by the given `values-schema`.
    Differs from map-schema, which only allows string keys."
-  [name-kw values-schema]
-  (flex-map-schema "int-map" name-kw l/int-schema values-schema int?))
+  [values-schema]
+  (flex-map-schema "int-map" l/int-schema values-schema int?))
 
 (defn long-map-schema
   "Creates a Lancaster schema object representing a map of `long` keys
    to values described by the given `values-schema`.
    Differs from map-schema, which only allows string keys."
-  [name-kw values-schema]
-  (flex-map-schema "long-map" name-kw l/long-schema values-schema
+  [values-schema]
+  (flex-map-schema "long-map" l/long-schema values-schema
                    u/long-or-int?))
 
 (defn fixed-map-schema
   "Creates a Lancaster schema object representing a map of `long` keys
    to values described by the given `values-schema`.
    Differs from map-schema, which only allows string keys."
-  [name-kw key-size values-schema]
+  [key-size values-schema]
   (when-not (nat-int? key-size)
     (throw (ex-info (str "Second argument to fixed-map-schema must be a "
                          "positive integer. Got `" key-size "`.")
-                    (u/sym-map key-size name-kw))))
-  (let [key-schema-name (keyword (namespace name-kw)
-                                 (str (name name-kw) "-key"))
-        key-schema (l/fixed-schema key-schema-name key-size)]
-    (flex-map-schema "fixed-map" name-kw key-schema values-schema
-                     ba/byte-array?)))
+                    (u/sym-map key-size ))))
+  (let [key-schema (l/fixed-schema key-size)]
+    (flex-map-schema "fixed-map" key-schema values-schema ba/byte-array?)))
 
-(defn keyword-schema
-  "Creates a Lancaster schema object representing a Clojure keyword."
-  [name-kw]
+(def keyword-schema
+  "Lancaster schema object representing a Clojure keyword."
   (let [fields [{:name :namespace
                  :type [:null :string]
                  :default nil}
                 {:name :name
                  :type :string
                  :default ""}]
-        edn-schema {:name name-kw
+        edn-schema {:name ::keyword
                     :type :record
                     :key-ns-type :none
                     :fields fields

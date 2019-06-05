@@ -50,8 +50,11 @@
 
 (s/defn record-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro record
-   with the given name keyword and field definitions. For a more
+   with the given field definitions. For a more
    concise way to declare a record schema, see def-record-schema."
+  ([fields :- [schemas/RecordFieldDef]]
+   (record-schema (keyword (namespace ::x) (str "record-" (hash fields)))
+                  nil fields))
   ([name-kw :- s/Keyword
     fields :- [schemas/RecordFieldDef]]
    (record-schema name-kw nil fields))
@@ -62,8 +65,12 @@
 
 (s/defn enum-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro enum
-   with the given name and symbol keywords. For a more
-   concise way to declare an enum schema, see def-enum-schema."
+   with the given symbol keywords. Optionally allows specifying the
+   schema name and namespacing options. For a more concise way to declare
+   an enum schema, see def-enum-schema."
+  ([symbol-keywords :- [s/Keyword]]
+   (enum-schema (keyword (namespace ::x) (str "enum-" (hash symbol-keywords)))
+                nil symbol-keywords))
   ([name-kw :- s/Keyword
     symbol-keywords :- [s/Keyword]]
    (enum-schema name-kw nil symbol-keywords))
@@ -74,11 +81,14 @@
 
 (s/defn fixed-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro fixed
-   with the given name and size. For a more
-   concise way to declare a fixed schema, see def-fixed-schema."
-  [name-kw :- s/Keyword
-   size :- s/Int]
-  (schemas/schema :fixed name-kw size))
+   with the given size. Optionally allows specifying the schema name.
+   For a more concise way to declare a fixed schema, see def-fixed-schema."
+  ([size :- s/Int]
+   (fixed-schema (keyword (namespace ::x) (str "fixed-" size))
+                 size))
+  ([name-kw :- s/Keyword
+    size :- s/Int]
+   (schemas/schema :fixed name-kw size)))
 
 (s/defn array-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro array
