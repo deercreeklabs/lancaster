@@ -308,7 +308,7 @@
    (let [avro-type (get-avro-type edn-schema)]
      (case avro-type
        :record (make-default-record edn-schema field-default name->edn-schema)
-       :union (default-data (first edn-schema) field-default)
+       :union (default-data (first edn-schema) field-default name->edn-schema)
        :fixed (make-default-fixed-or-bytes (:size edn-schema) field-default)
        :bytes (make-default-fixed-or-bytes 0 field-default)
        (or field-default
