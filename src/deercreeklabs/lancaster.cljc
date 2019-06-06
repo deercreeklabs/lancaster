@@ -52,9 +52,6 @@
   "Creates a Lancaster schema object representing an Avro record
    with the given field definitions. For a more
    concise way to declare a record schema, see def-record-schema."
-  ([fields :- [schemas/RecordFieldDef]]
-   (record-schema (keyword (namespace ::x) (str "record-" (hash fields)))
-                  nil fields))
   ([name-kw :- s/Keyword
     fields :- [schemas/RecordFieldDef]]
    (record-schema name-kw nil fields))
@@ -68,9 +65,6 @@
    with the given symbol keywords. Optionally allows specifying the
    schema name and namespacing options. For a more concise way to declare
    an enum schema, see def-enum-schema."
-  ([symbol-keywords :- [s/Keyword]]
-   (enum-schema (keyword (namespace ::x) (str "enum-" (hash symbol-keywords)))
-                nil symbol-keywords))
   ([name-kw :- s/Keyword
     symbol-keywords :- [s/Keyword]]
    (enum-schema name-kw nil symbol-keywords))
