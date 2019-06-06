@@ -783,7 +783,8 @@
         :record
         (let [fq-name (:name sch)
               short-name (keyword (name fq-name))]
-          #{:record short-name fq-name})
+          (cond-> #{:record short-name}
+            (not= short-name fq-name) (conj fq-name)))
 
         :name-keyword
         (cond-> #{sch}
