@@ -23,6 +23,11 @@
   im-schema
   fm-schema)
 
+(l/def-union-schema lt-union-schema
+  bilt/keyword-schema
+  l/string-schema
+  l/int-schema)
+
 (deftest test-int-map-schema
   (is (= {:name :deercreeklabs.lancaster.bilt/int-to-int-flex-map
           :type :record
@@ -137,3 +142,25 @@
         data2 ::a-namespaced-kw]
     (is (lt/round-trip? bilt/keyword-schema data1))
     (is (lt/round-trip? bilt/keyword-schema data2))))
+
+(deftest test-keyword-union-schema
+  (let [data1 :a-simple-kw
+        data2 ::a-namespaced-kw
+        data3 123]
+    (is (lt/round-trip? lt-union-schema data1))
+    (is (lt/round-trip? lt-union-schema data2))
+    (is (lt/round-trip? lt-union-schema data3))))
+
+(deftest test-lt-schema-at-path
+  (let [sch (l/map-schema lt-union-schema)
+        child-sch (l/schema-at-path sch ["a"])
+        data :kw1]
+    (is (lt/round-trip? child-sch data))))
+
+(deftest test-name-kw-lt
+  (let [sch (l/record-schema ::sch
+                             [[:a bilt/keyword-schema]
+                              [:b bilt/keyword-schema]])
+        data1 #:sch{:a :a
+                    :b :an-ns/b}]
+    (is (lt/round-trip? sch data1))))

@@ -722,10 +722,13 @@
             (throw (ex-info (str "Logical type `" logical-type "` is missing "
                                  "a `lt->avro` attribute.")
                             (sym-map logical-type edn-schema))))
-        ser (make-serializer (strip-lt-attrs edn-schema)
-                             name->edn-schema *name->serializer)]
-    (fn serialize [os data path]
-      (ser os (lt->avro data) path))))
+        non-lt-ser (make-serializer (strip-lt-attrs edn-schema)
+                                    name->edn-schema *name->serializer)
+        lt-ser (fn serialize [os data path]
+                 (non-lt-ser os (lt->avro data) path))]
+    ;; Store the lt serializer, overwriting the non-lt serializer
+    (swap! *name->serializer assoc (:name edn-schema) lt-ser)
+    lt-ser))
 
 (defmethod make-serializer :array
   [edn-schema name->edn-schema *name->serializer]
