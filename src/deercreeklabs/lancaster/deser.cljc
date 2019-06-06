@@ -287,10 +287,7 @@
 (defmethod make-deserializer [:other :union]
   [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
   (loop [branch 0]
-    (let [reader-item-schema* (reader-edn-schema branch)
-          reader-item-schema (if (keyword? reader-item-schema*)
-                               (name->edn-schema reader-item-schema*)
-                               reader-item-schema*)
+    (let [reader-item-schema (reader-edn-schema branch)
           deser (try
                   (make-deserializer writer-edn-schema
                                      reader-item-schema
