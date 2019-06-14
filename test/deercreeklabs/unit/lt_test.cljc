@@ -74,6 +74,12 @@
          encoded))
     (is (= data decoded))))
 
+(deftest test-int-map-serdes-empty-map
+  (let [data {}
+        encoded (l/serialize sku-to-qty-schema data)
+        decoded (l/deserialize-same sku-to-qty-schema encoded)]
+    (is (= data decoded))))
+
 (deftest test-maybe-int-map
   (let [int-map-schema (bilt/int-map-schema l/int-schema)
         maybe-schema (l/maybe int-map-schema)

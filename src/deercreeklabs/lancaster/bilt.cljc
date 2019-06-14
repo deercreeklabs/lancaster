@@ -6,8 +6,8 @@
    [schema.core :as s]))
 
 (defn flex-map->rec [m]
-  {:ks (keys m)
-   :vs (vals m)})
+  {:ks (vec (keys m))
+   :vs (vec (vals m))})
 
 (defn rec->flex-map [r]
   (let [{:keys [ks vs]} r]
