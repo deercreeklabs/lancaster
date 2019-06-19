@@ -14,10 +14,13 @@
 ;; Use this instead of fixtures, which are hard to make work w/ async testing.
 (s/set-fn-validation! true)
 
-(def im-schema (bilt/int-map-schema l/string-schema))
-(def sku-to-qty-schema (bilt/int-map-schema l/int-schema))
-(def sku-to-qty-v2-schema (bilt/int-map-schema l/long-schema))
-(def fm-schema (bilt/fixed-map-schema  16 l/string-schema))
+(bilt/def-int-map-schema sku-to-qty-schema
+  l/int-schema)
+(def sku-to-qty-v2-schema (bilt/int-map-schema ::sku-to-qty l/long-schema))
+(bilt/def-int-map-schema im-schema
+  l/string-schema)
+(bilt/def-fixed-map-schema fm-schema
+  16 l/string-schema)
 
 (l/def-union-schema im-or-fm-schema
   im-schema
@@ -29,7 +32,7 @@
   l/int-schema)
 
 (deftest test-int-map-schema
-  (is (= {:name :deercreeklabs.lancaster.bilt/int-to-int-flex-map
+  (is (= {:name :deercreeklabs.unit.lt-test/sku-to-qty
           :type :record
           :fields [{:default [], :name :ks, :type {:items :int, :type :array}}
                    {:default [], :name :vs, :type {:items :int, :type :array}}]
@@ -37,29 +40,29 @@
          (u/strip-lt-attrs (l/edn sku-to-qty-schema))))
   #?(:clj (is (lt/fp-matches? sku-to-qty-schema)))
   (is (= (str
-          "{\"name\":\"deercreeklabs.lancaster.bilt.IntToIntFlexMap\",\"type\":"
-          "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\":\"array\""
-          ",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":{\"type\":\"array\","
-          "\"items\":\"int\"}}]}")
+          "{\"name\":\"deercreeklabs.unit.lt_test.SkuToQty\",\"type\":"
+          "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\":"
+          "\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":{\"type\":"
+          "\"array\",\"items\":\"int\"}}]}")
          (l/pcf sku-to-qty-schema)))
   (is (= (str
-          "{\"name\":\"deercreeklabs.lancaster.bilt.IntToIntFlexMap\","
-          "\"fields\":[{\"name\":\"ks\",\"type\":{\"type\":\"array\","
-          "\"items\":\"int\"},\"default\":[]},{\"name\":\"vs\",\"type\":"
-          "{\"type\":\"array\",\"items\":\"int\"},\"default\":[]}],\"type\":"
-          "\"record\",\"logicalType\":\"int-map\"}")
+          "{\"name\":\"deercreeklabs.unit.lt_test.SkuToQty\",\"fields\":"
+          "[{\"name\":\"ks\",\"type\":{\"type\":\"array\",\"items\":\"int\"},"
+          "\"default\":[]},{\"name\":\"vs\",\"type\":{\"type\":\"array\","
+          "\"items\":\"int\"},\"default\":[]}],\"type\":\"record\","
+          "\"logicalType\":\"int-map\"}")
          (l/json sku-to-qty-schema)))
-  (is (= "1697957785636113360"
+  (is (= "-5710709831631107019"
          (u/long->str (l/fingerprint64 sku-to-qty-schema)))))
 
 (deftest test-embedded-int-map-pcf
-  (let [fms (bilt/int-map-schema l/int-schema)
+  (let [fms (bilt/int-map-schema ::my-map l/int-schema)
         rs (l/record-schema :r [[:fm fms]])]
     (is (= (str
             "{\"name\":\"R\",\"type\":\"record\",\"fields\":[{\"name\":\"fm\","
-            "\"type\":{\"name\":\"deercreeklabs.lancaster.bilt.IntToIntFlexMap"
-            "\",\"type\":\"record\",\"fields\":[{\"name\":\"ks\",\"type\":"
-            "{\"type\":\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":"
+            "\"type\":{\"name\":\"deercreeklabs.unit.lt_test.MyMap\",\"type\":"
+            "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\":"
+            "\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":"
             "{\"type\":\"array\",\"items\":\"int\"}}]}}]}")
            (l/pcf rs)))))
 
@@ -81,7 +84,7 @@
     (is (= data decoded))))
 
 (deftest test-maybe-int-map
-  (let [int-map-schema (bilt/int-map-schema l/int-schema)
+  (let [int-map-schema (bilt/int-map-schema ::im l/int-schema)
         maybe-schema (l/maybe int-map-schema)
         data1 {1 1}
         data2 nil]
@@ -92,7 +95,7 @@
   (is (thrown-with-msg?
        #?(:clj ExceptionInfo :cljs js/Error)
        #"Second argument to fixed-map-schema must be a positive integer"
-       (bilt/fixed-map-schema -1 l/string-schema))))
+       (bilt/fixed-map-schema ::x -1 l/string-schema))))
 
 (deftest test-int-map-evolution
   (let [data {123 10
@@ -121,15 +124,14 @@
         ret (-> (l/schema-at-path sku-to-qty-schema path)
                 (u/edn-schema)
                 (u/edn-schema->name-kw))]
-    (is (= :deercreeklabs.lancaster.bilt/int-to-int-flex-map ret))))
+    (is (= :deercreeklabs.unit.lt-test/sku-to-qty ret))))
 
 (deftest test-sub-schemas-int-map
   (let [ret (->> (l/sub-schemas sku-to-qty-v2-schema)
                  (map u/edn-schema)
                  (map u/edn-schema->name-kw)
                  (set))
-        expected #{:deercreeklabs.lancaster.bilt/int-to-int-flex-map
-                   :int :long}]
+        expected #{:deercreeklabs.unit.lt-test/sku-to-qty :int :long}]
     (is (= expected ret))))
 
 (deftest test-flex-map-union

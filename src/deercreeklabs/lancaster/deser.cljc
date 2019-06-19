@@ -284,6 +284,15 @@
              deserializer)
       deserializer)))
 
+(defn branch-meta [branch-index edn-schema]
+  (when-not (:avro->lt edn-schema)
+    (case (u/get-avro-type edn-schema)
+      :map {:short-name :map :fq-name :map :branch-index branch-index}
+      :record (let [fq-name (:name edn-schema)
+                    short-name (keyword (name fq-name))]
+                (u/sym-map short-name fq-name branch-index))
+      nil)))
+
 (defmethod make-deserializer [:other :union]
   [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
   (loop [branch 0]
@@ -296,7 +305,7 @@
                     (when-not (u/match-exception? e)
                       (throw e))))]
       (if deser
-        (if-let [metadata (u/branch-meta branch reader-item-schema)]
+        (if-let [metadata (branch-meta branch reader-item-schema)]
           (fn deserialize [is]
             (with-meta (deser is) metadata))
           deser)

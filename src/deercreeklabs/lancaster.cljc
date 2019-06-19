@@ -77,9 +77,6 @@
   "Creates a Lancaster schema object representing an Avro fixed
    with the given size. Optionally allows specifying the schema name.
    For a more concise way to declare a fixed schema, see def-fixed-schema."
-  ([size :- s/Int]
-   (fixed-schema (keyword (namespace ::x) (str "fixed-" size))
-                 size))
   ([name-kw :- s/Keyword
     size :- s/Int]
    (schemas/schema :fixed name-kw size)))
@@ -280,36 +277,36 @@
                        [~opts (vector ~@fields)]))))
 
 (defmacro def-enum-schema
-"Defines a var whose value is a Lancaster enum schema object"
-[clj-name & args]
-(when-not (pos? (count args))
-(throw
-(ex-info "Missing symbol-keywords sequence in def-enum-schema."
-         (u/sym-map clj-name args))))
-(let [ns-name (str (or
-                    (:name (:ns &env)) ;; cljs
-                    *ns*))             ;; clj
-schema-name (u/schema-name clj-name)
-[opts symbol-keywords] (if (map? (first args))
-                         [(first args) (rest args)]
-                         [nil args])]
-`(def ~clj-name
-(schemas/schema :enum ~ns-name ~schema-name
-                [~opts (vector ~@symbol-keywords)]))))
+  "Defines a var whose value is a Lancaster enum schema object"
+  [clj-name & args]
+  (when-not (pos? (count args))
+    (throw
+     (ex-info "Missing symbol-keywords sequence in def-enum-schema."
+              (u/sym-map clj-name args))))
+  (let [ns-name (str (or
+                      (:name (:ns &env)) ;; cljs
+                      *ns*))             ;; clj
+        schema-name (u/schema-name clj-name)
+        [opts symbol-keywords] (if (map? (first args))
+                                 [(first args) (rest args)]
+                                 [nil args])]
+    `(def ~clj-name
+       (schemas/schema :enum ~ns-name ~schema-name
+                       [~opts (vector ~@symbol-keywords)]))))
 
 (defmacro def-fixed-schema
-"Defines a var whose value is a Lancaster fixed schema object"
-[clj-name size]
-(when-not (and (pos? size) (integer? size))
-(throw
-(ex-info "Second argument to def-fixed-schema must be a positive integer."
-         (u/sym-map clj-name size))))
-(let [ns-name (str (or
-                    (:name (:ns &env)) ;; cljs
-                    *ns*))             ;; clj
-schema-name (u/schema-name clj-name)]
-`(def ~clj-name
-(schemas/schema :fixed ~ns-name ~schema-name ~size))))
+  "Defines a var whose value is a Lancaster fixed schema object"
+  [clj-name size]
+  (when-not (and (pos? size) (integer? size))
+    (throw
+     (ex-info "Second argument to def-fixed-schema must be a positive integer."
+              (u/sym-map clj-name size))))
+  (let [ns-name (str (or
+                      (:name (:ns &env)) ;; cljs
+                      *ns*))             ;; clj
+        schema-name (u/schema-name clj-name)]
+    `(def ~clj-name
+       (schemas/schema :fixed ~ns-name ~schema-name ~size))))
 
 (defmacro def-array-schema
   "Defines a var whose value is a Lancaster array schema object"

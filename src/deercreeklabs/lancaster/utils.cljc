@@ -821,53 +821,47 @@
                  "\nRecord: " data "\nPath: " path)
             (sym-map data path))))
 
-(defn get-type-key [data path test-type-key-pairs single-maplike?]
-  (or (reduce (fn [acc [test type-key]]
-                (if (test data)
-                  (reduced type-key)
-                  acc))
-              nil test-type-key-pairs)
-      (if-not (map? data)
-        (type data)
-        (if single-maplike?
-          :maplike
-          (if-let [m (meta data)]
-            (or (m :short-name) (m :fq-name))
-            (let [[k v] (first data)]
-              (cond
-                (keyword? k)
-                (or (k->record-name k)
-                    (throw-ambiguous-record data path))
+(defn get-type-key [data path single-maplike?]
+  (if-not (map? data)
+    (type data)
+    (if single-maplike?
+      :maplike
+      (if-let [m (meta data)]
+        (or (m :short-name) (m :fq-name))
+        (let [[k v] (first data)]
+          (cond
+            (keyword? k)
+            (or (k->record-name k)
+                (throw-ambiguous-record data path))
 
-                (string? k)
-                :map
+            (string? k)
+            :map
 
-                (nil? k)
-                (if (nil? v)
-                  :empty-map
-                  (throw (ex-info (str "Illegal nil key in record or map. "
-                                       "Path: " path "Data: " data ".")
-                                  (sym-map data path)))))))))))
+            (nil? k)
+            (if (nil? v)
+              :empty-map
+              (throw (ex-info (str "Illegal nil key in record or map. "
+                                   "Path: " path "Data: " data ".")
+                              (sym-map data path))))))))))
 
-(defn make-test-type-key-pairs [union-schema name->edn-schema single-maplike?]
-  (reduce (fn [acc child-schema]
+(defn make-lt-test-branch-info-pairs
+  [union-schema name->edn-schema single-maplike? *name->serializer]
+  (reduce (fn [acc [i child-schema]]
             (let [schema* (if (keyword? child-schema)
                             (name->edn-schema child-schema)
                             child-schema)
                   {:keys [logical-type lt?]} schema*]
               (if-not logical-type
                 acc
-                (let [type-keys (get-type-keys-for-schema child-schema
-                                                          name->edn-schema
-                                                          single-maplike?)]
-                  (when-not lt?
-                    (throw (ex-info (str "Logical type `" logical-type "` is "
-                                         "missing a `lt?` attribute.")
-                                    (sym-map logical-type edn-schema))))
-                  (reduce (fn [acc* type-key]
-                            (conj acc* [lt? type-key]))
-                          acc type-keys)))))
-          [] union-schema))
+                (if lt?
+                  (let [serializer (make-serializer
+                                    child-schema name->edn-schema
+                                    *name->serializer)]
+                    (conj acc [lt? [i serializer]]))
+                  (throw (ex-info (str "Logical type `" logical-type "` is "
+                                       "missing a `lt?` attribute.")
+                                  (sym-map logical-type edn-schema)))))))
+          [] (map-indexed vector union-schema)))
 
 (defn num-maplike-schemas [union-edn-schema name->edn-schema]
   (reduce (fn [acc child-edn-schema]
@@ -879,34 +873,32 @@
 (defmethod make-serializer :union
   [edn-schema name->edn-schema *name->serializer]
   (let [single-maplike? (= 1 (num-maplike-schemas edn-schema name->edn-schema))
+        lt-test-branch-info-pairs (make-lt-test-branch-info-pairs
+                                   edn-schema name->edn-schema single-maplike?
+                                   *name->serializer)
         type->branch-info (make-type->branch-info
                            edn-schema name->edn-schema single-maplike?
-                           *name->serializer)
-        test-type-key-pairs (make-test-type-key-pairs
-                             edn-schema name->edn-schema single-maplike?)]
+                           *name->serializer)]
     (fn serialize [os data path]
-      (let [type-key (get-type-key data path test-type-key-pairs
-                                   single-maplike?)
-            [branch serializer] (type->branch-info type-key)]
+      (let [bi (or (reduce (fn [acc [test bi]]
+                             (if (test data)
+                               (reduced bi)
+                               acc))
+                           nil lt-test-branch-info-pairs)
+                   (let [type-key (get-type-key data path single-maplike?)]
+                     (type->branch-info type-key)))
+            [branch serializer] bi]
         (when-not branch
           (let [data-type (type data)
-                type-keys (keys type->branch-info)]
+                type-keys (keys type->branch-info)
+                type-key (get-type-key data path single-maplike?)]
             (throw
              (ex-info (str "Data type `" data-type "` is not in the "
                            "union schema. Path: " path)
                       (sym-map data-type data path type-key type-keys
-                               edn-schema test-type-key-pairs)))))
+                               edn-schema lt-test-branch-info-pairs)))))
         (write-long-varint-zz os branch)
         (serializer os data path)))))
-
-(defn branch-meta [branch-index edn-schema]
-  (when-not (:avro->lt edn-schema)
-    (case (get-avro-type edn-schema)
-      :map {:short-name :map :fq-name :map :branch-index branch-index}
-      :record (let [fq-name (:name edn-schema)
-                    short-name (keyword (name fq-name))]
-                (sym-map short-name fq-name branch-index))
-      nil)))
 
 (defn make-field-info
   [record-name-kw key-ns-type field-schema name->edn-schema *name->serializer]
