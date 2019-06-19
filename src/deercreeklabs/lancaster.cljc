@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
+   [deercreeklabs.lancaster.bilt :as bilt]
    [deercreeklabs.lancaster.impl :as impl]
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.sub :as sub]
@@ -340,3 +341,75 @@
   [clj-name schema]
   `(def ~clj-name
      (union-schema [null-schema ~schema])))
+
+;;;;;;;;;;;;;;;;;;;; Built-in Logical Types ;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: Validate args
+
+(defn int-map-schema
+  "Creates a Lancaster schema object representing a map of `int` keys
+   to values described by the given `values-schema`.
+   Differs from map-schema, which only allows string keys."
+  [name-kw values-schema]
+  (bilt/flex-map-schema name-kw "int-map" int-schema values-schema int?))
+
+(defn long-map-schema
+  "Creates a Lancaster schema object representing a map of `long` keys
+   to values described by the given `values-schema`.
+   Differs from map-schema, which only allows string keys."
+  [name-kw values-schema]
+  (bilt/flex-map-schema name-kw "long-map" long-schema values-schema
+                        u/long-or-int?))
+
+(defn fixed-map-schema
+  "Creates a Lancaster schema object representing a map of `long` keys
+   to values described by the given `values-schema`.
+   Differs from map-schema, which only allows string keys."
+  [name-kw key-size values-schema]
+  (when-not (nat-int? key-size)
+    (throw (ex-info (str "Second argument to fixed-map-schema must be a "
+                         "positive integer. Got `" key-size "`.")
+                    (u/sym-map key-size ))))
+  (let [key-schema-name (keyword (namespace name-kw)
+                                 (str (name name-kw) "-value"))
+        key-schema (fixed-schema key-schema-name key-size)]
+    (bilt/flex-map-schema name-kw "fixed-map" key-schema
+                          values-schema ba/byte-array?)))
+
+(defmacro def-int-map-schema
+  "Defines a var whose value is an int-map-schema object"
+  [clj-name values-schema]
+  (let [ns-name (str (or
+                      (:name (:ns &env)) ;; cljs
+                      *ns*))             ;; clj
+        schema-name (u/schema-name clj-name)
+        name-kw (keyword ns-name schema-name)]
+    `(def ~clj-name
+       (int-map-schema ~name-kw ~values-schema))))
+
+(defmacro def-long-map-schema
+  "Defines a var whose value is an long-map-schema object"
+  [clj-name values-schema]
+  (let [ns-name (str (or
+                      (:name (:ns &env)) ;; cljs
+                      *ns*))             ;; clj
+        schema-name (u/schema-name clj-name)
+        name-kw (keyword ns-name schema-name)]
+    `(def ~clj-name
+       (long-map-schema ~name-kw ~values-schema))))
+
+(defmacro def-fixed-map-schema
+  "Defines a var whose value is an fixed-map-schema object"
+  [clj-name key-size values-schema]
+  (let [ns-name (str (or
+                      (:name (:ns &env)) ;; cljs
+                      *ns*))             ;; clj
+        schema-name (u/schema-name clj-name)
+        name-kw (keyword ns-name schema-name)]
+    `(def ~clj-name
+       (fixed-map-schema ~name-kw ~key-size ~values-schema))))
+
+(def keyword-schema
+  "Lancaster schema object representing a (possibly namespaced)
+   Clojure keyword."
+  bilt/keyword-schema)

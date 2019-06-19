@@ -3,7 +3,6 @@
    [clojure.test :refer [deftest is use-fixtures]]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
-   [deercreeklabs.lancaster.bilt :as bilt]
    [deercreeklabs.lancaster.utils :as u]
    [deercreeklabs.unit.lancaster-test :as lt]
    [schema.core :as s :include-macros true])
@@ -14,12 +13,12 @@
 ;; Use this instead of fixtures, which are hard to make work w/ async testing.
 (s/set-fn-validation! true)
 
-(bilt/def-int-map-schema sku-to-qty-schema
+(l/def-int-map-schema sku-to-qty-schema
   l/int-schema)
-(def sku-to-qty-v2-schema (bilt/int-map-schema ::sku-to-qty l/long-schema))
-(bilt/def-int-map-schema im-schema
+(def sku-to-qty-v2-schema (l/int-map-schema ::sku-to-qty l/long-schema))
+(l/def-int-map-schema im-schema
   l/string-schema)
-(bilt/def-fixed-map-schema fm-schema
+(l/def-fixed-map-schema fm-schema
   16 l/string-schema)
 
 (l/def-union-schema im-or-fm-schema
@@ -27,7 +26,7 @@
   fm-schema)
 
 (l/def-union-schema lt-union-schema
-  bilt/keyword-schema
+  l/keyword-schema
   l/string-schema
   l/int-schema)
 
@@ -56,7 +55,7 @@
          (u/long->str (l/fingerprint64 sku-to-qty-schema)))))
 
 (deftest test-embedded-int-map-pcf
-  (let [fms (bilt/int-map-schema ::my-map l/int-schema)
+  (let [fms (l/int-map-schema ::my-map l/int-schema)
         rs (l/record-schema :r [[:fm fms]])]
     (is (= (str
             "{\"name\":\"R\",\"type\":\"record\",\"fields\":[{\"name\":\"fm\","
@@ -84,7 +83,7 @@
     (is (= data decoded))))
 
 (deftest test-maybe-int-map
-  (let [int-map-schema (bilt/int-map-schema ::im l/int-schema)
+  (let [int-map-schema (l/int-map-schema ::im l/int-schema)
         maybe-schema (l/maybe int-map-schema)
         data1 {1 1}
         data2 nil]
@@ -95,7 +94,7 @@
   (is (thrown-with-msg?
        #?(:clj ExceptionInfo :cljs js/Error)
        #"Second argument to fixed-map-schema must be a positive integer"
-       (bilt/fixed-map-schema ::x -1 l/string-schema))))
+       (l/fixed-map-schema ::x -1 l/string-schema))))
 
 (deftest test-int-map-evolution
   (let [data {123 10
@@ -148,8 +147,8 @@
 (deftest test-keyword-schema
   (let [data1 :a-simple-kw
         data2 ::a-namespaced-kw]
-    (is (lt/round-trip? bilt/keyword-schema data1))
-    (is (lt/round-trip? bilt/keyword-schema data2))))
+    (is (lt/round-trip? l/keyword-schema data1))
+    (is (lt/round-trip? l/keyword-schema data2))))
 
 (deftest test-keyword-union-schema
   (let [data1 :a-simple-kw
@@ -167,8 +166,8 @@
 
 (deftest test-name-kw-lt
   (let [sch (l/record-schema ::sch
-                             [[:a bilt/keyword-schema]
-                              [:b bilt/keyword-schema]])
+                             [[:a l/keyword-schema]
+                              [:b l/keyword-schema]])
         data1 #:sch{:a :a
                     :b :an-ns/b}]
     (is (lt/round-trip? sch data1))))
