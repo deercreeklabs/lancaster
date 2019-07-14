@@ -12,57 +12,57 @@
       (clojure.lang ExceptionInfo))))
 
 (deftest test-record-schema-evolution-add-field
-  (let [data #:add-to-cart-req{:sku 789
-                               :qty-requested 10}
+  (let [data {:sku 789
+              :qty-requested 10}
         writer-schema lt/add-to-cart-req-schema
         reader-schema lt/add-to-cart-req-v2-schema
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= (assoc data :add-to-cart-req/note "No note") decoded))))
+    (is (= (assoc data :note "No note") decoded))))
 
 (deftest test-schema-evolution-remove-field
-  (let [data #:add-to-cart-req{:sku 789
-                               :qty-requested 10
-                               :note "This is a nice item"}
+  (let [data {:sku 789
+              :qty-requested 10
+              :note "This is a nice item"}
         writer-schema lt/add-to-cart-req-v2-schema
         reader-schema lt/add-to-cart-req-schema
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= (dissoc data :add-to-cart-req/note) decoded))))
+    (is (= (dissoc data :note) decoded))))
 
 (deftest test-schema-evolution-change-field
-  (let [data #:add-to-cart-req{:sku 123
-                               :qty-requested 10
-                               :note "This is a nice item"}
+  (let [data {:sku 123
+              :qty-requested 10
+              :note "This is a nice item"}
         writer-schema lt/add-to-cart-req-v2-schema
         reader-schema lt/add-to-cart-req-v3-schema
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= (assoc data :add-to-cart-req/qty-requested 10.0) decoded))))
+    (is (= (assoc data :qty-requested 10.0) decoded))))
 
 (deftest test-schema-evolution-add-and-delete-field
-  (let [data #:add-to-cart-req{:sku 123
-                               :qty-requested 10
-                               :note "This is a nice item"}
+  (let [data {:sku 123
+              :qty-requested 10
+              :note "This is a nice item"}
         writer-schema lt/add-to-cart-req-v2-schema
         reader-schema lt/add-to-cart-req-v4-schema
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)
         expected (-> data
-                     (dissoc :add-to-cart-req/note)
-                     (assoc :add-to-cart-req/comment ""))]
+                     (dissoc :note)
+                     (assoc :comment ""))]
     (is (= expected decoded))))
 
 (deftest test-schema-evolution-add-field-and-change-field
-  (let [data #:add-to-cart-req{:sku 123
-                               :qty-requested 10}
+  (let [data {:sku 123
+              :qty-requested 10}
         writer-schema lt/add-to-cart-req-schema
         reader-schema lt/add-to-cart-req-v3-schema
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)]
     (is (= (assoc data
-                  :add-to-cart-req/qty-requested 10.0
-                  :add-to-cart-req/note "No note") decoded))))
+                  :qty-requested 10.0
+                  :note "No note") decoded))))
 
 (deftest test-schema-evolution-union-add-member
   (let [data #:dog{:name "Rover" :owner "Zeus"}
@@ -100,7 +100,7 @@
     (is (= expected decoded))))
 
 (deftest test-schema-evolution-union-remove-member-failure
-  (let [data #:fish{:name "Swimmy" :tank-num 24}
+  (let [data {:fish/name "Swimmy" :tank-num 24}
         writer-schema lt/fish-or-person-or-dog-v2-schema
         reader-schema lt/person-or-dog-schema
         encoded (l/serialize writer-schema data)]
@@ -112,8 +112,8 @@
           (is (str/includes? msg "do not match.")))))))
 
 (deftest test-schema-evolution-no-match
-  (let [data #:add-to-cart-req{:sku 123
-                               :qty-requested 10}
+  (let [data {:sku 123
+              :qty-requested 10}
         writer-schema lt/add-to-cart-req-schema
         reader-schema l/int-schema
         encoded (l/serialize writer-schema data)]
@@ -127,17 +127,17 @@
               :game/judges [{:name/first "Chibuzor" :name/last "Okonkwo"}]}
         name-schema (l/record-schema
                      ::lt/name
-                     [[:first l/string-schema]
-                      [:last l/string-schema]])
+                     [[:name/first l/string-schema]
+                      [:name/last l/string-schema]])
         writer-schema (l/record-schema
                        ::lt/game
-                       [[:players (l/array-schema name-schema)]
-                        [:judges (l/array-schema name-schema)]])
+                       [[:game/players (l/array-schema name-schema)]
+                        [:game/judges (l/array-schema name-schema)]])
         reader-schema (l/record-schema
                        ::lt/game
-                       [[:players (l/array-schema name-schema)]
-                        [:judges (l/array-schema name-schema)]
-                        [:audience (l/array-schema name-schema)]])
+                       [[:game/players (l/array-schema name-schema)]
+                        [:game/judges (l/array-schema name-schema)]
+                        [:game/audience (l/array-schema name-schema)]])
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)
         expected (assoc data :game/audience [])]
@@ -235,49 +235,13 @@
     (is (= expected decoded))))
 
 (deftest  test-schema-evolution-enum-added-symbol
-  (let [data :why/stock
+  (let [data :stock
         writer-schema lt/why-schema
         reader-schema (l/enum-schema ::lt/why
                                      [:foo :all :limit :stock])
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)]
     (is (= data decoded))))
-
-(deftest test-rec-key-ns-type-evolution-unq-to-short
-  (let [w-schema (l/record-schema ::rec {:key-ns-type :none}
-                                  [[:a l/int-schema]])
-        r-schema (l/record-schema ::rec {:key-ns-type :short}
-                                  [[:a l/int-schema]])
-        data {:a 1}
-        encoded (l/serialize w-schema data)
-        decoded (l/deserialize r-schema w-schema encoded)]
-    (is (= {:rec/a 1} decoded))))
-
-(deftest test-rec-key-ns-type-evolution-short-to-unq
-  (let [w-schema (l/record-schema ::rec {:key-ns-type :short}
-                                  [[:a l/int-schema]])
-        r-schema (l/record-schema ::rec {:key-ns-type :none}
-                                  [[:a l/int-schema]])
-        data {:rec/a 1}
-        encoded (l/serialize w-schema data)
-        decoded (l/deserialize r-schema w-schema encoded)]
-    (is (= {:a 1} decoded))))
-
-(deftest test-enum-key-ns-type-evolution-short-to-unq
-  (let [w-schema (l/enum-schema ::test {:key-ns-type :short} [:a :b :c])
-        r-schema (l/enum-schema ::test {:key-ns-type :none} [:a :b :c])
-        data :test/b
-        encoded (l/serialize w-schema data)
-        decoded (l/deserialize r-schema w-schema encoded)]
-    (is (= :b decoded))))
-
-(deftest test-enum-key-ns-type-evolution-unq-to-short
-  (let [w-schema (l/enum-schema ::test {:key-ns-type :none} [:a :b :c])
-        r-schema (l/enum-schema ::test {:key-ns-type :short} [:a :b :c])
-        data :b
-        encoded (l/serialize w-schema data)
-        decoded (l/deserialize r-schema w-schema encoded)]
-    (is (= :test/b decoded))))
 
 (deftest test-union-evolution-1
   (let [union-a-schema (l/union-schema [l/string-schema l/int-schema])
@@ -306,23 +270,15 @@
                                   [[:v union-a-schema]])
         r-schema (l/record-schema ::rec
                                   [[:v union-b-schema]])
-        data {:rec/v 1}
+        data {:v 1}
         encoded (l/serialize w-schema data)
         decoded (l/deserialize r-schema w-schema encoded)]
     (is (= data decoded))))
 
-(deftest test-enum-evolution-implicit-default
+(deftest test-enum-evolution-default
   (let [w-schema (l/enum-schema ::test [:a :b :c :d])
         r-schema (l/enum-schema ::test [:a :b :c])
-        data :test/d
+        data :d
         encoded (l/serialize w-schema data)
         decoded (l/deserialize r-schema w-schema encoded)]
-    (is (= :test/a decoded))))
-
-(deftest test-enum-evolution-explicit-default
-  (let [w-schema (l/enum-schema ::test [:a :b :c :d])
-        r-schema (l/enum-schema ::test {:default :c} [:a :b :c])
-        data :test/d
-        encoded (l/serialize w-schema data)
-        decoded (l/deserialize r-schema w-schema encoded)]
-    (is (= :test/c decoded))))
+    (is (= :a decoded))))

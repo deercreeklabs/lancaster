@@ -15,9 +15,12 @@
 
 (l/def-int-map-schema sku-to-qty-schema
   l/int-schema)
+
 (def sku-to-qty-v2-schema (l/int-map-schema ::sku-to-qty l/long-schema))
+
 (l/def-int-map-schema im-schema
   l/string-schema)
+
 (l/def-fixed-map-schema fm-schema
   16 l/string-schema)
 
@@ -33,9 +36,14 @@
 (deftest test-int-map-schema
   (is (= {:name :deercreeklabs.unit.lt-test/sku-to-qty
           :type :record
-          :fields [{:default [], :name :ks, :type {:items :int, :type :array}}
-                   {:default [], :name :vs, :type {:items :int, :type :array}}]
-          :key-ns-type :none}
+          :fields [{:name :deercreeklabs.unit.lt-test.sku-to-qty/ks
+                    :type {:type :array
+                           :items :int}
+                    :default []}
+                   {:name :deercreeklabs.unit.lt-test.sku-to-qty/vs
+                    :type {:type :array
+                           :items :int}
+                    :default []}]}
          (u/strip-lt-attrs (l/edn sku-to-qty-schema))))
   #?(:clj (is (lt/fp-matches? sku-to-qty-schema)))
   (is (= (str
@@ -166,8 +174,8 @@
 
 (deftest test-name-kw-lt
   (let [sch (l/record-schema ::sch
-                             [[:a l/keyword-schema]
-                              [:b l/keyword-schema]])
-        data1 #:sch{:a :a
-                    :b :an-ns/b}]
+                             [[:foo/a l/keyword-schema]
+                              [:bar/b l/keyword-schema]])
+        data1 {:foo/a :a
+               :bar/b :an-ns/b}]
     (is (lt/round-trip? sch data1))))

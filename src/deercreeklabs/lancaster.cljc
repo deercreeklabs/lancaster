@@ -53,31 +53,22 @@
   "Creates a Lancaster schema object representing an Avro record
    with the given field definitions. For a more
    concise way to declare a record schema, see def-record-schema."
-  ([name-kw :- s/Keyword
-    fields :- [schemas/RecordFieldDef]]
-   (record-schema name-kw nil fields))
-  ([name-kw :- s/Keyword
-    opts :- (s/maybe u/RecordOptionsMap)
-    fields :- [schemas/RecordFieldDef]]
-   (schemas/schema :record name-kw [opts fields])))
+  [name-kw :- s/Keyword
+   fields :- [schemas/RecordFieldDef]]
+  (schemas/schema :record name-kw fields))
 
 (s/defn enum-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro enum
-   with the given symbol keywords. Optionally allows specifying the
-   schema name and namespacing options. For a more concise way to declare
+   with the given symbol keywords. For a more concise way to declare
    an enum schema, see def-enum-schema."
-  ([name-kw :- s/Keyword
-    symbol-keywords :- [s/Keyword]]
-   (enum-schema name-kw nil symbol-keywords))
-  ([name-kw :- s/Keyword
-    opts :- (s/maybe u/EnumOptionsMap)
-    symbol-keywords :- [s/Keyword]]
-   (schemas/schema :enum name-kw [opts symbol-keywords])))
+  [name-kw :- s/Keyword
+   symbol-keywords :- [s/Keyword]]
+  (schemas/schema :enum name-kw symbol-keywords))
 
 (s/defn fixed-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro fixed
-   with the given size. Optionally allows specifying the schema name.
-   For a more concise way to declare a fixed schema, see def-fixed-schema."
+   with the given size. For a more concise way to declare a fixed
+   schema, see def-fixed-schema."
   ([name-kw :- s/Keyword
     size :- s/Int]
    (schemas/schema :fixed name-kw size)))
@@ -269,13 +260,9 @@
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)
-        [opts fields] (if (map? (first args))
-                        [(first args) (rest args)]
-                        [nil args])]
+        schema-name (u/schema-name clj-name)]
     `(def ~clj-name
-       (schemas/schema :record ~ns-name ~schema-name
-                       [~opts (vector ~@fields)]))))
+       (schemas/schema :record ~ns-name ~schema-name (vector ~@args)))))
 
 (defmacro def-enum-schema
   "Defines a var whose value is a Lancaster enum schema object"
@@ -287,13 +274,9 @@
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)
-        [opts symbol-keywords] (if (map? (first args))
-                                 [(first args) (rest args)]
-                                 [nil args])]
+        schema-name (u/schema-name clj-name)]
     `(def ~clj-name
-       (schemas/schema :enum ~ns-name ~schema-name
-                       [~opts (vector ~@symbol-keywords)]))))
+       (schemas/schema :enum ~ns-name ~schema-name (vector ~@args)))))
 
 (defmacro def-fixed-schema
   "Defines a var whose value is a Lancaster fixed schema object"

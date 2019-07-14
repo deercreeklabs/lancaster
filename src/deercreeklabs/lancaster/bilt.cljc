@@ -5,24 +5,26 @@
    [deercreeklabs.lancaster.utils :as u]
    [schema.core :as s]))
 
-(defn flex-map->rec [m]
-  {:ks (vec (keys m))
-   :vs (vec (vals m))})
+(defn flex-map->rec [key-ns m]
+  {(keyword key-ns "ks") (vec (keys m))
+   (keyword key-ns "vs") (vec (vals m))})
 
-(defn rec->flex-map [r]
-  (let [{:keys [ks vs]} r]
+(defn rec->flex-map [key-ns r]
+  (let [ks (r (keyword key-ns "ks"))
+        vs (r (keyword key-ns "vs"))]
     (zipmap ks vs)))
 
 (defn flex-map-schema
   [name-kw logical-type key-schema values-schema valid-k?]
   (schemas/validate-name-kw name-kw)
-  (let [key-edn-schema (u/edn-schema key-schema)
+  (let [key-ns (str (namespace name-kw) "." (name name-kw))
+        key-edn-schema (u/edn-schema key-schema)
         values-edn-schema (u/edn-schema values-schema)
-        fields [{:name :ks
+        fields [{:name (keyword key-ns "ks")
                  :type {:type :array
                         :items key-edn-schema}
                  :default []}
-                {:name :vs
+                {:name (keyword key-ns "vs")
                  :type {:type :array
                         :items values-edn-schema}
                  :default []}]
@@ -32,11 +34,10 @@
         vp-schema (u/edn-schema->plumatic-schema values-edn-schema vn->es)
         edn-schema {:name name-kw
                     :type :record
-                    :key-ns-type :none
                     :fields fields
                     :logical-type logical-type
-                    :lt->avro flex-map->rec
-                    :avro->lt rec->flex-map
+                    :lt->avro (partial flex-map->rec key-ns)
+                    :avro->lt (partial rec->flex-map key-ns)
                     :lt? #(and (map? %) (valid-k? (ffirst %)))
                     :valid-k? valid-k?
                     :k->child-edn-schema (constantly values-edn-schema)
@@ -53,7 +54,6 @@
                  :default ""}]
         edn-schema {:name ::keyword
                     :type :record
-                    :key-ns-type :none
                     :fields fields
                     :logical-type "keyword"
                     :lt->avro #(hash-map :namespace (namespace %)

@@ -23,13 +23,12 @@
 
 (deftest test-plumatic-records
   (let [expected {s/Any s/Any
-                  (s/required-key :add-to-cart-req/sku) s/Int
-                  (s/required-key :add-to-cart-req/qty-requested) s/Int}
+                  (s/required-key :sku) s/Int
+                  (s/required-key :qty-requested) s/Int}
         _ (is (= expected (l/plumatic-schema lt/add-to-cart-req-schema)))
         expected {s/Any s/Any
-                  :rec-w-array-and-enum/names [u/StringOrBytes]
-                  :rec-w-array-and-enum/why (s/enum :why/all :why/stock
-                                                    :why/limit)}]
+                  :names [u/StringOrBytes]
+                  :why (s/enum :all :stock :limit)}]
     (is (= expected
            (l/plumatic-schema lt/rec-w-array-and-enum-schema)))))
 
@@ -49,11 +48,11 @@
 
 (deftest test-plumatic-maybe-missing-key
   (let [ps (l/plumatic-schema lt/rec-w-maybe-field-schema)
-        data #:rec-w-maybe-field{:name "Boomer"}]
+        data {:name "Boomer"}]
     (is (= nil (s/check ps data)))))
 
 (deftest test-plumatic-maybe-nil-value
   (let [ps (l/plumatic-schema lt/rec-w-maybe-field-schema)
-        data #:rec-w-maybe-field{:name "Boomer"
-                                 :age nil}]
+        data {:name "Boomer"
+              :age nil}]
     (is (= nil (s/check ps data)))))

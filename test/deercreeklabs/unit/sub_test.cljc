@@ -18,10 +18,10 @@
   [:users (l/array-schema user-schema)])
 
 (l/def-record-schema foo-schema
-  [:a l/int-schema])
+  [:foo/a l/int-schema])
 
 (l/def-record-schema bar-schema
-  [:a l/string-schema])
+  [:bar/a l/string-schema])
 
 (l/def-record-schema foo-foos-schema
   [:foo foo-schema]

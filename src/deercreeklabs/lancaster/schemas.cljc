@@ -161,7 +161,7 @@
       (keyword? x)))
 
 (defmethod validate-schema-args :record
-  [schema-type [opts fields]]
+  [schema-type fields]
   (when-not (sequential? fields)
     (throw (ex-info (str "Second arg to record-schema must be a sequence "
                          "of field definitions.")
@@ -200,19 +200,10 @@
       (throw
        (ex-info
         (str "Field names must be unique. Duplicated field-names: " dups)
-        (u/sym-map dups)))))
-  (when opts
-    (when (not (map? opts))
-      (throw (ex-info (str "Record options must be a map. Got: " opts)
-                      {:opts opts})))
-    (when-let [unk-opts (seq (set/difference
-                              (set (keys opts))
-                              (set (keys u/default-record-options))))]
-      (throw (ex-info (str "Unknown record option(s): " unk-opts)
-                      (u/sym-map opts unk-opts))))))
+        (u/sym-map dups))))))
 
 (defmethod validate-schema-args :enum
-  [schema-type [opts symbols]]
+  [schema-type symbols]
   (when-not (sequential? symbols)
     (throw (ex-info (str "Second arg to enum-schema must be a sequence "
                          "of keywords.")
@@ -220,16 +211,7 @@
   (doseq [symbol symbols]
     (when-not (keyword? symbol)
       (throw (ex-info "All symbols in an enum must be keywords."
-                      {:given-symbol symbol}))))
-  (when opts
-    (when (not (map? opts))
-      (throw (ex-info (str "Enum options must be a map. Got: " opts)
-                      {:opts opts})))
-    (when-let [unk-opts (seq (set/difference
-                              (set (keys opts))
-                              (set (keys u/default-enum-options))))]
-      (throw (ex-info (str "Unknown enum option(s): " unk-opts)
-                      (u/sym-map opts unk-opts))))))
+                      {:given-symbol symbol})))))
 
 (defmethod validate-schema-args :fixed
   [schema-type size]

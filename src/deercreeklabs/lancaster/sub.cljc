@@ -86,14 +86,15 @@
                              "` is not a keyword.")
                         (u/sym-map full-path i k))))
           field (reduce (fn [acc field*]
-                          (if (= (name k) (name (:name field*)))
+                          (if (= k (:name field*))
                             (reduced field*)
                             acc))
                         nil (:fields edn-schema))]
       (when-not field
-        (throw (ex-info (str "Key `" k "` is not a field of the indicated "
-                             "record.")
-                        (u/sym-map full-path i k edn-schema))))
+        (let [ex-type :not-a-field]
+          (throw (ex-info (str "Key `" k "` is not a field of the indicated "
+                               "record.")
+                          (u/sym-map full-path i k edn-schema ex-type)))))
       (edn-schema-at-path (:type field) full-path (inc i)))))
 
 (defmethod edn-schema-at-path :array
@@ -124,30 +125,14 @@
   [parent-edn-schema k]
   nil)
 
-(defn throw-unq-k-in-schema-at-path [edn-schema]
-  (throw (ex-info (str "Only records with qualified keys may be used inside"
-                       "unions in schema-at-path. Got: `" edn-schema "`.")
-                  (u/sym-map edn-schema))))
-
 (defmethod key-schema :record
   [parent-edn-schema k]
   (when (keyword? k)
-    (let [{:keys [key-ns-type]} parent-edn-schema
-          k-ns (namespace k)]
-      (when-not k-ns
-        (throw (ex-info (str "Only qualified keys may be used inside unions "
-                             "in schema-at-path. Got: `" k "`.")
-                        (u/sym-map parent-edn-schema k))))
-      (case key-ns-type
-        nil (throw-unq-k-in-schema-at-path parent-edn-schema)
-        :none (throw-unq-k-in-schema-at-path parent-edn-schema)
-        :short (let [rec-name (name (:name parent-edn-schema))]
-                 (when (= rec-name k-ns)
-                   (edn-schema-at-path parent-edn-schema [k] 0)))
-        :fq (let [name-kw (:name parent-edn-schema)
-                  rec-name (str (namespace name-kw) "." (name name-kw))]
-              (when (= rec-name k-ns)
-                (edn-schema-at-path parent-edn-schema [k] 0)))))))
+    (try
+      (edn-schema-at-path parent-edn-schema [k] 0)
+      (catch #?(:clj Exception :cljs js/Error) e
+        (when-not (= :not-a-field (:ex-type (ex-data e)))
+          (throw e))))))
 
 (defmethod key-schema :array
   [parent-edn-schema k]
@@ -172,10 +157,10 @@
 
 (defn schema-at-path [schema path]
   (let [top-edn-schema (u/edn-schema schema)
-        path-edn-schema (edn-schema-at-path top-edn-schema path 0)
-        avro-type (u/get-avro-type path-edn-schema)
-        sub-edn-schema (if (not= :name-keyword avro-type)
-                         path-edn-schema
-                         (-> (u/make-name->edn-schema top-edn-schema)
-                             (get path-edn-schema)))]
-    (schemas/edn-schema->lancaster-schema sub-edn-schema)))
+        sub-edn-schema (edn-schema-at-path top-edn-schema path 0)
+        avro-type (u/get-avro-type sub-edn-schema)
+        sub-edn-schema* (if (not= :name-keyword avro-type)
+                          sub-edn-schema
+                          (-> (u/make-name->edn-schema top-edn-schema)
+                              (get sub-edn-schema)))]
+    (schemas/edn-schema->lancaster-schema sub-edn-schema*)))

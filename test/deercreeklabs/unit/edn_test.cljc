@@ -27,12 +27,10 @@
      :type :fixed
      :size 16}
     {:name ::test-enum
-     :key-ns-type :short
      :type :enum
      :symbols [:a :b :c]}
     {:name ::test-rec
      :type :record
-     :key-ns-type :short
      :fields [{:name :a
                :type :int
                :default -1}
@@ -67,7 +65,7 @@
     (is (= json-schema rt-json-schema))))
 
 (deftest test-json-schema-w-evolution-no-default
-  (let [data {:test-rec/a 1}
+  (let [data {:a 1}
         writer-schema (l/record-schema ::test-rec [[:a l/int-schema]])
         reader-json (str
                      "{\"name\":\"deercreeklabs.unit.edn_test.TestRec\","
@@ -77,7 +75,7 @@
         reader-schema (l/json->schema reader-json)
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (assoc data :test-rec/b "")]
+        expected (assoc data :b "")]
     (is (= expected decoded))))
 
 #?(:clj
@@ -92,7 +90,6 @@
                    (l/json->schema)
                    (l/edn))
         expected {:default :hearts
-                  :key-ns-type :short
                   :name :deercreeklabs.unit.edn-test/suits
                   :symbols [:hearts :diamonds :spades :clubs]
                   :type :enum}]
@@ -106,7 +103,6 @@
                    (l/edn))
         expected {:fields [{:default "" :name :name :type :string}
                            {:default "" :name :nickname :type :string}]
-                  :key-ns-type :short
                   :name :deercreeklabs.unit.edn-test/user
                   :type :record}]
     (is (= expected orig-edn))
@@ -117,7 +113,7 @@
         rt-edn (-> (l/pcf msg-schema)
                    (l/json->schema)
                    (l/edn))
-        expected {:fields [{:default {:user/name "" :user/nickname ""}
+        expected {:fields [{:default {:name "" :nickname ""}
                             :name :user
                             :type {:fields [{:default ""
                                              :name :name
@@ -125,11 +121,9 @@
                                             {:default ""
                                              :name :nickname
                                              :type :string}]
-                                   :key-ns-type :short
                                    :name :deercreeklabs.unit.edn-test/user
                                    :type :record}}
                            {:default "" :name :text :type :string}]
-                  :key-ns-type :short
                   :name :deercreeklabs.unit.edn-test/msg
                   :type :record}]
     (is (= expected orig-edn))
