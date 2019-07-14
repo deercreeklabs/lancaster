@@ -23,7 +23,7 @@
   [:qty-added l/int-schema]
   [:current-qty l/int-schema]
   [:req add-to-cart-req-schema]
-  [:reason why-schema :why/stock]
+  [:reason why-schema :stock]
   [:data a-fixed-schema]
   [:other-data l/bytes-schema])
 
@@ -39,14 +39,14 @@
      :cljs (js/JSON.stringify (clj->js data))))
 
 (deftest ^:perf test-serdes-speed
-  (let [req #:add-to-cart-req{:sku 123 :qty-requested 123}
-        data #:add-to-cart-rsp{:qty-requested 123
-                               :qty-added 10
-                               :current-qty 10
-                               :req req
-                               :reason :why/limit
-                               :data (ba/byte-array [66 67])
-                               :other-data (ba/byte-array [123 123])}
+  (let [req {:sku 123 :qty-requested 123}
+        data {:qty-requested 123
+              :qty-added 10
+              :current-qty 10
+              :req req
+              :reason :limit
+              :data (ba/byte-array [66 67])
+              :other-data (ba/byte-array [123 123])}
         num-ops #?(:cljs 1e4 :clj 1e5)
         enc-fn #(l/serialize add-to-cart-rsp-schema data)
         json-enc-fn (partial encode-json data)
