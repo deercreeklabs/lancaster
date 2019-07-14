@@ -159,8 +159,7 @@
 (defmethod make-deserializer [:fixed :fixed]
   [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
   (check-names writer-edn-schema reader-edn-schema)
-  (let [{writer-size :size
-         writer-name :name} writer-edn-schema
+  (let [{writer-size :size} writer-edn-schema
         {reader-size :size} reader-edn-schema
         _ (when (not= writer-size reader-size)
             (throw (ex-info
@@ -227,11 +226,9 @@
   [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
   (check-names writer-edn-schema reader-edn-schema)
   (binding [u/**enclosing-namespace** (namespace (:name writer-edn-schema))]
-    (let [{writer-fields :fields
-           writer-name :name} writer-edn-schema
+    (let [{writer-fields :fields} writer-edn-schema
           ens u/**enclosing-namespace**
-          {reader-fields :fields
-           reader-name :name} reader-edn-schema
+          {reader-fields :fields} reader-edn-schema
           get-reader-field (fn [writer-field-name]
                              (reduce
                               (fn [acc reader-field]
