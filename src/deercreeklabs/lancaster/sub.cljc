@@ -89,18 +89,19 @@
 (defmulti edn-schema-at-path u/avro-type-dispatch-lt)
 
 (defmethod edn-schema-at-path :default
-  [edn-schema full-path i]
+  [edn-schema full-path i name->edn-schema]
   edn-schema)
 
 (defmethod edn-schema-at-path :logical-type
-  [edn-schema full-path i]
+  [edn-schema full-path i name->edn-schema]
   (if (>= i (count full-path))
     edn-schema
     (let [k (nth full-path i)
           {:keys [logical-type valid-k? k->child-edn-schema]} edn-schema]
       (if (and valid-k? k->child-edn-schema)
         (if (valid-k? k)
-          (k->child-edn-schema k)
+          (-> (k->child-edn-schema k)
+              (expand-name-kws name->edn-schema))
           (throw (ex-info (str "Key `" k "` is not a valid key for logical "
                                "type `" logical-type "`.")
                           (u/sym-map k full-path i edn-schema logical-type))))
@@ -109,7 +110,7 @@
                         (u/sym-map k full-path i edn-schema logical-type)))))))
 
 (defmethod edn-schema-at-path :record
-  [edn-schema full-path i]
+  [edn-schema full-path i name->edn-schema]
   (if (>= i (count full-path))
     edn-schema
     (let [k (nth full-path i)
@@ -128,10 +129,12 @@
           (throw (ex-info (str "Key `" k "` is not a field of the indicated "
                                "record.")
                           (u/sym-map full-path i k edn-schema ex-type)))))
-      (edn-schema-at-path (:type field) full-path (inc i)))))
+      (let [child (-> (:type field)
+                      (expand-name-kws name->edn-schema))]
+        (edn-schema-at-path child full-path (inc i) name->edn-schema)))))
 
 (defmethod edn-schema-at-path :array
-  [edn-schema full-path i]
+  [edn-schema full-path i name->edn-schema]
   (if (>= i (count full-path))
     edn-schema
     (let [k (nth full-path i)]
@@ -139,10 +142,12 @@
         (throw (ex-info (str "Path points to an array, but key `" k
                              "` is not an integer.")
                         (u/sym-map full-path i k))))
-      (edn-schema-at-path (:items edn-schema) full-path (inc i)))))
+      (let [child (-> (:items edn-schema)
+                      (expand-name-kws name->edn-schema))]
+        (edn-schema-at-path child full-path (inc i) name->edn-schema)))))
 
 (defmethod edn-schema-at-path :map
-  [edn-schema full-path i]
+  [edn-schema full-path i name->edn-schema]
   (if (>= i (count full-path))
     edn-schema
     (let [k (nth full-path i)]
@@ -150,50 +155,48 @@
         (throw (ex-info (str "Path points to a map, but key `" k
                              "` is not a string.")
                         (u/sym-map full-path i k))))
-      (edn-schema-at-path (:values edn-schema) full-path (inc i)))))
+      (let [child (-> (:values edn-schema)
+                      (expand-name-kws name->edn-schema))]
+        (edn-schema-at-path child full-path (inc i) name->edn-schema)))))
 
 (defmulti key-schema u/avro-type-dispatch-lt)
 
 (defmethod key-schema :default
-  [parent-edn-schema k]
+  [parent-edn-schema k name->edn-schema]
   nil)
 
 (defmethod key-schema :record
-  [parent-edn-schema k]
+  [parent-edn-schema k name->edn-schema]
   (when (keyword? k)
     (try
-      (edn-schema-at-path parent-edn-schema [k] 0)
+      (edn-schema-at-path parent-edn-schema [k] 0 name->edn-schema)
       (catch #?(:clj Exception :cljs js/Error) e
         (when-not (= :not-a-field (:ex-type (ex-data e)))
           (throw e))))))
 
 (defmethod key-schema :array
-  [parent-edn-schema k]
+  [parent-edn-schema k name->edn-schema]
   (when (integer? k)
-    (:items parent-edn-schema)))
-
-(defn choose-member-edn-schema [union-edn-schema k]
-  (let [edn-schema (reduce (fn [acc member-schema]
-                             (if-let [s (key-schema member-schema k)]
-                               (reduced s)
-                               acc))
-                           nil union-edn-schema)]
-    (or edn-schema
-        (throw (ex-info (str "No matching schema in union for key `" k "`.")
-                        (u/sym-map union-edn-schema k))))))
+    (-> (:items parent-edn-schema)
+        (expand-name-kws name->edn-schema))))
 
 (defmethod edn-schema-at-path :union
-  [edn-schema full-path i]
+  [edn-schema full-path i name->edn-schema]
   (if (>= i (count full-path))
     edn-schema
-    (choose-member-edn-schema edn-schema (nth full-path i))))
+    (let [k (nth full-path i)]
+      (or (reduce (fn [acc member-schema]
+                    (if-let [s (key-schema member-schema k
+                                           name->edn-schema)]
+                      (reduced s)
+                      acc))
+                  nil edn-schema)
+          (throw (ex-info (str "No matching schema in union for key `" k "`.")
+                          (u/sym-map edn-schema k)))))))
 
 (defn schema-at-path [schema path]
   (let [top-edn-schema (u/edn-schema schema)
-        sub-edn-schema (edn-schema-at-path top-edn-schema path 0)
-        avro-type (u/get-avro-type sub-edn-schema)
-        sub-edn-schema* (if (not= :name-keyword avro-type)
-                          sub-edn-schema
-                          (-> (u/make-name->edn-schema top-edn-schema)
-                              (get sub-edn-schema)))]
-    (schemas/edn-schema->lancaster-schema sub-edn-schema*)))
+        name->edn-schema (u/make-name->edn-schema top-edn-schema)
+        sub-edn-schema (edn-schema-at-path top-edn-schema path 0
+                                           name->edn-schema)]
+    (schemas/edn-schema->lancaster-schema sub-edn-schema)))

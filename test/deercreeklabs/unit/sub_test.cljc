@@ -205,3 +205,11 @@
   (let [ret (-> (l/schema-at-path foo-foos-schema nil)
                 (l/edn))]
     (is (= (l/edn foo-foos-schema) ret))))
+
+(deftest test-schema-at-path-recursive
+  (let [schema (l/schema-at-path person-schema [:children])]
+    (is (lt/round-trip? schema [ralph]))))
+
+(deftest test-schema-at-path-recursive-deep
+  (let [schema (l/schema-at-path person-schema [:children 0 :children])]
+    (is (lt/round-trip? schema [ralph]))))
