@@ -9,20 +9,20 @@
 
 (defmethod edn-sub-schemas :default
   [edn-schema]
-  #{edn-schema})
+  [edn-schema])
 
 (defmethod edn-sub-schemas :logical-type
   [edn-schema]
   (let [{:keys [edn-sub-schemas]} edn-schema]
-    (cond->  #{edn-schema}
-      edn-sub-schemas (set/union edn-sub-schemas))))
+    (cond-> [edn-schema]
+      edn-sub-schemas (concat edn-sub-schemas))))
 
 (defmethod edn-sub-schemas :record
   [edn-schema]
   (reduce (fn [acc {:keys [type]}]
             (let [sub-schemas (edn-sub-schemas type)]
-              (set/union acc sub-schemas)))
-          #{edn-schema} (:fields edn-schema)))
+              (concat acc sub-schemas)))
+          [edn-schema] (:fields edn-schema)))
 
 (defmethod edn-sub-schemas :array
   [edn-schema]
@@ -38,20 +38,29 @@
 
 (defmethod edn-sub-schemas :union
   [edn-schema]
-  (-> (set edn-schema)
-      (conj edn-schema)))
+  (conj edn-schema edn-schema))
+
+(defn expand-name-kws [top-edn-schema edn-schemas]
+  (let [name->edn-schema (u/make-name->edn-schema top-edn-schema)]
+    (map (fn [edn-schema]
+           (if (not= :name-keyword (u/get-avro-type edn-schema))
+             edn-schema
+             (name->edn-schema edn-schema)))
+         edn-schemas)))
+
+(defn dedupe-schemas [schemas]
+  (vals (reduce (fn [acc schema]
+                  (assoc acc (u/fingerprint64 schema) schema))
+                {} schemas)))
 
 (defn sub-schemas [schema]
   (let [top-edn-schema (u/edn-schema schema)]
     (if-not (u/avro-container-types (u/get-avro-type top-edn-schema))
       [schema]
-      (map (fn [edn-sub-schema]
-             (let [es (if (not= :name-keyword (u/get-avro-type edn-sub-schema))
-                        edn-sub-schema
-                        (-> (u/make-name->edn-schema top-edn-schema)
-                            (get edn-sub-schema)))]
-               (schemas/edn-schema->lancaster-schema es)))
-           (edn-sub-schemas top-edn-schema)))))
+      (->> (edn-sub-schemas top-edn-schema)
+           (expand-name-kws top-edn-schema)
+           (map schemas/edn-schema->lancaster-schema)
+           (dedupe-schemas)))))
 
 (defmulti edn-schema-at-path u/avro-type-dispatch-lt)
 

@@ -14,8 +14,11 @@
 
 #?(:clj (pm/use-primitive-operators))
 
+(def LancasterSchemaOrNameKW (s/if keyword?
+                               s/Keyword
+                               (s/protocol u/ILancasterSchema)))
 (def RecordFieldDef [(s/one s/Keyword "field-name")
-                     (s/one (s/protocol u/ILancasterSchema) "field-schema")
+                     (s/one LancasterSchemaOrNameKW "field-schema")
                      (s/optional s/Any "field-default")])
 
 (defrecord LancasterSchema

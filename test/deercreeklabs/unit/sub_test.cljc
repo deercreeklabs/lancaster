@@ -30,6 +30,11 @@
 (l/def-map-schema map-of-fbs-schema
   (l/union-schema [foo-schema bar-schema]))
 
+(l/def-record-schema person-schema
+  [:name l/string-schema]
+  [:age l/int-schema]
+  [:children (l/array-schema ::person)])
+
 (deftest test-sub-schemas-complex
   (let [ret (->> (l/sub-schemas sys-state-schema)
                  (map u/edn-schema)
@@ -66,15 +71,27 @@
     (is (= expected ret))))
 
 (deftest test-sub-schemas-repeated-schemas
-  (let [ret (->> (l/sub-schemas foo-foos-schema)
-                 (map u/edn-schema)
-                 (map u/edn-schema->name-kw)
-                 (set))
+  (let [ret (l/sub-schemas foo-foos-schema)
+        uniques (->> ret
+                     (map u/edn-schema)
+                     (map u/edn-schema->name-kw)
+                     (set))
         expected #{:int
                    :map
                    :deercreeklabs.unit.sub-test/foo
                    :deercreeklabs.unit.sub-test/foo-foos}]
-    (is (= expected ret))))
+    (is (= expected uniques))
+    (is (= (count ret) (count uniques)))))
+
+(deftest test-sub-schemas-recursive-schema
+  (let [ret (l/sub-schemas person-schema)
+        uniques (->> ret
+                     (map u/edn-schema)
+                     (map u/edn-schema->name-kw)
+                     (set))
+        expected #{:array :int :string :deercreeklabs.unit.sub-test/person}]
+    (is (= expected uniques))
+    (is (= (count ret) (count uniques)))))
 
 (deftest test-schema-at-path-nested-recs
   (let [path [:req :sku]

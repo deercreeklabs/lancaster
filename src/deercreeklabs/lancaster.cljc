@@ -76,13 +76,13 @@
 (s/defn array-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro array
    with the given items schema."
-  [items-schema :- LancasterSchema]
+  [items-schema :- LancasterSchemaOrNameKW]
   (schemas/schema :array nil items-schema))
 
 (s/defn map-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro map
    with the given values schema. Keys are always strings."
-  [values-schema :- LancasterSchema]
+  [values-schema :- LancasterSchemaOrNameKW]
   (schemas/schema :map nil values-schema))
 
 (s/defn union-schema :- LancasterSchema
