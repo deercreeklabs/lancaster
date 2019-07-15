@@ -35,6 +35,21 @@
   [:age l/int-schema]
   [:children (l/array-schema ::person)])
 
+(def mary
+  {:name "Mary"
+   :age 11
+   :children []})
+
+(def bob
+  {:name "Bob"
+   :age 10
+   :children []})
+
+(def ralph
+  {:name "Ralph"
+   :age 100
+   :children [bob mary]})
+
 (deftest test-sub-schemas-complex
   (let [ret (->> (l/sub-schemas sys-state-schema)
                  (map u/edn-schema)
@@ -89,9 +104,12 @@
                      (map u/edn-schema)
                      (map u/edn-schema->name-kw)
                      (set))
-        expected #{:array :int :string :deercreeklabs.unit.sub-test/person}]
-    (is (= expected uniques))
-    (is (= (count ret) (count uniques)))))
+        expected #{:array :int :string :deercreeklabs.unit.sub-test/person}
+        _ (is (= expected uniques))
+        _ (is (= (count ret) (count uniques)))
+        array-schema (first (filter #(= :array (u/get-avro-type (l/edn %)))
+                                    ret))]
+    (is (lt/round-trip? array-schema [ralph bob]))))
 
 (deftest test-schema-at-path-nested-recs
   (let [path [:req :sku]

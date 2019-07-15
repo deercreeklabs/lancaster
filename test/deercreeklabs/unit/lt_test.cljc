@@ -138,7 +138,10 @@
                  (map u/edn-schema)
                  (map u/edn-schema->name-kw)
                  (set))
-        expected #{:deercreeklabs.unit.lt-test/sku-to-qty :int :long}]
+        expected #{:deercreeklabs.unit.lt-test/sku-to-qty
+                   :int
+                   :long
+                   :array}]
     (is (= expected ret))))
 
 (deftest test-flex-map-union

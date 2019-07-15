@@ -5,7 +5,7 @@
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]))
 
-(defmulti edn-sub-schemas u/avro-type-dispatch-lt)
+(defmulti edn-sub-schemas u/avro-type-dispatch)
 
 (defmethod edn-sub-schemas :default
   [edn-schema]
@@ -40,13 +40,36 @@
   [edn-schema]
   (conj edn-schema edn-schema))
 
-(defn expand-name-kws [top-edn-schema edn-schemas]
-  (let [name->edn-schema (u/make-name->edn-schema top-edn-schema)]
-    (map (fn [edn-schema]
-           (if (not= :name-keyword (u/get-avro-type edn-schema))
-             edn-schema
-             (name->edn-schema edn-schema)))
-         edn-schemas)))
+(defmulti expand-name-kws u/avro-type-dispatch)
+
+(defmethod expand-name-kws :default
+  [edn-schema name->edn-schema]
+  edn-schema)
+
+(defmethod expand-name-kws :name-keyword
+  [edn-schema name->edn-schema]
+  (name->edn-schema edn-schema))
+
+(defmethod expand-name-kws :map
+  [edn-schema name->edn-schema]
+  (update edn-schema :values #(expand-name-kws % name->edn-schema)))
+
+(defmethod expand-name-kws :array
+  [edn-schema name->edn-schema]
+  (update edn-schema :items #(expand-name-kws % name->edn-schema)))
+
+(defn expand-fields [fields name->edn-schema]
+  (mapv (fn [field]
+          (update field :type #(expand-name-kws % name->edn-schema)))
+        fields))
+
+(defmethod expand-name-kws :record
+  [edn-schema name->edn-schema]
+  (update edn-schema :fields #(expand-fields % name->edn-schema) ))
+
+(defmethod expand-name-kws :union
+  [edn-schema name->edn-schema]
+  (mapv #(expand-name-kws % name->edn-schema) edn-schema))
 
 (defn dedupe-schemas [schemas]
   (vals (reduce (fn [acc schema]
@@ -57,10 +80,11 @@
   (let [top-edn-schema (u/edn-schema schema)]
     (if-not (u/avro-container-types (u/get-avro-type top-edn-schema))
       [schema]
-      (->> (edn-sub-schemas top-edn-schema)
-           (expand-name-kws top-edn-schema)
-           (map schemas/edn-schema->lancaster-schema)
-           (dedupe-schemas)))))
+      (let [name->edn-schema (u/make-name->edn-schema top-edn-schema)
+            edn-subs (-> (edn-sub-schemas top-edn-schema)
+                         (expand-name-kws name->edn-schema))]
+        (->> (map schemas/edn-schema->lancaster-schema edn-subs)
+             (dedupe-schemas))))))
 
 (defmulti edn-schema-at-path u/avro-type-dispatch-lt)
 
