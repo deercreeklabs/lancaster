@@ -94,17 +94,22 @@
 (s/defn maybe :- LancasterSchema
   "Creates a Lancaster union schema whose members are l/null-schema
    and the given schema. Makes a schema nillable. If the given schema
-   is a union, returns a schema with l/null-schema in the first postion."
+   is a union, returns a schema with l/null-schema in the first postion.
+   If the given union schema already has l/null-schema as a member, it
+   is returned unchanged. Similarly, if the given schema is
+   l/null-schema, it is returned unchanged."
   [schema :- LancasterSchemaOrNameKW]
   (if (keyword? schema)
     (union-schema [null-schema schema])
     (let [edn-schema (u/edn-schema schema)]
-      (if (not= :union (u/get-avro-type edn-schema))
-        (union-schema [null-schema schema])
-        (if (= :null (first edn-schema))
+      (if (= :union (u/get-avro-type edn-schema))
+        (if (some #{:null} edn-schema)
           schema
           (schemas/edn-schema->lancaster-schema
-           (vec (cons :null edn-schema))))))))
+           (vec (cons :null edn-schema))))
+        (if (= :null edn-schema)
+          schema
+          (union-schema [null-schema schema]))))))
 
 (s/defn serialize :- ba/ByteArray
   "Serializes data to a byte array, using the given Lancaster schema."
