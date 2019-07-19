@@ -232,7 +232,8 @@
           get-reader-field (fn [writer-field-name]
                              (reduce
                               (fn [acc reader-field]
-                                (if (= writer-field-name (:name reader-field))
+                                (if (= (name writer-field-name)
+                                       (name (:name reader-field)))
                                   (reduced reader-field)
                                   acc))
                               nil reader-fields))
@@ -249,19 +250,22 @@
                                         (:name reader-field))]
                          (u/sym-map deserialize reader-k)))
                      writer-fields)
-          writer-field-names (set (map :name writer-fields))
-          added (reduce (fn [acc {:keys [name default]}]
-                          (if (writer-field-names name)
+          writer-field-names (set (map #(-> % :name name) writer-fields))
+          added (reduce (fn [acc {reader-field-name :name
+                                  reader-field-default :default}]
+                          (if (writer-field-names (name reader-field-name))
                             acc
-                            (if default
-                              (assoc acc name default)
+                            (if reader-field-default
+                              (assoc acc reader-field-name reader-field-default)
                               (throw (ex-info
-                                      (str "Reader record field `" name "` "
+                                      (str "Reader record field `"
+                                           reader-field-name "` "
                                            "does not exist in writer record "
                                            "and does not have a default value.")
-                                      {:writer-edn-schema writer-field-names
+                                      {:writer-edn-schema writer-edn-schema
                                        :reader-edn-schema reader-edn-schema
-                                       :problematic-reader-field-name name})))))
+                                       :problematic-reader-field-name
+                                       reader-field-name})))))
                         {} reader-fields)
           deserializer (fn deserialize [is]
                          (persistent!

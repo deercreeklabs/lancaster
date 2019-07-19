@@ -186,7 +186,7 @@
                           (sym-map edn-schema)))))
 
 (defn strip-lt-attrs [edn-schema]
-  (dissoc edn-schema :logical-type :lt->avro :avro->lt :lt?
+  (dissoc edn-schema :logical-type :lt->avro :avro->lt :lt? :default-data
           :valid-k? :k->child-edn-schema :edn-sub-schemas :plumatic-schema))
 
 (s/defn name-kw->name-str :- s/Str
@@ -268,27 +268,29 @@
   ([edn-schema field-default]
    (default-data edn-schema field-default {}))
   ([edn-schema field-default name->edn-schema]
-   (let [avro-type (get-avro-type edn-schema)]
-     (case avro-type
-       :record (make-default-record edn-schema field-default name->edn-schema)
-       :union (default-data (first edn-schema) field-default name->edn-schema)
-       :fixed (make-default-fixed-or-bytes (:size edn-schema) field-default)
-       :bytes (make-default-fixed-or-bytes 0 field-default)
-       (or field-default
-           (case avro-type
-             :null nil
-             :boolean false
-             :int (int -1)
-             :long -1
-             :float (float -1.0)
-             :double (double -1.0)
-             :string ""
-             :enum (first (:symbols edn-schema))
-             :array []
-             :map {}
-             :name-keyword (default-data (name->edn-schema edn-schema)
-                                         field-default
-                                         name->edn-schema)))))))
+   (if (:logical-type edn-schema)
+     (:default-data edn-schema)
+     (let [avro-type (get-avro-type edn-schema)]
+       (case avro-type
+         :record (make-default-record edn-schema field-default name->edn-schema)
+         :union (default-data (first edn-schema) field-default name->edn-schema)
+         :fixed (make-default-fixed-or-bytes (:size edn-schema) field-default)
+         :bytes (make-default-fixed-or-bytes 0 field-default)
+         (or field-default
+             (case avro-type
+               :null nil
+               :boolean false
+               :int (int -1)
+               :long -1
+               :float (float -1.0)
+               :double (double -1.0)
+               :string ""
+               :enum (first (:symbols edn-schema))
+               :array []
+               :map {}
+               :name-keyword (default-data (name->edn-schema edn-schema)
+                                           field-default
+                                           name->edn-schema))))))))
 
 (defn first-arg-dispatch [first-arg & rest-of-args]
   first-arg)

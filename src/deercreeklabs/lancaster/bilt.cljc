@@ -42,7 +42,8 @@
                     :valid-k? valid-k?
                     :k->child-edn-schema (constantly values-edn-schema)
                     :edn-sub-schemas (set [key-edn-schema values-edn-schema])
-                    :plumatic-schema {kp-schema vp-schema}}]
+                    :plumatic-schema {kp-schema vp-schema}
+                    :default-data {}}]
     (schemas/edn-schema->lancaster-schema edn-schema)))
 
 (def keyword-schema

@@ -182,3 +182,8 @@
         data1 {:foo/a :a
                :bar/b :an-ns/b}]
     (is (lt/round-trip? sch data1))))
+
+(deftest test-default-data-lt
+  (let [sch (l/int-map-schema ::test l/string-schema)
+        data (l/default-data sch)]
+    (is (= {} data))))
