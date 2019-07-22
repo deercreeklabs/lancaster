@@ -236,7 +236,7 @@
   #?(:clj (is (fp-matches? why-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Why\",\"type\":"
               "\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"],\"default\":"
-              "\"all\"}")
+              "\"ALL\"}")
          (l/json why-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Why\",\"type\":"
               "\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}")
@@ -999,5 +999,5 @@
          (l/edn suit-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Suit\",\"type\":"
               "\"enum\",\"symbols\":[\"HEARTS\",\"CLUBS\",\"SPADES\","
-              "\"DIAMONDS\"],\"default\":\"suit/hearts\"}")
+              "\"DIAMONDS\"],\"default\":\"HEARTS\"}")
          (l/json suit-schema))))

@@ -390,7 +390,7 @@
    low :- s/Int]
   #?(:clj (bit-or (bit-shift-left (long high) 32)
                   (bit-and low 0xFFFFFFFF))
-     :cljs (.fromBits Long low high)))
+     :cljs (.fromBits ^Long Long (int low) (int high))))
 
 (s/defn long->ints :- (s/pair s/Int :high-int
                               s/Int :low-int)
@@ -404,7 +404,7 @@
 (s/defn str->long :- Long
   [s :- s/Str]
   #?(:clj (Long/parseLong s)
-     :cljs (.fromString Long s)))
+     :cljs (.fromString ^Long Long s)))
 
 (s/defn long->str :- s/Str
   [l :- Long]
@@ -427,9 +427,9 @@
                (.toInt ^Long l)
                (throw-long->int-err ^Long l)))))
 
-(defn int->long [int]
-  #?(:clj (clojure.core/long int)
-     :cljs (.fromInt Long int)))
+(defn int->long [n]
+  #?(:clj (clojure.core/long n)
+     :cljs (.fromInt ^Long Long n)))
 
 (defn more-than-one? [schema-set edn-schemas]
   (> (count (keep #(schema-set (get-avro-type %)) edn-schemas))
@@ -443,13 +443,13 @@
      (let [zz-n (.xor (.shiftLeft l 1)
                       (.shiftRight l 63))]
        (loop [^Long n zz-n]
-         (if (.isZero (.and n (Long.fromInt -128)))
+         (if (.isZero ^Long (.and n (Long.fromInt -128)))
            (let [b (.and n (Long.fromInt 127))]
              (write-byte output-stream b))
            (let [b (-> (.and n (Long.fromInt 127))
                        (.or (Long.fromInt 128)))]
              (write-byte output-stream b)
-             (recur (.shiftRightUnsigned n 7))))))))
+             (recur ^Long (.shiftRightUnsigned n 7))))))))
 
 (defn write-long-varint-zz* [output-stream l]
   (let [zz-n (bit-xor (bit-shift-left l 1) (bit-shift-right l 63))]
@@ -483,16 +483,19 @@
 #?(:cljs
    (defn read-long-varint-zz-long [input-stream]
      (loop [i 0
-            ^Long out (.getZero Long)]
-       (let [^Long b (.fromNumber Long (read-byte input-stream))]
-         (if (.isZero (.and b (.fromInt Long 128)))
-           (let [zz-n (-> (.shiftLeft b i)
-                          (.or out))
-                 long-out (->> (.and zz-n (.getOne Long))
-                               (.subtract (.getZero Long))
-                               (.xor (.shiftRightUnsigned zz-n 1)))]
+            ^Long out ^Long (.getZero Long)]
+       (let [^Long b ^Long (.fromNumber Long (read-byte input-stream))
+             ^Long x128 ^Long (.fromInt Long 128)]
+         (if (.isZero ^Long (.and b x128))
+           (let [^Long zz-n (-> (.shiftLeft b i)
+                                (.or out))
+                 zero ^Long (.getZero ^Long Long)
+                 one ^Long (.getOne ^Long Long)
+                 long-out (.xor ^Long (.shiftRightUnsigned zz-n 1)
+                                ^Long (.subtract zero
+                                                 ^Long (.and zz-n one)))]
              long-out)
-           (let [out (-> (.and b (.fromInt Long 127))
+           (let [out (-> (.and b (.fromInt ^Long Long 127))
                          (.shiftLeft i)
                          (.or out))
                  i (+ i 7)]
@@ -1125,9 +1128,13 @@
 
 (defmethod edn-schema->avro-schema :enum
   [edn-schema]
-  (-> (fix-name edn-schema)
-      (fix-aliases)
-      (fix-symbols)))
+  (let [sch (-> (fix-name edn-schema)
+                (fix-aliases)
+                (fix-symbols)
+                )]
+    (if (:default sch)
+      (update sch :default #(csk/->SCREAMING_SNAKE_CASE (name %)))
+      sch)))
 
 (defmethod edn-schema->avro-schema :fixed
   [edn-schema]

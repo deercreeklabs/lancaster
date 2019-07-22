@@ -30,14 +30,14 @@
            (.and l other)))
 
 #?(:cljs (defn unsigned-bit-shift-right [l num-bits]
-           (.shiftRightUnsigned l num-bits)))
+           (.shiftRightUnsigned ^Long l num-bits)))
 
 #?(:cljs (defn bit-xor [l other]
            (.xor l other)))
 
 (defn negate [l]
   #?(:clj (unchecked-negate l)
-     :cljs (.negate l)))
+     :cljs (.negate ^Long l)))
 
 (defn calc-fp [i]
   (let [f (fn [fp j]
