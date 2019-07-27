@@ -282,3 +282,24 @@
         encoded (l/serialize w-schema data)
         decoded (l/deserialize r-schema w-schema encoded)]
     (is (= :a decoded))))
+
+(deftest test-record-evolution-ns-added-field
+  (let [w-schema (l/record-schema ::test [[:user/name l/string-schema]])
+        r-schema (l/record-schema ::test [[:user/name l/string-schema]
+                                          [:user/age l/int-schema]])
+        data {:user/name "Alice"}
+        encoded (l/serialize w-schema data)
+        decoded (l/deserialize r-schema w-schema encoded)
+        expected {:user/age -1, :user/name "Alice"}]
+    (is (= expected decoded))))
+
+(deftest test-record-evolution-ns-deleted-field
+  (let [w-schema (l/record-schema ::test [[:user/name l/string-schema]
+                                          [:user/age l/int-schema]])
+        r-schema (l/record-schema ::test [[:user/name l/string-schema]])
+        data {:user/name "Alice"
+              :user/age 40}
+        encoded (l/serialize w-schema data)
+        decoded (l/deserialize r-schema w-schema encoded)
+        expected {:user/name "Alice"}]
+    (is (= expected decoded))))
