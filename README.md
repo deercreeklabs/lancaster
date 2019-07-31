@@ -237,88 +237,17 @@ To quote the [Avro spec](http://avro.apache.org/docs/current/spec.html#Unions):
 
 *Unions may not contain more than one schema with the same type, except for the named types record, fixed and enum. For example, unions containing two array types or two map types are not permitted, but two types with different names are permitted.*
 
-In additon to the above, Lancaster disallows unions with more than one numeric
-schema (int,float, long, or double) or more than one string-ish schema
-(string, bytes, or fixed).
+In additon to the above, Lancaster disallows unions with:
+* more than one numeric schema (int,float, long, or double)
+* more than one string-like schema (string, bytes, or fixed)
+* `record`s which share any keys
+* `enum`s which share any values.
 
-In Lancaster, the data for both `records` and `maps` can be Clojure hash-maps.
-Also, multiple record schemas can be members in a union schema. This makes it
-impossible (or at least difficult) to determine which member schema of a union
-to use at serialization time.
+Namespacing the record keys or enum values are easy ways to overcome the
+last two disallowed unions.
 
-A Lancaster union schema is *ambiguous* if it contains:
-* More than one `record` or `map`
-* More than one numeric type: `int`, `long`, `float`, or `double`
-* More than one bytes type: `bytes`, `string`, or `fixed`.
-
-Given a Clojure hash-map, and an ambiguous union schema, which schema should
-be used to serialize it? This is resolved via *wrapping*.
-
-Wrapping indicates the schema of the given data. Wrapped data is a two-element
-vector. The first element is the EDN name of the schema, and the second
-element is the data itself. For example:
-```clojure
-[:user/dog {:name "Fido", :owner "Roger"}]
-```
-
-Wrapping is most easily accomplished using the [wrap](#wrap) function.
-
-When deserializing data using an ambiguous union, wrapped data is returned.
-This allows you to take different actions based on the schema of the data.
-To access the schema name of the wrapped data, use the
-[schema-name](#schema-name) function.
-To access the data inside wrapped data, use the [data](#data) function.
-
-### Functions For Wrapping and Unwrapping Data
-* [wrap](#wrap): Wraps the given data for serializing with an ambigous union.
-* [schema-name](#schema-name): Returns the schema-name portion of wrapped data.
-* [data](#data): Returns the data portion of wrapped data.
-
-### Example
-```clojure
-;; Define two record schemas
-(l/def-record-schema person-schema
-  [:name l/string-schema "No name"]
-  [:age l/int-schema 0])
-
-(l/def-record-schema dog-schema
-  [:name l/string-schema]
-  [:owner l/string-schema])
-
-;; Define an ambiguous union schema, using the two records
-(l/def-union-schema person-or-dog-schema
-  person-schema dog-schema)
-
-(def fido {:name "Fido" :owner "Roger"})
-
-;; Serializing without wrapping fails because the union is ambiguous:
-(l/serialize person-or-dog-schema fido)
-;; ExceptionInfo Union requires wrapping, but data is not wrapped.
-
-;; Wrapping the data before serialization tells the union which type
-;; to use when serializing.
-(def wrapped-fido (l/wrap dog-schema fido))
-;; {:dog {:name "Fido" :owner "Roger"}}
-
-;; This works now
-(def encoded (l/serialize person-or-dog-schema wrapped-fido))
-encoded
-;; #object["[B" 0x2cc2072e "[B@2cc2072e"]
-
-(def decoded (l/deserialize person-or-dog-schema person-or-dog-schema encoded))
-
-;; Note that deserialized data from an ambiguous union is returned in wrapped form
-decoded
-;; [:user/dog {:name "Fido", :owner "Roger"}]
-
-;; Get the schema name portion
-(l/schema-name decoded)
-;; :user/dog
-
-;; Get the data portion
-(l/data decoded)
-;; {:name "Fido", :owner "Roger"}
-```
+At union schema creation time, Lancaster will throw an exception if the
+the schema is disallowed.
 
 # Names and Namespaces
 Named Avro schemas (`records`, `enums`, `fixeds`, and `flex-maps`)
@@ -410,7 +339,7 @@ schema names. The name-symbol must start with a letter and subsequently
 only contain letters, numbers, or hyphens.
 * `fields`: Field definitions. Field definitions are sequences
             of the form ```[field-name-kw field-schema default-value]```.
-    * `field-name-kw`: A keyword naming this field.
+    * `field-name-kw`: A keyword naming this field. The keyword may have a namespace.
     * `field-schema`: A Lancaster schema object representing the field's schema.
     * `default-value`: Optional. The default data value for this field.
 
@@ -483,7 +412,8 @@ is also derived from this symbol. See
 [Names and Namespaces](#names-and-namespaces) for more information about
 schema names. The name-symbol must start with a letter and subsequently
 only contain letters, numbers, or hyphens.
-* `symbol-keywords`: Keywords representing the symbols in the enum.
+* `symbol-keywords`: Keywords representing the symbols in the enum. The
+keywords may have namespaces.
 
 #### Return Value
 The defined var
