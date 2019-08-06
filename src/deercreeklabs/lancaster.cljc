@@ -203,6 +203,13 @@
   [arg :- s/Any]
   (satisfies? u/ILancasterSchema arg))
 
+(s/defn schemas-match? :- s/Bool
+  "Returns a boolean indicating whether or not the given reader and
+   writer schemas match, according to the Avro matching rules."
+  [reader-schema :- LancasterSchema
+   writer-schema :- LancasterSchema]
+  (schemas/match? reader-schema writer-schema))
+
 (s/defn plumatic-schema :- s/Any
   "Returns a Plumatic schema for the given Lancaster schema."
   [schema :- LancasterSchema]

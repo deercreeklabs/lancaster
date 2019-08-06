@@ -1010,3 +1010,10 @@
          #?(:clj ExceptionInfo :cljs js/Error)
          #"Identical schemas in union"
          (l/union-schema [l/string-schema sch1 sch2])))))
+
+(deftest test-schemas-match?
+  (let [sch1 (l/enum-schema ::a-name [:a :b])
+        sch2 (l/enum-schema ::a-name [:a :b])
+        sch3 (l/enum-schema ::x-name [:a :b])]
+    (is (l/schemas-match? sch1 sch2))
+    (is (not (l/schemas-match? sch1 sch3)))))

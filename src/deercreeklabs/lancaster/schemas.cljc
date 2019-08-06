@@ -361,3 +361,14 @@
                            "one byte-array schema (bytes or fixed).")
                       {:member-edn-schemas
                        (map u/edn-schema member-schemas)})))))
+
+(defn match? [reader-schema writer-schema]
+  (try
+    (deser/make-deserializer (u/edn-schema writer-schema)
+                             (u/edn-schema reader-schema)
+                             {} (atom {}))
+    true
+    (catch #?(:clj Exception :cljs js/Error) e
+      (if-not (u/match-exception? e)
+        (throw e)
+        false))))
