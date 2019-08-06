@@ -208,6 +208,14 @@
    writer schemas match, according to the Avro matching rules."
   [reader-schema :- LancasterSchema
    writer-schema :- LancasterSchema]
+  (when-not (satisfies? u/ILancasterSchema reader-schema)
+    (throw
+     (ex-info "reader-schema must be a schema object."
+              {:given-arg reader-schema})))
+  (when-not (satisfies? u/ILancasterSchema writer-schema)
+    (throw
+     (ex-info "reader-schema must be a schema object."
+              {:given-arg writer-schema})))
   (schemas/match? reader-schema writer-schema))
 
 (s/defn plumatic-schema :- s/Any

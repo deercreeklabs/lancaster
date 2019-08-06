@@ -363,6 +363,7 @@
                        (map u/edn-schema member-schemas)})))))
 
 (defn match? [reader-schema writer-schema]
+  (when-not (satisfies? u/ILancasterSchema reader-schema))
   (try
     (deser/make-deserializer (u/edn-schema writer-schema)
                              (u/edn-schema reader-schema)
