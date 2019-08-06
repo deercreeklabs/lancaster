@@ -1017,3 +1017,26 @@
         sch3 (l/enum-schema ::x-name [:a :b])]
     (is (l/schemas-match? sch1 sch2))
     (is (not (l/schemas-match? sch1 sch3)))))
+
+(deftest test-missing-record-field
+  (let [sch1 (l/record-schema ::test [[:a l/int-schema]])
+        sch2 (l/union-schema [l/int-schema sch1])
+        sch3 (l/record-schema ::sch3 [[:arg sch2]])
+        sch4 (l/array-schema sch3)]
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Record data is missing key `:a`"
+         (l/serialize sch1 {:b 1})))
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Record data is missing key `:a`"
+         (l/serialize sch2 {:b 1})))
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Record data is missing key `:a`"
+         (l/serialize sch3 {:arg {:b 1}})))
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Record data is missing key `:a`"
+         (l/serialize sch4 [{:arg {:a 1}}
+                            {:arg {:b 1}}])))))
