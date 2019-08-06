@@ -308,7 +308,6 @@
 (defmulti edn-schema->avro-schema avro-type-dispatch-lt)
 (defmulti edn-schema->plumatic-schema avro-type-dispatch-lt)
 (defmulti make-default-data-size avro-type-dispatch)
-(defmulti make-edn-schema first-arg-dispatch)
 
 (s/defn long? :- s/Bool
   [x :- s/Any]
@@ -406,9 +405,12 @@
   #?(:clj (Long/parseLong s)
      :cljs (.fromString ^Long Long s)))
 
-(s/defn long->str :- s/Str
-  [l :- Long]
-  (.toString l))
+(defn long->str [^long l]
+  (when-not (long? l)
+    (throw (ex-info (str "Argument to long->str is not a long. Got`" l "`.")
+                    {:given-arg l})))
+  #?(:cljs (.toString l)
+     :clj (Long/toString l 10)))
 
 (defn- throw-long->int-err [l]
   (throw (ex-info (str "Cannot convert long `" l "` to int.")
@@ -1233,66 +1235,6 @@
 (defmethod make-default-data-size :name-keyword
   [name-kw name->edn-schema]
   100) ;; Possibly recursive schema, so just return a reasonable default
-
-(defn make-record-field [field]
-  (when-not (#{2 3} (count field))
-    (throw
-     (ex-info (str "Record field definition must have 2 or 3 parameters. ("
-                   "[field-name field-schema] or "
-                   "[field-name field-schema field-default]).\n"
-                   "  Got " (count field) " parameters.\n"
-                   "  Bad field definition: " field)
-              {:bad-field-def field})))
-  (let [[field-name field-schema field-default] field
-        field-edn-schema (if (satisfies? ILancasterSchema field-schema)
-                           (edn-schema field-schema)
-                           field-schema)]
-    (when-not (keyword? field-name)
-      (throw
-       (ex-info (str "Field names must be keywords. Bad field name: "
-                     field-name)
-                (sym-map field-name field-schema field-default field))))
-    {:name field-name
-     :type field-edn-schema
-     :default (default-data field-edn-schema field-default)}))
-
-(defmethod make-edn-schema :record
-  [schema-type name-kw fields]
-  (let [name-kw (qualify-name-kw name-kw)
-        fields (binding [**enclosing-namespace** (namespace name-kw)]
-                 (mapv make-record-field fields))]
-    {:name name-kw
-     :type :record
-     :fields fields}))
-
-(defmethod make-edn-schema :enum
-  [schema-type name-kw symbols]
-  (let [name-kw (qualify-name-kw name-kw)]
-    {:name name-kw
-     :type :enum
-     :symbols symbols
-     :default (first symbols)}))
-
-(defmethod make-edn-schema :fixed
-  [schema-type name-kw size]
-  (let [name-kw (qualify-name-kw name-kw)]
-    {:name name-kw
-     :type :fixed
-     :size size}))
-
-(defmethod make-edn-schema :array
-  [schema-type name-kw items]
-  {:type :array
-   :items (ensure-edn-schema items)})
-
-(defmethod make-edn-schema :map
-  [schema-type name-kw values]
-  {:type :map
-   :values (ensure-edn-schema values)})
-
-(defmethod make-edn-schema :union
-  [schema-type name-kw member-schemas]
-  (mapv ensure-edn-schema member-schemas))
 
 (defn avro-schema-type-dispatch [avro-schema]
   (cond

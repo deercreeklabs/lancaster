@@ -1001,3 +1001,12 @@
               "\"enum\",\"symbols\":[\"HEARTS\",\"CLUBS\",\"SPADES\","
               "\"DIAMONDS\"],\"default\":\"HEARTS\"}")
          (l/json suit-schema))))
+
+(deftest test-identical-schemas-in-union
+  (let [sch1 (l/enum-schema ::a-name [:a :b])
+        sch2 (l/enum-schema ::a-name [:a :b])]
+    (is (not= sch1 sch2))
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Identical schemas in union"
+         (l/union-schema [l/string-schema sch1 sch2])))))

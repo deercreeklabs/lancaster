@@ -301,7 +301,8 @@
 
 (defn make-deserializer-union-writer
   [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
-  (let [mk-des (fn [writer-item-schema]
+  (let [named-schemas (keys name->edn-schema)
+        mk-des (fn [writer-item-schema]
                  (try
                    (make-deserializer
                     writer-item-schema reader-edn-schema name->edn-schema
@@ -345,25 +346,30 @@
             (swap! *deserializers assoc k deser*)
             (deser* is)))))))
 
+(defn kw->edn-schema [kw name->edn-schema]
+  (let [fqname (u/qualify-name-kw kw)]
+    (or (name->edn-schema fqname)
+        (let [schema-names (keys name->edn-schema)]
+          (throw
+           (ex-info
+            (str "Could not find named schema `" fqname "`.")
+            (u/sym-map fqname kw schema-names name->edn-schema)))))))
+
 (defmethod make-deserializer [:name-keyword :other]
   [writer-name-kw reader-edn-schema name->edn-schema *deserializers]
-  (let [writer-edn-schema (-> (u/qualify-name-kw writer-name-kw)
-                              (name->edn-schema))]
-    (make-recursive-deserializer writer-edn-schema reader-edn-schema
-                                 name->edn-schema *deserializers)))
+  (-> (kw->edn-schema writer-name-kw name->edn-schema)
+      (make-recursive-deserializer reader-edn-schema name->edn-schema
+                                   *deserializers)))
 
 (defmethod make-deserializer [:other :name-keyword]
   [writer-edn-schema reader-name-kw name->edn-schema *deserializers]
-  (let [reader-edn-schema (-> (u/qualify-name-kw reader-name-kw)
-                              (name->edn-schema))]
+  (let [reader-edn-schema (kw->edn-schema reader-name-kw name->edn-schema)]
     (make-recursive-deserializer writer-edn-schema reader-edn-schema
                                  name->edn-schema *deserializers)))
 
 (defmethod make-deserializer [:name-keyword :name-keyword]
   [writer-name-kw reader-name-kw name->edn-schema *deserializers]
-  (let [get-edn #(-> (u/qualify-name-kw %)
-                     (name->edn-schema))
-        writer-edn-schema (get-edn writer-name-kw)
-        reader-edn-schema (get-edn reader-name-kw)]
+  (let [writer-edn-schema (kw->edn-schema writer-name-kw name->edn-schema)
+        reader-edn-schema (kw->edn-schema reader-name-kw name->edn-schema)]
     (make-recursive-deserializer writer-edn-schema reader-edn-schema
                                  name->edn-schema *deserializers)))

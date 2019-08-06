@@ -64,6 +64,90 @@
     plumatic-schema))
 
 (defmulti validate-schema-args u/first-arg-dispatch)
+(defmulti make-edn-schema u/first-arg-dispatch)
+
+(defn make-record-field [field]
+  (when-not (#{2 3} (count field))
+    (throw
+     (ex-info (str "Record field definition must have 2 or 3 parameters. ("
+                   "[field-name field-schema] or "
+                   "[field-name field-schema field-default]).\n"
+                   "  Got " (count field) " parameters.\n"
+                   "  Bad field definition: " field)
+              {:bad-field-def field})))
+  (let [[field-name field-schema field-default] field
+        field-edn-schema (if (satisfies? u/ILancasterSchema field-schema)
+                           (u/edn-schema field-schema)
+                           field-schema)]
+    (when-not (keyword? field-name)
+      (throw
+       (ex-info (str "Field names must be keywords. Bad field name: "
+                     field-name)
+                (u/sym-map field-name field-schema field-default field))))
+    {:name field-name
+     :type field-edn-schema
+     :default (u/default-data field-edn-schema field-default)}))
+
+(defmethod make-edn-schema :record
+  [schema-type name-kw fields]
+  (let [name-kw (u/qualify-name-kw name-kw)
+        fields (binding [u/**enclosing-namespace** (namespace name-kw)]
+                 (mapv make-record-field fields))]
+    {:name name-kw
+     :type :record
+     :fields fields}))
+
+(defmethod make-edn-schema :enum
+  [schema-type name-kw symbols]
+  (let [name-kw (u/qualify-name-kw name-kw)]
+    {:name name-kw
+     :type :enum
+     :symbols symbols
+     :default (first symbols)}))
+
+(defmethod make-edn-schema :fixed
+  [schema-type name-kw size]
+  (let [name-kw (u/qualify-name-kw name-kw)]
+    {:name name-kw
+     :type :fixed
+     :size size}))
+
+(defmethod make-edn-schema :array
+  [schema-type name-kw items]
+  {:type :array
+   :items (u/ensure-edn-schema items)})
+
+(defmethod make-edn-schema :map
+  [schema-type name-kw values]
+  {:type :map
+   :values (u/ensure-edn-schema values)})
+
+(defn get-unique-descriptor [schema]
+  (if (satisfies? u/ILancasterSchema schema)
+    (-> schema u/fingerprint64 u/long->str)
+    (if (keyword? schema)
+      schema
+      (throw (ex-info (str "Unexpected schema type in union: `" schema "`.")
+                      {:schema schema})))))
+
+(defmethod make-edn-schema :union
+  [schema-type name-kw member-schemas]
+  (-> (reduce (fn [acc member-schema]
+                (let [{:keys [descriptors edn-schema]} acc
+                      descriptor (get-unique-descriptor member-schema)
+                      member-edn-schema (u/ensure-edn-schema member-schema)]
+                  (when (descriptors descriptor)
+                    (throw
+                     (ex-info "Identical schemas in union."
+                              {:duplicated-schema-edn member-edn-schema
+                               :descriptor descriptor})))
+                  (-> acc
+                      (update :descriptors conj descriptor)
+                      (update :edn-schema conj member-edn-schema))))
+              {:descriptors #{}
+               :edn-schema []}
+              member-schemas)
+      :edn-schema))
 
 (defn name-or-schema [edn-schema *names]
   (let [schema-name (u/edn-schema->name-kw edn-schema)]
@@ -153,7 +237,7 @@
      (validate-schema-args schema-type args))
    (let [edn-schema (if (u/avro-primitive-types schema-type)
                       schema-type
-                      (u/make-edn-schema schema-type name-kw args))]
+                      (make-edn-schema schema-type name-kw args))]
      (edn-schema->lancaster-schema edn-schema))))
 
 (defn primitive-schema [schema-kw]
