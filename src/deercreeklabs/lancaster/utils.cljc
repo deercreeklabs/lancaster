@@ -1464,3 +1464,8 @@
        (and (= :union reader-type)
             (union-reader-match? writer-edn-schema reader-edn-schema
                                  name->edn-schema))))))
+
+(defn dedupe-schemas [schemas]
+  (vals (reduce (fn [acc schema]
+                  (assoc acc (fingerprint64 schema) schema))
+                {} schemas)))

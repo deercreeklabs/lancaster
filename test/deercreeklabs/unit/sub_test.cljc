@@ -50,67 +50,6 @@
    :age 100
    :children [bob mary]})
 
-(deftest test-sub-schemas-complex
-  (let [ret (->> (l/sub-schemas sys-state-schema)
-                 (map u/edn-schema)
-                 (map u/edn-schema->name-kw)
-                 (set))
-        expected #{:array
-                   :string
-                   :deercreeklabs.unit.sub-test/msg
-                   :deercreeklabs.unit.sub-test/sys-state
-                   :deercreeklabs.unit.sub-test/user}]
-    (is (= expected ret))))
-
-(deftest test-sub-schemas
-  (let [ret (->> (l/sub-schemas lt/add-to-cart-rsp-schema)
-                 (map u/edn-schema)
-                 (map u/edn-schema->name-kw)
-                 (set))
-        expected #{:deercreeklabs.unit.lancaster-test/add-to-cart-rsp
-                   :deercreeklabs.unit.lancaster-test/a-fixed
-                   :int
-                   :deercreeklabs.unit.lancaster-test/why
-                   :bytes
-                   :deercreeklabs.unit.lancaster-test/add-to-cart-req}]
-    (is (= expected ret))))
-
-(deftest test-sub-schemas-union
-  (let [ret (->> (l/sub-schemas lt/person-or-dog-schema)
-                 (map u/edn-schema)
-                 (map u/edn-schema->name-kw)
-                 (set))
-        expected #{:union
-                   :deercreeklabs.unit.lancaster-test/dog
-                   :deercreeklabs.unit.lancaster-test/person}]
-    (is (= expected ret))))
-
-(deftest test-sub-schemas-repeated-schemas
-  (let [ret (l/sub-schemas foo-foos-schema)
-        uniques (->> ret
-                     (map u/edn-schema)
-                     (map u/edn-schema->name-kw)
-                     (set))
-        expected #{:int
-                   :map
-                   :deercreeklabs.unit.sub-test/foo
-                   :deercreeklabs.unit.sub-test/foo-foos}]
-    (is (= expected uniques))
-    (is (= (count ret) (count uniques)))))
-
-(deftest test-sub-schemas-recursive-schema
-  (let [ret (l/sub-schemas person-schema)
-        uniques (->> ret
-                     (map u/edn-schema)
-                     (map u/edn-schema->name-kw)
-                     (set))
-        expected #{:array :int :string :deercreeklabs.unit.sub-test/person}
-        _ (is (= expected uniques))
-        _ (is (= (count ret) (count uniques)))
-        array-schema (first (filter #(= :array (u/get-avro-type (l/edn %)))
-                                    ret))]
-    (is (lt/round-trip? array-schema [ralph bob]))))
-
 (deftest test-schema-at-path-nested-recs
   (let [path [:req :sku]
         ret (-> (l/schema-at-path lt/add-to-cart-rsp-schema path)
@@ -211,5 +150,6 @@
     (is (lt/round-trip? schema [ralph]))))
 
 (deftest test-schema-at-path-recursive-deep
-  (let [schema (l/schema-at-path person-schema [:children 0 :children])]
+  (let [schema (l/schema-at-path person-schema
+                                 [:children 0 :children 1 :children])]
     (is (lt/round-trip? schema [ralph]))))

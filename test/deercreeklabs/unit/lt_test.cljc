@@ -133,17 +133,6 @@
                 (u/edn-schema->name-kw))]
     (is (= :deercreeklabs.unit.lt-test/sku-to-qty ret))))
 
-(deftest test-sub-schemas-int-map
-  (let [ret (->> (l/sub-schemas sku-to-qty-v2-schema)
-                 (map u/edn-schema)
-                 (map u/edn-schema->name-kw)
-                 (set))
-        expected #{:deercreeklabs.unit.lt-test/sku-to-qty
-                   :int
-                   :long
-                   :array}]
-    (is (= expected ret))))
-
 (deftest test-flex-map-union
   (let [data1 {(ba/byte-array (range 16)) "name1"}
         data2 {1 "str2"}

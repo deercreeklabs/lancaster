@@ -232,16 +232,6 @@
               {:given-arg schema})))
   (u/default-data (edn schema)))
 
-(s/defn sub-schemas :- [LancasterSchema]
-  "Returns the unique sub schemas of the given Lancaster schema.
-   Includes the given schema."
-  [schema :- LancasterSchema]
-  (when-not (satisfies? u/ILancasterSchema schema)
-    (throw
-     (ex-info "Argument to sub-schemas must be a schema object."
-              {:given-arg schema})))
-  (sub/sub-schemas schema))
-
 (s/defn schema-at-path :- LancasterSchema
   [schema :- LancasterSchema
    path :- [s/Any]]

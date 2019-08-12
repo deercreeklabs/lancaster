@@ -5,40 +5,6 @@
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]))
 
-(defmulti edn-sub-schemas u/avro-type-dispatch)
-
-(defmethod edn-sub-schemas :default
-  [edn-schema]
-  [edn-schema])
-
-(defmethod edn-sub-schemas :logical-type
-  [edn-schema]
-  (let [{:keys [edn-sub-schemas]} edn-schema]
-    (cond-> [edn-schema]
-      edn-sub-schemas (concat edn-sub-schemas))))
-
-(defmethod edn-sub-schemas :record
-  [edn-schema]
-  (reduce (fn [acc {:keys [type]}]
-            (let [sub-schemas (edn-sub-schemas type)]
-              (concat acc sub-schemas)))
-          [edn-schema] (:fields edn-schema)))
-
-(defmethod edn-sub-schemas :array
-  [edn-schema]
-  (-> (:items edn-schema)
-      (edn-sub-schemas)
-      (conj edn-schema)))
-
-(defmethod edn-sub-schemas :map
-  [edn-schema]
-  (-> (:values edn-schema)
-      (edn-sub-schemas)
-      (conj edn-schema)))
-
-(defmethod edn-sub-schemas :union
-  [edn-schema]
-  (conj edn-schema edn-schema))
 
 (defmulti expand-name-kws u/avro-type-dispatch)
 
@@ -70,21 +36,6 @@
 (defmethod expand-name-kws :union
   [edn-schema name->edn-schema]
   (mapv #(expand-name-kws % name->edn-schema) edn-schema))
-
-(defn dedupe-schemas [schemas]
-  (vals (reduce (fn [acc schema]
-                  (assoc acc (u/fingerprint64 schema) schema))
-                {} schemas)))
-
-(defn sub-schemas [schema]
-  (let [top-edn-schema (u/edn-schema schema)]
-    (if-not (u/avro-container-types (u/get-avro-type top-edn-schema))
-      [schema]
-      (let [name->edn-schema (u/make-name->edn-schema top-edn-schema)
-            edn-subs (-> (edn-sub-schemas top-edn-schema)
-                         (expand-name-kws name->edn-schema))]
-        (->> (map schemas/edn-schema->lancaster-schema edn-subs)
-             (dedupe-schemas))))))
 
 (defmulti edn-schema-at-path u/avro-type-dispatch-lt)
 
