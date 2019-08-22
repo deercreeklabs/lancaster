@@ -11,7 +11,7 @@
 
 (l/def-record-schema add-to-cart-req-schema
   [:sku l/int-schema]
-  [:qty-requested l/int-schema 0])
+  [:qty-requested l/int-schema])
 
 (l/def-enum-schema why-schema
   :all :stock :limit)
@@ -23,7 +23,7 @@
   [:qty-added l/int-schema]
   [:current-qty l/int-schema]
   [:req add-to-cart-req-schema]
-  [:reason why-schema :stock]
+  [:reason why-schema]
   [:data a-fixed-schema]
   [:other-data l/bytes-schema])
 

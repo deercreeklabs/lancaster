@@ -108,7 +108,7 @@
          (l/pcf invoice-schema)))
   (is (= "679893850691967354"
          (u/long->str (l/fingerprint64 invoice-schema))))
-  (is (ltest/fp-matches? invoice-schema)))
+  #?(:clj (is (ltest/fp-matches? invoice-schema))))
 
 (deftest test-round-trip-invoice
   (let [data {:invoice/id "id001"
