@@ -14,12 +14,11 @@
 
 #?(:clj (pm/use-primitive-operators))
 
+(declare maybe)
+
 (def LancasterSchemaOrNameKW (s/if keyword?
                                s/Keyword
                                (s/protocol u/ILancasterSchema)))
-(def RecordFieldDef [(s/one s/Keyword "field-name")
-                     (s/one LancasterSchemaOrNameKW "field-schema")
-                     (s/optional s/Any "field-default")])
 
 (defrecord LancasterSchema
     [edn-schema name->edn-schema json-schema parsing-canonical-form
@@ -66,44 +65,158 @@
 (defmulti validate-schema-args u/first-arg-dispatch)
 (defmulti make-edn-schema u/first-arg-dispatch)
 
-(defn make-record-field [field]
-  (when-not (#{2 3} (count field))
-    (throw
-     (ex-info (str "Record field definition must have 2 or 3 parameters. ("
-                   "[field-name field-schema] or "
-                   "[field-name field-schema field-default]).\n"
-                   "  Got " (count field) " parameters.\n"
-                   "  Bad field definition: " field)
-              {:bad-field-def field})))
-  (let [[field-name field-schema field-default] field
-        field-edn-schema (if (satisfies? u/ILancasterSchema field-schema)
-                           (u/edn-schema field-schema)
-                           field-schema)]
+(defn throw-bad-field-schema [field-name bad-schema field]
+  (throw (ex-info (str "Bad field schema for field `" field-name
+                       "`. Got `" bad-schema "`.")
+                  (u/sym-map field-name bad-schema field))))
+
+(defn throw-invalid-default [field-name schema bad-default]
+  (let [field-edn-schema (u/edn-schema schema)]
+    (throw (ex-info (str "Bad default value for field `" field-name
+                         "`. Got `" bad-default "`.")
+                    (u/sym-map field-name bad-default field-edn-schema)))))
+
+(defn valid-default? [schema default]
+  (try
+    (u/serialize schema default)
+    true
+    (catch #?(:clj Exception :cljs js/Error) e
+      false)))
+
+(defn schema-or-kw? [x]
+  (or (instance? LancasterSchema x)
+      (keyword? x)))
+
+(defn validate-name-kw [name-kw]
+  (when-not (re-matches #"[A-Za-z][A-Za-z0-9\-]*" (name name-kw))
+    (throw (ex-info
+            (str "Name keywords must start with a letter and "
+                 "subsequently may only contain letters, numbers, "
+                 "or hyphens. Got `" name-kw "`.")
+            {:given-name-kw name-kw}))))
+
+(defn parse-field [field]
+  (let [[field-name & more] field
+        ret (u/sym-map field-name)]
     (when-not (keyword? field-name)
+      (throw (ex-info (str "Field name must be a keyword. Got `"
+                           field-name "`.")
+                      {:given-field-name field-name
+                       :field field})))
+    (validate-name-kw field-name)
+    (case (count more)
+      0 (throw (ex-info (str "Missing field schema for field `" field-name "`.")
+                        (u/sym-map field-name field)))
+      1 (let [field-schema (first more)]
+          (if (schema-or-kw? field-schema)
+            (assoc ret :field-schema field-schema)
+            (throw-bad-field-schema field-name field-schema field)))
+      2 (let [[p0 p1] more]
+          (if (string? p0)
+            (if (schema-or-kw? p1)
+              (assoc ret :doc p0 :field-schema p1)
+              (throw-bad-field-schema field-name p1 field))
+            (if (= :required p0)
+              (if (schema-or-kw? p1)
+                (assoc ret :required? true :field-schema p1)
+                (throw-bad-field-schema field-name p1 field))
+              (if (schema-or-kw? p0)
+                (if (valid-default? p0 p1)
+                  (assoc ret :field-schema p0 :default p1)
+                  (throw-invalid-default field-name p0 p1))
+                (throw-bad-field-schema field-name p0 field)))))
+      3 (let [[p0 p1 p2] more]
+          (if (string? p0)
+            (if (= :required p1)
+              (if (schema-or-kw? p2)
+                (assoc ret :doc p0 :required? true :field-schema p2)
+                (throw-bad-field-schema field-name p2 field))
+              (if (schema-or-kw? p1)
+                (if (valid-default? p1 p2)
+                  (assoc ret :doc p0 :field-schema p1 :default p2)
+                  (throw-invalid-default field-name p1 p2))
+                (throw-bad-field-schema field-name p1 field)))
+            (if (= :required p0)
+              (if (schema-or-kw? p1)
+                (if (valid-default? p1 p2)
+                  (assoc ret :required? true :field-schema p1 :default p2)
+                  (throw-invalid-default field-name p1 p2))
+                (throw-bad-field-schema field-name p1 field))
+              (throw-bad-field-schema field-name p0 field))))
+      4 (let [[p0 p1 p2 p3] more]
+          (if (and (string? p0)
+                   (= :required p1)
+                   (schema-or-kw? p2))
+            (if (valid-default? p2 p3)
+              (assoc ret :doc p0 :required? true :field-schema p2 :default p3)
+              (throw-invalid-default field-name p2 p3))
+            (throw-bad-field-schema field-name p2 field))))))
+
+(defn make-record-field [field]
+  ;; [field-name [docstring] [:required] field-schema [default]]
+  (when-not (sequential? field)
+    (throw (ex-info (str "Field must be a sequence. Got `" field "`.")
+                    {:given-field field})))
+  (let [params (parse-field field)
+        {:keys [field-name doc required? field-schema default]} params
+        _ (when-not (keyword? field-name)
+            (throw (ex-info (str "Field names must be keywords. Bad field "
+                                 "name: " field-name)
+                            (u/sym-map field-name field-schema default
+                                       params field))))
+        _ (when (and default (not required?))
+            (throw (ex-info (str "Only :required fields may have a default. "
+                                 "Field `" field-name "` has a default "
+                                 "but is not :required.")
+                            (u/sym-map field-name field default required?))))
+        field-schema* (if required?
+                        field-schema
+                        (maybe field-schema))
+        field-edn-schema (if (satisfies? u/ILancasterSchema field-schema*)
+                           (u/edn-schema field-schema*)
+                           field-schema*)]
+
+    (cond-> {:name field-name
+             :type field-edn-schema
+             :default (u/default-data field-edn-schema default)}
+      doc (assoc :doc doc))))
+
+(defn check-field-dups [fields]
+  (let [dups (vec (for [[field-name freq] (frequencies (map :name fields))
+                        :when (> (int freq) 1)]
+                    field-name))]
+    (when (pos? (count dups))
       (throw
-       (ex-info (str "Field names must be keywords. Bad field name: "
-                     field-name)
-                (u/sym-map field-name field-schema field-default field))))
-    {:name field-name
-     :type field-edn-schema
-     :default (u/default-data field-edn-schema field-default)}))
+       (ex-info
+        (str "Field names must be unique. Duplicated field-names: " dups)
+        (u/sym-map dups))))))
 
 (defmethod make-edn-schema :record
-  [schema-type name-kw fields]
-  (let [name-kw (u/qualify-name-kw name-kw)
-        fields (binding [u/**enclosing-namespace** (namespace name-kw)]
-                 (mapv make-record-field fields))]
-    {:name name-kw
-     :type :record
-     :fields fields}))
+  ([schema-type name-kw fields]
+   (make-edn-schema schema-type name-kw nil fields))
+  ([schema-type name-kw docstring fields]
+   (when-not (sequential? fields)
+     (throw (ex-info "`fields` parameter be a sequence of field definintions"
+                     {:given-fields fields})))
+   (let [name-kw (u/qualify-name-kw name-kw)
+         fields* (binding [u/**enclosing-namespace** (namespace name-kw)]
+                   (mapv make-record-field fields))]
+     (check-field-dups fields*)
+     (cond-> {:name name-kw
+              :type :record
+              :fields fields*}
+       docstring (assoc :doc docstring)))))
 
 (defmethod make-edn-schema :enum
-  [schema-type name-kw symbols]
-  (let [name-kw (u/qualify-name-kw name-kw)]
-    {:name name-kw
-     :type :enum
-     :symbols symbols
-     :default (first symbols)}))
+  ([schema-type name-kw fields]
+   (make-edn-schema schema-type name-kw nil fields))
+  ([schema-type name-kw docstring symbols]
+   (let [name-kw (u/qualify-name-kw name-kw)]
+     (cond-> {:name name-kw
+              :type :enum
+              :symbols symbols
+              :default (first symbols)}
+       docstring (assoc :doc docstring)))))
 
 (defmethod make-edn-schema :fixed
   [schema-type name-kw size]
@@ -177,6 +290,7 @@
      edn-schema)))
 
 (defn edn-schema->lancaster-schema
+  ;; TODO: Validate the edn-schema
   ([edn-schema*]
    (edn-schema->lancaster-schema edn-schema* nil))
   ([edn-schema* json-schema*]
@@ -213,19 +327,10 @@
                        (u/avro-schema->edn-schema))]
     (edn-schema->lancaster-schema edn-schema json-schema)))
 
-(defn validate-name-kw [name-kw]
-  (when-not (re-matches #"[A-Za-z][A-Za-z0-9\-]*" (name name-kw))
-    (throw (ex-info
-            (str "Name keywords must start with a letter and "
-                 "subsequently may only contain letters, numbers, "
-                 "or hyphens")
-            {:given-name-kw name-kw}))))
-
 (defn schema
-  ([schema-type ns-name schema-name args]
-   (let [name-kw (keyword ns-name schema-name)]
-     (schema schema-type name-kw args)))
   ([schema-type name-kw args]
+   (schema schema-type name-kw nil args))
+  ([schema-type name-kw docstring args]
    (when (u/avro-named-types schema-type)
      (when (not (keyword? name-kw))
        (let [fn-name (str (name schema-type) "-schema")]
@@ -237,57 +342,18 @@
      (validate-schema-args schema-type args))
    (let [edn-schema (if (u/avro-primitive-types schema-type)
                       schema-type
-                      (make-edn-schema schema-type name-kw args))]
+                      (if docstring
+                        (make-edn-schema schema-type name-kw docstring args)
+                        (make-edn-schema schema-type name-kw args)))]
      (edn-schema->lancaster-schema edn-schema))))
 
 (defn primitive-schema [schema-kw]
   (schema schema-kw nil nil))
 
-(defn schema-or-kw? [x]
-  (or (instance? LancasterSchema x)
-      (keyword? x)))
-
 (defmethod validate-schema-args :record
   [schema-type fields]
-  (when-not (sequential? fields)
-    (throw (ex-info (str "Second arg to record-schema must be a sequence "
-                         "of field definitions.")
-                    {:given-fields fields})))
-  (doseq [field fields]
-    (when-not (sequential? field)
-      (throw (ex-info (str "Second arg to record-schema must be a "
-                           "sequence of field definitions.")
-                      {:given-fields fields})))
-    (let [[name-kw field-schema default] field]
-      (when-not (keyword? name-kw)
-        (throw (ex-info "First arg in field definition must be a name keyword."
-                        {:given-name-kw name-kw})))
-      (validate-name-kw name-kw)
-      (when-not (schema-or-kw? field-schema)
-        (throw
-         (ex-info (str "Second arg in field definition must be a schema object "
-                       "or a name keyword.")
-                  {:given-field-schema field-schema})))
-      (when default
-        (try
-          (u/serialize field-schema (impl/output-stream 100) default)
-          (catch #?(:clj Exception :cljs js/Error) e
-            (let [ex-msg (u/ex-msg e)]
-              (if-not (str/includes? ex-msg "not a valid")
-                (throw e)
-                (throw
-                 (ex-info
-                  (str "Default value for field `" name-kw "` is invalid. "
-                       ex-msg)
-                  (u/sym-map name-kw default ex-msg))))))))))
-  (let [dups (vec (for [[field-name freq] (frequencies (map first fields))
-                        :when (> (int freq) 1)]
-                    field-name))]
-    (when (pos? (count dups))
-      (throw
-       (ex-info
-        (str "Field names must be unique. Duplicated field-names: " dups)
-        (u/sym-map dups))))))
+  ;; Validation happens in make-edn-schema due to complex args
+  nil)
 
 (defmethod validate-schema-args :enum
   [schema-type symbols]
@@ -373,3 +439,17 @@
       (if-not (u/match-exception? e)
         (throw e)
         false))))
+
+(defn maybe [sch]
+  (let [schema-w-null #(schema :union nil [(primitive-schema :null) %])]
+    (if (keyword? sch)
+      (schema-w-null sch)
+      (let [edn-schema (u/edn-schema sch)]
+        (if (= :union (u/get-avro-type edn-schema))
+          (if (some #{:null} edn-schema)
+            sch
+            (edn-schema->lancaster-schema
+             (vec (cons :null edn-schema))))
+          (if (= :null edn-schema)
+            sch
+            (schema-w-null sch)))))))

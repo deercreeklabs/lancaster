@@ -131,19 +131,22 @@
     (-> (:items parent-edn-schema)
         (expand-name-kws name->edn-schema))))
 
+(defmethod key-schema :map
+  [parent-edn-schema k name->edn-schema]
+  (when (string? k)
+    (-> (:values parent-edn-schema)
+        (expand-name-kws name->edn-schema))))
+
 (defmethod edn-schema-at-path :union
   [edn-schema full-path i name->edn-schema]
   (if (>= i (count full-path))
     edn-schema
-    (let [k (nth full-path i)]
-      (or (reduce (fn [acc member-schema]
-                    (if-let [s (key-schema member-schema k
-                                           name->edn-schema)]
-                      (reduced s)
-                      acc))
-                  nil edn-schema)
-          (throw (ex-info (str "No matching schema in union for key `" k "`.")
-                          (u/sym-map edn-schema k)))))))
+    (let [k (nth full-path i)
+          child (or (some #(key-schema % k name->edn-schema) edn-schema)
+                    (throw (ex-info (str "No matching schema in union for key `"
+                                         k "`.")
+                                    (u/sym-map edn-schema k))))]
+      (edn-schema-at-path child full-path (inc i) name->edn-schema))))
 
 (defn schema-at-path [schema path]
   (let [top-edn-schema (u/edn-schema schema)

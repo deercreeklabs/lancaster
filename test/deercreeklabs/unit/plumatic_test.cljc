@@ -22,15 +22,14 @@
   (is (= u/StringOrBytes (l/plumatic-schema l/bytes-schema))))
 
 (deftest test-plumatic-records
-  (let [expected {s/Any s/Any
-                  (s/required-key :sku) s/Int
-                  (s/required-key :qty-requested) s/Int}
-        _ (is (= expected (l/plumatic-schema lt/add-to-cart-req-schema)))
-        expected {s/Any s/Any
-                  :names [u/StringOrBytes]
-                  :why (s/enum :all :stock :limit)}]
-    (is (= expected
-           (l/plumatic-schema lt/rec-w-array-and-enum-schema)))))
+  (is (= nil (s/check (l/plumatic-schema lt/add-to-cart-req-schema)
+                      {:sku 1})))
+  (is (not= nil (s/check (l/plumatic-schema lt/add-to-cart-req-schema)
+                         {})))
+  (is (= nil (s/check (l/plumatic-schema lt/rec-w-array-and-enum-schema)
+                      {:names []})))
+  (is (= nil (s/check (l/plumatic-schema lt/rec-w-array-and-enum-schema)
+                      {:names []}))))
 
 (deftest test-plumatic-union
   (let [expected (s/conditional

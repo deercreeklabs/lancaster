@@ -36,11 +36,11 @@
 (deftest test-int-map-schema
   (is (= {:name :deercreeklabs.unit.lt-test/sku-to-qty
           :type :record
-          :fields [{:name :deercreeklabs.unit.lt-test.sku-to-qty/ks
+          :fields [{:name :deercreeklabs-unit-lt-test-sku-to-qty/ks
                     :type {:type :array
                            :items :int}
                     :default []}
-                   {:name :deercreeklabs.unit.lt-test.sku-to-qty/vs
+                   {:name :deercreeklabs-unit-lt-test-sku-to-qty/vs
                     :type {:type :array
                            :items :int}
                     :default []}]}
@@ -48,18 +48,20 @@
   #?(:clj (is (lt/fp-matches? sku-to-qty-schema)))
   (is (= (str
           "{\"name\":\"deercreeklabs.unit.lt_test.SkuToQty\",\"type\":"
-          "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\":"
-          "\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":{\"type\":"
-          "\"array\",\"items\":\"int\"}}]}")
+          "\"record\",\"fields\":[{\"name\":"
+          "\"deercreeklabsUnitLtTestSkuToQtyKs\",\"type\":{\"type\":\"array\","
+          "\"items\":\"int\"}},{\"name\":\"deercreeklabsUnitLtTestSkuToQtyVs\","
+          "\"type\":{\"type\":\"array\",\"items\":\"int\"}}]}")
          (l/pcf sku-to-qty-schema)))
   (is (= (str
           "{\"name\":\"deercreeklabs.unit.lt_test.SkuToQty\",\"fields\":"
-          "[{\"name\":\"ks\",\"type\":{\"type\":\"array\",\"items\":\"int\"},"
-          "\"default\":[]},{\"name\":\"vs\",\"type\":{\"type\":\"array\","
+          "[{\"name\":\"deercreeklabsUnitLtTestSkuToQtyKs\",\"type\":{\"type\":"
+          "\"array\",\"items\":\"int\"},\"default\":[]},{\"name\":"
+          "\"deercreeklabsUnitLtTestSkuToQtyVs\",\"type\":{\"type\":\"array\","
           "\"items\":\"int\"},\"default\":[]}],\"type\":\"record\","
           "\"logicalType\":\"int-map\"}")
          (l/json sku-to-qty-schema)))
-  (is (= "-5710709831631107019"
+  (is (= "-7668463894600081969"
          (u/long->str (l/fingerprint64 sku-to-qty-schema)))))
 
 (deftest test-embedded-int-map-pcf
@@ -67,10 +69,11 @@
         rs (l/record-schema :r [[:fm fms]])]
     (is (= (str
             "{\"name\":\"R\",\"type\":\"record\",\"fields\":[{\"name\":\"fm\","
-            "\"type\":{\"name\":\"deercreeklabs.unit.lt_test.MyMap\",\"type\":"
-            "\"record\",\"fields\":[{\"name\":\"ks\",\"type\":{\"type\":"
-            "\"array\",\"items\":\"int\"}},{\"name\":\"vs\",\"type\":"
-            "{\"type\":\"array\",\"items\":\"int\"}}]}}]}")
+            "\"type\":[\"null\",{\"name\":\"deercreeklabs.unit.lt_test.MyMap\""
+            ",\"type\":\"record\",\"fields\":[{\"name\":"
+            "\"deercreeklabsUnitLtTestMyMapKs\",\"type\":{\"type\":\"array\","
+            "\"items\":\"int\"}},{\"name\":\"deercreeklabsUnitLtTestMyMapVs\","
+            "\"type\":{\"type\":\"array\",\"items\":\"int\"}}]}]}]}")
            (l/pcf rs)))))
 
 (deftest test-int-map-schema-serdes

@@ -18,7 +18,7 @@
         reader-schema lt/add-to-cart-req-v2-schema
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= (assoc data :note "No note") decoded))))
+    (is (= (assoc data :note nil) decoded))))
 
 (deftest test-schema-evolution-remove-field
   (let [data {:sku 789
@@ -50,7 +50,7 @@
         decoded (l/deserialize reader-schema writer-schema encoded)
         expected (-> data
                      (dissoc :note)
-                     (assoc :comment ""))]
+                     (assoc :comment nil))]
     (is (= expected decoded))))
 
 (deftest test-schema-evolution-add-field-and-change-field
@@ -62,7 +62,8 @@
         decoded (l/deserialize reader-schema writer-schema encoded)]
     (is (= (assoc data
                   :qty-requested 10.0
-                  :note "No note") decoded))))
+                  :note nil)
+           decoded))))
 
 (deftest test-schema-evolution-union-add-member
   (let [data #:dog{:name "Rover" :owner "Zeus"}
@@ -70,7 +71,7 @@
         reader-schema lt/fish-or-person-or-dog-v2-schema
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (assoc data :dog/tag-number -1)]
+        expected (assoc data :dog/tag-number nil)]
     (is (= expected decoded))))
 
 (deftest test-schema-evolution-union-to-non-union
@@ -79,7 +80,7 @@
         reader-schema lt/dog-v2-schema
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)]
-    (is (= (assoc data :dog/tag-number -1) decoded))))
+    (is (= (assoc data :dog/tag-number nil) decoded))))
 
 (deftest test-schema-evolution-non-union-to-union
   (let [data #:dog{:name "Rover" :owner "Zeus" :tag-number 123}
@@ -140,16 +141,16 @@
                         [:game/audience (l/array-schema name-schema)]])
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (assoc data :game/audience [])]
-    (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Game\",\"type\":"
-                "\"record\",\"fields\":[{\"name\":\"players\",\"type\":"
-                "{\"type\":\"array\",\"items\":{\"name\":"
-                "\"deercreeklabs.unit.lancaster_test.Name\","
-                "\"type\":\"record\","
-                "\"fields\":[{\"name\":\"first\",\"type\":\"string\"},"
-                "{\"name\":\"last\",\"type\":\"string\"}]}}},{\"name\":"
-                "\"judges\",\"type\":{\"type\":\"array\",\"items\":"
-                "\"deercreeklabs.unit.lancaster_test.Name\"}}]}")
+        expected (assoc data :game/audience nil)]
+    (is (= (str
+            "{\"name\":\"deercreeklabs.unit.lancaster_test.Game\",\"type\":"
+            "\"record\",\"fields\":[{\"name\":\"gamePlayers\",\"type\":"
+            "[\"null\",{\"type\":\"array\",\"items\":{\"name\":\"deercreeklabs"
+            ".unit.lancaster_test.Name\",\"type\":\"record\",\"fields\":"
+            "[{\"name\":\"nameFirst\",\"type\":[\"null\",\"string\"]},{\"name\""
+            ":\"nameLast\",\"type\":[\"null\",\"string\"]}]}}]},{\"name\":"
+            "\"gameJudges\",\"type\":[\"null\",{\"type\":\"array\",\"items\":"
+            "\"deercreeklabs.unit.lancaster_test.Name\"}]}]}")
            (l/pcf writer-schema)))
     (is (= expected decoded))))
 
@@ -290,7 +291,8 @@
         data {:user/name "Alice"}
         encoded (l/serialize w-schema data)
         decoded (l/deserialize r-schema w-schema encoded)
-        expected {:user/age -1, :user/name "Alice"}]
+        expected {:user/age nil
+                  :user/name "Alice"}]
     (is (= expected decoded))))
 
 (deftest test-record-evolution-ns-deleted-field

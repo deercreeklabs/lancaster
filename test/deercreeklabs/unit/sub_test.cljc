@@ -18,10 +18,10 @@
   [:users (l/array-schema user-schema)])
 
 (l/def-record-schema foo-schema
-  [:foo/a l/int-schema])
+  [:foo/a :required l/int-schema])
 
 (l/def-record-schema bar-schema
-  [:bar/a l/string-schema])
+  [:bar/a :required l/string-schema])
 
 (l/def-record-schema foo-foos-schema
   [:foo foo-schema]
@@ -89,14 +89,14 @@
         ret (-> (l/schema-at-path lt/rec-w-array-and-enum-schema path)
                 (u/edn-schema)
                 (u/edn-schema->name-kw))]
-    (is (= :deercreeklabs.unit.lancaster-test/why ret))))
+    (is (= :union ret))))
 
 (deftest test-schema-at-path-map-in-rec-1
   (let [path [:name-to-age]
         ret (-> (l/schema-at-path lt/rec-w-map-schema path)
                 (u/edn-schema)
                 (u/edn-schema->name-kw))]
-    (is (= :map ret))))
+    (is (= :union ret))))
 
 (deftest test-schema-at-path-map-in-rec-2
   (let [path [:name-to-age "Bo"]

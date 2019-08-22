@@ -53,17 +53,26 @@
   "Creates a Lancaster schema object representing an Avro record
    with the given field definitions. For a more
    concise way to declare a record schema, see def-record-schema."
-  [name-kw :- s/Keyword
-   fields :- [schemas/RecordFieldDef]]
-  (schemas/schema :record name-kw fields))
+  ;; Field def: [field-name [docstring] [:required] field-schema [default]]
+  ([name-kw :- s/Keyword
+    fields :- s/Any]
+   (schemas/schema :record name-kw nil fields))
+  ([name-kw :- s/Keyword
+    docstring :- s/Str
+    fields :- s/Any]
+   (schemas/schema :record name-kw docstring fields)))
 
 (s/defn enum-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro enum
    with the given symbol keywords. For a more concise way to declare
    an enum schema, see def-enum-schema."
-  [name-kw :- s/Keyword
-   symbol-keywords :- [s/Keyword]]
-  (schemas/schema :enum name-kw symbol-keywords))
+  ([name-kw :- s/Keyword
+    symbol-keywords :- [s/Keyword]]
+   (schemas/schema :enum name-kw nil symbol-keywords))
+  ([name-kw :- s/Keyword
+    docstring :- s/Str
+    symbol-keywords :- [s/Keyword]]
+   (schemas/schema :enum name-kw docstring symbol-keywords)))
 
 (s/defn fixed-schema :- LancasterSchema
   "Creates a Lancaster schema object representing an Avro fixed
@@ -99,17 +108,7 @@
    is returned unchanged. Similarly, if the given schema is
    l/null-schema, it is returned unchanged."
   [schema :- LancasterSchemaOrNameKW]
-  (if (keyword? schema)
-    (union-schema [null-schema schema])
-    (let [edn-schema (u/edn-schema schema)]
-      (if (= :union (u/get-avro-type edn-schema))
-        (if (some #{:null} edn-schema)
-          schema
-          (schemas/edn-schema->lancaster-schema
-           (vec (cons :null edn-schema))))
-        (if (= :null edn-schema)
-          schema
-          (union-schema [null-schema schema]))))))
+  (schemas/maybe schema))
 
 (s/defn serialize :- ba/ByteArray
   "Serializes data to a byte array, using the given Lancaster schema."
@@ -262,6 +261,7 @@
 
 (defmacro def-record-schema
   "Defines a var whose value is a Lancaster record schema object"
+  ;; Field def: [field-name [docstring] [:required] field-schema [default]]
   [clj-name & args]
   (when-not (pos? (count args))
     (throw
@@ -270,9 +270,13 @@
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)]
+        schema-name (u/schema-name clj-name)
+        name-kw (keyword ns-name schema-name)
+        [docstring fields] (if (string? (first args))
+                             [(first args) (rest args)]
+                             [nil args])]
     `(def ~clj-name
-       (schemas/schema :record ~ns-name ~schema-name (vector ~@args)))))
+       (schemas/schema :record ~name-kw ~docstring (vector ~@fields)))))
 
 (defmacro def-enum-schema
   "Defines a var whose value is a Lancaster enum schema object"
@@ -284,9 +288,13 @@
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)]
+        schema-name (u/schema-name clj-name)
+        name-kw (keyword ns-name schema-name)
+        [docstring symbols] (if (string? (first args))
+                              [(first args) (rest args)]
+                              [nil args])]
     `(def ~clj-name
-       (schemas/schema :enum ~ns-name ~schema-name (vector ~@args)))))
+       (schemas/schema :enum ~name-kw ~docstring (vector ~@symbols)))))
 
 (defmacro def-fixed-schema
   "Defines a var whose value is a Lancaster fixed schema object"
@@ -298,9 +306,10 @@
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
                       *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)]
+        schema-name (u/schema-name clj-name)
+        name-kw (keyword ns-name schema-name)]
     `(def ~clj-name
-       (schemas/schema :fixed ~ns-name ~schema-name ~size))))
+       (schemas/schema :fixed ~name-kw ~size))))
 
 (defmacro def-array-schema
   "Defines a var whose value is a Lancaster array schema object"

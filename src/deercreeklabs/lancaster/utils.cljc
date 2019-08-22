@@ -276,9 +276,9 @@
          :union (default-data (first edn-schema) field-default name->edn-schema)
          :fixed (make-default-fixed-or-bytes (:size edn-schema) field-default)
          :bytes (make-default-fixed-or-bytes 0 field-default)
+         :null nil
          (or field-default
              (case avro-type
-               :null nil
                :boolean false
                :int (int -1)
                :long -1
@@ -1103,6 +1103,13 @@
   [field-schema default]
   default)
 
+(defn fix-field-name [field-name]
+  (let [ns-part (namespace field-name)
+        name-part (name field-name)]
+    (csk/->camelCase (if ns-part
+                       (str ns-part "-" name-part)
+                       name-part))))
+
 (defn fix-fields [edn-schema]
   (update edn-schema :fields
           (fn [fields]
@@ -1111,7 +1118,7 @@
                           avro-type (get-avro-type field-type)]
 
                       (-> field
-                          (update :name #(csk/->camelCase (name %)))
+                          (update :name fix-field-name)
                           (update :type edn-schema->avro-schema)
                           (update :default #(fix-default field-type %)))))
                   fields))))

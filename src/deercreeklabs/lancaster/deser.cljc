@@ -232,8 +232,8 @@
           get-reader-field (fn [writer-field-name]
                              (reduce
                               (fn [acc reader-field]
-                                (if (= (name writer-field-name)
-                                       (name (:name reader-field)))
+                                (if (= writer-field-name
+                                       (:name reader-field))
                                   (reduced reader-field)
                                   acc))
                               nil reader-fields))
@@ -255,17 +255,7 @@
                                   reader-field-default :default}]
                           (if (writer-field-names (name reader-field-name))
                             acc
-                            (if reader-field-default
-                              (assoc acc reader-field-name reader-field-default)
-                              (throw (ex-info
-                                      (str "Reader record field `"
-                                           reader-field-name "` "
-                                           "does not exist in writer record "
-                                           "and does not have a default value.")
-                                      {:writer-edn-schema writer-edn-schema
-                                       :reader-edn-schema reader-edn-schema
-                                       :problematic-reader-field-name
-                                       reader-field-name})))))
+                            (assoc acc reader-field-name reader-field-default)))
                         {} reader-fields)
           deserializer (fn deserialize [is]
                          (persistent!

@@ -1,7 +1,6 @@
 (ns deercreeklabs.unit.lancaster-test
   (:require
-   [clojure.string :as str]
-   [clojure.test :refer [deftest is use-fixtures]]
+   [clojure.test :refer [deftest is]]
    [clojure.walk :as walk]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
@@ -57,20 +56,20 @@
     (= data deserialized)))
 
 (l/def-record-schema add-to-cart-req-schema
-  [:sku l/int-schema]
-  [:qty-requested l/int-schema 0])
+  [:sku :required l/int-schema]
+  [:qty-requested l/int-schema])
 
 (def add-to-cart-req-v2-schema
   (l/record-schema ::add-to-cart-req
                    [[:sku l/int-schema]
-                    [:qty-requested l/int-schema 0]
-                    [:note l/string-schema "No note"]]))
+                    [:qty-requested l/int-schema]
+                    [:note l/string-schema]]))
 
 (def add-to-cart-req-v3-schema ;; qtys are floats!
   (l/record-schema ::add-to-cart-req
                    [[:sku l/int-schema]
                     [:qty-requested l/float-schema]
-                    [:note l/string-schema "No note"]]))
+                    [:note l/string-schema]]))
 
 (def add-to-cart-req-v4-schema
   (l/record-schema ::add-to-cart-req
@@ -95,15 +94,15 @@
   [:age maybe-int-schema])
 
 (l/def-record-schema rec-w-fixed-no-default-schema
-  [:data a-fixed-schema])
+  [:data :required a-fixed-schema])
 
 (l/def-record-schema add-to-cart-rsp-schema
   [:qty-requested l/int-schema]
   [:qty-added l/int-schema]
   [:current-qty l/int-schema]
-  [:req add-to-cart-req-schema {:sku 10 :qty-requested 1}]
-  [:the-reason-why why-schema :stock]
-  [:data a-fixed-schema (ba/byte-array [77 88])]
+  [:req :required add-to-cart-req-schema {:sku 10 :qty-requested 1}]
+  [:the-reason-why :required why-schema :stock]
+  [:data :required a-fixed-schema (ba/byte-array [77 88])]
   [:other-data l/bytes-schema])
 
 (l/def-array-schema simple-array-schema
@@ -113,7 +112,7 @@
   add-to-cart-rsp-schema)
 
 (l/def-record-schema rec-w-array-and-enum-schema
-  [:names simple-array-schema]
+  [:names :required simple-array-schema]
   [:why why-schema])
 
 (l/def-map-schema ages-schema
@@ -130,21 +129,21 @@
   l/int-schema add-to-cart-req-schema a-fixed-schema)
 
 (l/def-record-schema person-schema
-  [:person/name l/string-schema "No name"]
-  [:person/age l/int-schema 0])
+  [:person/name :required l/string-schema "No name"]
+  [:person/age :required l/int-schema 0])
 
 (l/def-record-schema dog-schema
-  [:dog/name l/string-schema "No name"]
-  [:dog/owner l/string-schema "No owner"])
+  [:dog/name l/string-schema]
+  [:dog/owner l/string-schema])
 
 (def dog-v2-schema
   (l/record-schema ::dog
-                   [[:dog/name l/string-schema "No name"]
-                    [:dog/owner l/string-schema "No owner"]
+                   [[:dog/name l/string-schema]
+                    [:dog/owner l/string-schema]
                     [:dog/tag-number l/int-schema]]))
 
 (l/def-record-schema fish-schema
-  [:fish/name l/string-schema "No name"]
+  [:fish/name l/string-schema]
   [:tank-num l/int-schema])
 
 (l/def-union-schema person-or-dog-schema
@@ -178,15 +177,16 @@
   [:minute l/int-schema])
 
 (l/def-record-schema tree-schema
-  [:value l/int-schema]
-  [:right (l/maybe :tree)]
-  [:left (l/maybe :tree)])
+  [:value :required l/int-schema]
+  [:right :tree]
+  [:left :tree])
 
 (deftest test-record-schema
-  (let [expected-pcf (str "{\"name\":\"deercreeklabs.unit.lancaster_test."
-                          "AddToCartReq\",\"type\":\"record\",\"fields\":"
-                          "[{\"name\":\"sku\",\"type\":\"int\"},{\"name\":"
-                          "\"qtyRequested\",\"type\":\"int\"}]}")
+  (let [expected-pcf (str
+                      "{\"name\":\"deercreeklabs.unit.lancaster_test."
+                      "AddToCartReq\",\"type\":\"record\",\"fields\":"
+                      "[{\"name\":\"sku\",\"type\":\"int\"},{\"name\":"
+                      "\"qtyRequested\",\"type\":[\"null\",\"int\"]}]}")
         expected-edn {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
                       :type :record
                       :fields
@@ -194,10 +194,10 @@
                         :type :int
                         :default -1}
                        {:name :qty-requested
-                        :type :int
-                        :default 0}]}]
+                        :type [:null :int]
+                        :default nil}]}]
     #?(:clj (is (fp-matches? add-to-cart-req-schema)))
-    (is (= "-6098958998487321663"
+    (is (= "3703990475150151424"
            (u/long->str (l/fingerprint64 add-to-cart-req-schema))))
     (is (= expected-edn (l/edn add-to-cart-req-schema)))
     (is (= expected-pcf (l/pcf
@@ -208,23 +208,24 @@
               :qty-requested 5}
         encoded (l/serialize add-to-cart-req-schema data)
         decoded (l/deserialize-same add-to-cart-req-schema encoded)]
-    (is (= "9gEK" (ba/byte-array->b64 encoded)))
+    (is (= "9gECCg==" (ba/byte-array->b64 encoded)))
     (is (= data decoded))))
 
 (deftest test-def-record-schema-mixed-ns
   (is (= {:name :deercreeklabs.unit.lancaster-test/fish
           :type :record
           :fields [{:name :fish/name
-                    :type :string
-                    :default "No name"}
+                    :type [:null :string]
+                    :default nil}
                    {:name :tank-num
-                    :type :int
-                    :default -1}]}
+                    :type [:null :int]
+                    :default nil}]}
          (l/edn fish-schema)))
-  (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Fish\",\"type\":"
-              "\"record\",\"fields\":[{\"name\":\"name\",\"type\":\"string\","
-              "\"default\":\"No name\"},{\"name\":\"tankNum\",\"type\":"
-              "\"int\",\"default\":-1}]}")
+  (is (= (str
+          "{\"name\":\"deercreeklabs.unit.lancaster_test.Fish\",\"type\":"
+          "\"record\",\"fields\":[{\"name\":\"fishName\",\"type\":[\"null\","
+          "\"string\"],\"default\":null},{\"name\":\"tankNum\",\"type\":"
+          "[\"null\",\"int\"],\"default\":null}]}")
          (l/json fish-schema))))
 
 (deftest test-def-enum-schema
@@ -275,18 +276,25 @@
   (let [expected {:name :deercreeklabs.unit.lancaster-test/add-to-cart-rsp
                   :type :record
                   :fields
-                  [{:name :qty-requested :type :int :default -1}
-                   {:name :qty-added :type :int :default -1}
-                   {:name :current-qty :type :int :default -1}
+                  [{:name :qty-requested
+                    :type [:null :int]
+                    :default nil}
+                   {:name :qty-added
+                    :type [:null :int]
+                    :default nil}
+                   {:name :current-qty
+                    :type [:null :int]
+                    :default nil}
                    {:name :req
                     :type
                     {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
                      :type :record
                      :fields [{:name :sku :type :int :default -1}
                               {:name :qty-requested
-                               :type :int
-                               :default 0}]}
-                    :default {:sku 10 :qty-requested 1}}
+                               :type [:null :int]
+                               :default nil}]}
+                    :default {:sku 10
+                              :qty-requested nil}}
                    {:name :the-reason-why
                     :type {:name :deercreeklabs.unit.lancaster-test/why
                            :type :enum
@@ -294,31 +302,31 @@
                            :default :all}
                     :default :stock}
                    {:name :data
-                    :type
-                    {:name :deercreeklabs.unit.lancaster-test/a-fixed
-                     :type :fixed
-                     :size 2}
+                    :type {:name :deercreeklabs.unit.lancaster-test/a-fixed
+                           :type :fixed
+                           :size 2}
                     :default "MX"}
                    {:name :other-data
-                    :type :bytes
-                    :default ""}]}]
+                    :type [:null :bytes]
+                    :default nil}]}]
     #?(:clj (is (fp-matches? add-to-cart-rsp-schema)))
-    (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.AddToCartRsp\","
-                "\"type\":\"record\",\"fields\":[{\"name\":\"qtyRequested\","
-                "\"type\":\"int\"},{\"name\":\"qtyAdded\",\"type\":\"int\"},"
-                "{\"name\":\"currentQty\",\"type\":\"int\"},{\"name\":\"req\","
-                "\"type\":{\"name\":\"deercreeklabs.unit.lancaster_test."
-                "AddToCartReq\",\"type\":\"record\",\"fields\":[{\"name\":"
-                "\"sku\",\"type\":\"int\"},{\"name\":\"qtyRequested\",\"type"
-                "\":\"int\"}]}},{\"name\":\"theReasonWhy\",\"type\":{\"name\":"
-                "\"deercreeklabs.unit.lancaster_test.Why\",\"type\":\"enum\","
-                "\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}},{\"name\":"
-                "\"data\",\"type\":{\"name\":\"deercreeklabs.unit.lancaster_test."
-                "AFixed\",\"type\":\"fixed\",\"size\":2}},{\"name\":"
-                "\"otherData\",\"type\":\"bytes\"}]}")
+    (is (= (str
+            "{\"name\":\"deercreeklabs.unit.lancaster_test.AddToCartRsp\","
+            "\"type\":\"record\",\"fields\":[{\"name\":\"qtyRequested\","
+            "\"type\":[\"null\",\"int\"]},{\"name\":\"qtyAdded\",\"type\":"
+            "[\"null\",\"int\"]},{\"name\":\"currentQty\",\"type\":[\"null\","
+            "\"int\"]},{\"name\":\"req\",\"type\":{\"name\":\"deercreeklabs."
+            "unit.lancaster_test.AddToCartReq\",\"type\":\"record\",\"fields\":"
+            "[{\"name\":\"sku\",\"type\":\"int\"},{\"name\":\"qtyRequested\","
+            "\"type\":[\"null\",\"int\"]}]}},{\"name\":\"theReasonWhy\","
+            "\"type\":{\"name\":\"deercreeklabs.unit.lancaster_test.Why\","
+            "\"type\":\"enum\",\"symbols\":[\"ALL\",\"STOCK\",\"LIMIT\"]}},"
+            "{\"name\":\"data\",\"type\":{\"name\":\"deercreeklabs.unit."
+            "lancaster_test.AFixed\",\"type\":\"fixed\",\"size\":2}},"
+            "{\"name\":\"otherData\",\"type\":[\"null\",\"bytes\"]}]}")
            (l/pcf add-to-cart-rsp-schema)))
     (is (= expected (l/edn add-to-cart-rsp-schema))))
-  (is (= "-4997526840462835541"
+  (is (= "3835051015389218749"
          (u/long->str (l/fingerprint64 add-to-cart-rsp-schema)))))
 
 (deftest test-nested-record-serdes
@@ -333,7 +341,7 @@
         encoded (l/serialize add-to-cart-rsp-schema data)
         decoded (l/deserialize-same add-to-cart-rsp-schema
                                     encoded)]
-    (is (= "9gEUFPYB9gEEQkMEe3s=" (ba/byte-array->b64 encoded)))
+    (is (= "AvYBAhQCFPYBAvYBBEJDAgR7ew==" (ba/byte-array->b64 encoded)))
     (is (= (xf-byte-arrays data)
            (xf-byte-arrays decoded)))))
 
@@ -471,16 +479,25 @@
           {:name :deercreeklabs.unit.lancaster-test/add-to-cart-rsp
            :type :record
            :fields
-           [{:name :qty-requested :type :int :default -1}
-            {:name :qty-added :type :int :default -1}
-            {:name :current-qty :type :int :default -1}
+           [{:name :qty-requested
+             :type [:null :int]
+             :default nil}
+            {:name :qty-added
+             :type [:null :int]
+             :default nil}
+            {:name :current-qty
+             :type [:null :int]
+             :default nil}
             {:name :req
              :type {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
                     :type :record
-                    :fields
-                    [{:name :sku :type :int :default -1}
-                     {:name :qty-requested :type :int :default 0}]}
-             :default {:sku 10 :qty-requested 1}}
+                    :fields [{:name :sku
+                              :type :int
+                              :default -1}
+                             {:name :qty-requested
+                              :type [:null :int]
+                              :default nil}]}
+             :default {:sku 10 :qty-requested nil}}
             {:name :the-reason-why
              :type {:name :deercreeklabs.unit.lancaster-test/why
                     :type :enum
@@ -493,9 +510,11 @@
               :type :fixed
               :size 2}
              :default "MX"}
-            {:name :other-data :type :bytes :default ""}]}}
+            {:name :other-data
+             :type [:null :bytes]
+             :default nil}]}}
          (l/edn rsps-schema)))
-  (is (= "4121614369257759480"
+  (is (= "3719708605096203323"
          (u/long->str (l/fingerprint64 rsps-schema)))))
 
 (deftest test-nested-array-schema-serdes
@@ -518,8 +537,8 @@
         encoded (l/serialize rsps-schema data)
         decoded (l/deserialize-same rsps-schema encoded)]
     (is (ba/equivalent-byte-arrays?
-         (ba/byte-array [4 -10 1 8 20 -10 1 -10 1 4 66 67 4 123 123
-                         8 8 8 20 8 0 100 110 4 64 74 0])
+         (ba/byte-array [4 2 246 1 2 8 2 20 246 1 2 246 1 4 66 67 2 4 123 123
+                         2 8 2 8 2 8 20 2 8 0 100 110 2 4 64 74 0])
          encoded))
     (is (= (xf-byte-arrays data)
            (xf-byte-arrays decoded)))))
@@ -531,15 +550,17 @@
           {:name :deercreeklabs.unit.lancaster-test/add-to-cart-rsp
            :type :record
            :fields
-           [{:name :qty-requested :type :int :default -1}
-            {:name :qty-added :type :int :default -1}
-            {:name :current-qty :type :int :default -1}
+           [{:name :qty-requested :type [:null :int] :default nil}
+            {:name :qty-added :type [:null :int] :default nil}
+            {:name :current-qty :type [:null :int] :default nil}
             {:name :req
              :type {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
                     :type :record
                     :fields [{:name :sku :type :int :default -1}
-                             {:name :qty-requested :type :int :default 0}]}
-             :default {:sku 10 :qty-requested 1}}
+                             {:name :qty-requested
+                              :type [:null :int]
+                              :default nil}]}
+             :default {:sku 10 :qty-requested nil}}
             {:name :the-reason-why
              :type {:name :deercreeklabs.unit.lancaster-test/why
                     :type :enum
@@ -552,9 +573,11 @@
               :type :fixed
               :size 2}
              :default "MX"}
-            {:name :other-data :type :bytes :default ""}]}}
+            {:name :other-data
+             :type [:null :bytes]
+             :default nil}]}}
          (l/edn nested-map-schema)))
-  (is (= "550517813727580798"
+  (is (= "-6484319793187085262"
          (u/long->str (l/fingerprint64 nested-map-schema)))))
 
 (deftest test-nested-map-schema-serdes
@@ -577,8 +600,8 @@
         encoded (l/serialize nested-map-schema data)
         decoded (l/deserialize-same nested-map-schema encoded)]
     (is (ba/equivalent-byte-arrays?
-         (ba/byte-array [4 2 65 -10 1 8 20 -10 1 -10 1 4 66 67 4
-                         123 123 2 66 8 8 8 20 8 0 100 110 4 64 74 0])
+         (ba/byte-array [4 2 65 2 246 1 2 8 2 20 246 1 2 246 1 4 66 67 2 4 123
+                         123 2 66 2 8 2 8 2 8 20 2 8 0 100 110 2 4 64 74 0])
          encoded))
     (is (= (xf-byte-arrays data)
            (xf-byte-arrays decoded)))))
@@ -598,21 +621,24 @@
   (is (= [:int
           {:name :deercreeklabs.unit.lancaster-test/add-to-cart-req
            :type :record
-           :fields
-           [{:name :sku :type :int :default -1}
-            {:name :qty-requested :type :int :default 0}]}
+           :fields [{:name :sku
+                     :type :int
+                     :default -1}
+                    {:name :qty-requested
+                     :type [:null :int]
+                     :default nil}]}
           {:name :deercreeklabs.unit.lancaster-test/a-fixed
            :type :fixed
            :size 2}]
          (l/edn union-schema)))
-  (is (= "220769290814327109"
+  (is (= "-193173046069528093"
          (u/long->str (l/fingerprint64 union-schema)))))
 
 (deftest test-union-schema-serdes
   (let [data {:sku 123 :qty-requested 4}
         encoded (l/serialize union-schema data)
         decoded (l/deserialize-same union-schema encoded)
-        _ (is (ba/equivalent-byte-arrays? (ba/byte-array [2 -10 1 8])
+        _ (is (ba/equivalent-byte-arrays? (ba/byte-array [2 246 1 2 8])
                                           encoded))
         _ (is (= data decoded))
         data 5
@@ -632,10 +658,10 @@
           {:name :deercreeklabs.unit.lancaster-test/dog
            :type :record
            :fields
-           [{:name :dog/name :type :string :default "No name"}
-            {:name :dog/owner :type :string :default "No owner"}]}]
+           [{:name :dog/name :type [:null :string] :default nil}
+            {:name :dog/owner :type [:null :string] :default nil}]}]
          (l/edn person-or-dog-schema)))
-  (is (= "4442216514942460391"
+  (is (= "-5174754347720548939"
          (u/long->str (l/fingerprint64 person-or-dog-schema)))))
 
 (deftest test-multi-record-union-schema-serdes
@@ -643,7 +669,7 @@
         encoded (l/serialize person-or-dog-schema data)
         decoded (l/deserialize-same person-or-dog-schema encoded)
         _ (is (ba/equivalent-byte-arrays?
-               (ba/byte-array [2 8 70 105 100 111 8 90 97 99 104])
+               (ba/byte-array [2 2 8 70 105 100 111 2 8 90 97 99 104])
                encoded))
         _ (is (= data decoded))
         data #:person{:name "Bill" :age 50}
@@ -700,14 +726,14 @@
           {:name :deercreeklabs.unit.lancaster-test/dog
            :type :record
            :fields [{:name :dog/name
-                     :type :string
-                     :default "No name"}
+                     :type [:null :string]
+                     :default nil}
                     {:name :dog/owner
-                     :type :string
-                     :default "No owner"}]}
+                     :type [:null :string]
+                     :default nil}]}
           {:type :array :items :string}]
          (l/edn mopodoa-schema)))
-  (is (= "274497413942050586"
+  (is (= "-2196893583124300899"
          (u/long->str (l/fingerprint64 mopodoa-schema)))))
 
 (deftest test-mopodoa-schema-serdes
@@ -777,13 +803,14 @@
             :type {:type :array :items :string}
             :default []}
            {:name :why
-            :type {:name :deercreeklabs.unit.lancaster-test/why
-                   :type :enum
-                   :symbols [:all :stock :limit]
-                   :default :all}
-            :default :all}]}
+            :type [:null
+                   {:default :all
+                    :name :deercreeklabs.unit.lancaster-test/why
+                    :symbols [:all :stock :limit]
+                    :type :enum}]
+            :default nil}]}
          (l/edn rec-w-array-and-enum-schema)))
-  (is (= "-513897484330170713"
+  (is (= "-7358640627267953104"
          (u/long->str (l/fingerprint64
                        rec-w-array-and-enum-schema)))))
 
@@ -793,8 +820,8 @@
         encoded (l/serialize rec-w-array-and-enum-schema data)
         decoded (l/deserialize-same rec-w-array-and-enum-schema encoded)]
     (is (ba/equivalent-byte-arrays?
-         (ba/byte-array [6 8 65 114 105 97 8 66 101 116 104 10 67 105
-                         110 100 121 0 2])
+         (ba/byte-array [6 8 65 114 105 97 8 66 101 116 104 10 67 105 110 100
+                         121 0 2 2])
          encoded))
     (is (= data decoded))))
 
@@ -803,11 +830,14 @@
   (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-map
           :type :record
           :fields [{:name :name-to-age
-                    :type {:type :map :values :int}
-                    :default {}}
-                   {:name :what :type :string :default ""}]}
+                    :type [:null {:type :map
+                                  :values :int}]
+                    :default nil}
+                   {:name :what
+                    :type [:null :string]
+                    :default nil}]}
          (l/edn rec-w-map-schema)))
-  (is (= "-2363848852859553430"
+  (is (= "1679652566194036700"
          (u/long->str (l/fingerprint64
                        rec-w-map-schema)))))
 
@@ -819,8 +849,8 @@
         encoded (l/serialize rec-w-map-schema data)
         decoded (l/deserialize-same rec-w-map-schema encoded)]
     (is (ba/equivalent-byte-arrays?
-         (ba/byte-array [6 8 65 114 105 97 44 8 66 101 116 104 66 10
-                         67 105 110 100 121 88 0 4 121 111])
+         (ba/byte-array [2 6 8 65 114 105 97 44 8 66 101 116 104 66 10 67 105
+                         110 100 121 88 0 2 4 121 111])
          encoded))
     (is (= data decoded))))
 
@@ -853,20 +883,23 @@
 
 (deftest test-rec-w-maybe-field
   #?(:clj (is (fp-matches? rec-w-maybe-field-schema)))
-  (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-maybe-field,
-          :type :record,
-          :fields
-          [{:name :name, :type :string, :default ""}
-           {:name :age, :type [:null :int], :default nil}]}
+  (is (= {:name :deercreeklabs.unit.lancaster-test/rec-w-maybe-field
+          :type :record
+          :fields [{:name :name
+                    :type [:null :string]
+                    :default nil}
+                   {:name :age
+                    :type [:null :int]
+                    :default nil}]}
          (l/edn rec-w-maybe-field-schema)))
-  (is (= "6155099556329734528"
+  (is (= "-5686522258470805846"
          (u/long->str (l/fingerprint64 rec-w-maybe-field-schema)))))
 
 (deftest test-record-serdes-missing-field
-  (let [data {:sku 100}]
+  (let [data {:qty-requested 100}]
     (is (thrown-with-msg?
          #?(:clj ExceptionInfo :cljs js/Error)
-         #"Record data is missing key `:qty-requested`"
+         #"Record data is missing key `:sku`"
          (l/serialize add-to-cart-req-schema data)))))
 
 (deftest test-record-serdes-missing-maybe-field
@@ -904,13 +937,14 @@
 (deftest test-field-default-validation
   (is (thrown-with-msg?
        #?(:clj ExceptionInfo :cljs js/Error)
-       #"Default value for field .* is invalid"
+       #"Bad default value for field `:int-field`. Got `a`."
        (l/record-schema :test-schema
                         [[:int-field l/int-schema "a"]]))))
 
 (deftest test-default-data
   (is (= :all (l/default-data why-schema)))
-  (is (= {:sku -1, :qty-requested 0}
+  (is (= {:sku -1
+          :qty-requested nil}
          (l/default-data add-to-cart-req-schema))))
 
 (deftest test-bad-field-name
@@ -1019,7 +1053,7 @@
     (is (not (l/schemas-match? sch1 sch3)))))
 
 (deftest test-missing-record-field
-  (let [sch1 (l/record-schema ::test [[:a l/int-schema]])
+  (let [sch1 (l/record-schema ::test [[:a :required l/int-schema]])
         sch2 (l/union-schema [l/int-schema sch1])
         sch3 (l/record-schema ::sch3 [[:arg sch2]])
         sch4 (l/array-schema sch3)]

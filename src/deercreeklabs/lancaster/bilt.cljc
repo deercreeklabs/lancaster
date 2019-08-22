@@ -1,5 +1,6 @@
 (ns deercreeklabs.lancaster.bilt
   (:require
+   [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]
@@ -17,7 +18,8 @@
 (defn flex-map-schema
   [name-kw logical-type key-schema values-schema valid-k?]
   (schemas/validate-name-kw name-kw)
-  (let [key-ns (str (namespace name-kw) "." (name name-kw))
+  (let [key-ns (-> (str (namespace name-kw) "." (name name-kw))
+                   (str/replace #"\." "-"))
         key-edn-schema (u/edn-schema key-schema)
         values-edn-schema (u/edn-schema values-schema)
         fields [{:name (keyword key-ns "ks")

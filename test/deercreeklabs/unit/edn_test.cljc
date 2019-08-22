@@ -101,8 +101,12 @@
         rt-edn (-> (l/pcf user-schema)
                    (l/json->schema)
                    (l/edn))
-        expected {:fields [{:default "" :name :name :type :string}
-                           {:default "" :name :nickname :type :string}]
+        expected {:fields [{:name :name
+                            :default nil
+                            :type [:null :string]}
+                           {:name :nickname
+                            :default nil
+                            :type [:null :string]}]
                   :name :deercreeklabs.unit.edn-test/user
                   :type :record}]
     (is (= expected orig-edn))
@@ -113,17 +117,20 @@
         rt-edn (-> (l/pcf msg-schema)
                    (l/json->schema)
                    (l/edn))
-        expected {:fields [{:default {:name "" :nickname ""}
-                            :name :user
-                            :type {:fields [{:default ""
-                                             :name :name
-                                             :type :string}
-                                            {:default ""
-                                             :name :nickname
-                                             :type :string}]
-                                   :name :deercreeklabs.unit.edn-test/user
-                                   :type :record}}
-                           {:default "" :name :text :type :string}]
+        expected {:fields [{:name :user
+                            :default nil
+                            :type [:null
+                                   {:fields [{:default nil
+                                              :name :name
+                                              :type [:null :string]}
+                                             {:default nil
+                                              :name :nickname
+                                              :type [:null :string]}],
+                                    :name :deercreeklabs.unit.edn-test/user,
+                                    :type :record}]}
+                           {:name :text
+                            :default nil
+                            :type [:null :string]}]
                   :name :deercreeklabs.unit.edn-test/msg
                   :type :record}]
     (is (= expected orig-edn))
