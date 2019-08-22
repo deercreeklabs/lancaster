@@ -48,11 +48,6 @@
       <version>0.2.3</version>
     </dependency>
     <dependency>
-      <groupId>prismatic</groupId>
-      <artifactId>schema</artifactId>
-      <version>1.1.12</version>
-    </dependency>
-    <dependency>
       <groupId>mvxcvi</groupId>
       <artifactId>puget</artifactId>
       <version>1.1.2</version>
@@ -66,6 +61,11 @@
       <groupId>primitive-math</groupId>
       <artifactId>primitive-math</artifactId>
       <version>0.1.6</version>
+    </dependency>
+    <dependency>
+      <groupId>prismatic</groupId>
+      <artifactId>schema</artifactId>
+      <version>1.1.12</version>
     </dependency>
   </dependencies>
   <build>
