@@ -153,7 +153,6 @@ available.
 * [def-enum-schema](#def-enum-schema): Defines a var w/ an enum schema.
 * [def-fixed-schema](#def-fixed-schema): Defines a var w/ a fixed schema.
 * [def-map-schema](#def-map-schema): Defines a var w/ a map schema. Keys must be strings.
-* [def-flex-map-schema](#def-flex-map-schema): Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
 * [def-record-schema](#def-record-schema): Defines a var w/ a record schema.
 * [def-merged-record-schema](#def-merged-record-schema): Defines a var w/ a record schema which contains all the fields of all record schemas passed in.
 * [def-union-schema](#def-union-schema): Defines a var w/ a union schema.
@@ -164,7 +163,6 @@ available.
 * [enum-schema](#enum-schema): Creates an enum schema.
 * [fixed-schema](#fixed-schema): Creates a fixed schema.
 * [map-schema](#map-schema): Creates a map schema. Keys must be strings.
-* [flex-map-schema](#flex-map-schema): Creates a flex-map schema. Flex map keys may be of any schema type.
 * [record-schema](#record-schema): Creates a record schema.
 * [merged-record-schema](#merged-record-schema): Creates a record schema which contains all the fields of all record schemas passed in.
 * [union-schema](#union-schema): Creates a union schema.
@@ -250,7 +248,7 @@ At union schema creation time, Lancaster will throw an exception if the
 the schema is disallowed.
 
 # Names and Namespaces
-Named Avro schemas (`records`, `enums`, `fixeds`, and `flex-maps`)
+Named Avro schemas (`records`, `enums`, `fixeds`)
 contain a name part and, optionally, a namespace part. The
 [Names section of the Avro spec](http://avro.apache.org/docs/current/spec.html#names)
 describes this in detail. Lancaster fully supports the spec, allowing
@@ -273,8 +271,7 @@ is used as the schema's namespace. If the keyword does not have
 a namespace, the schema will not have a namespace.
 Only the functions for creating named schemas
 ([enum-schema](#enum-schema), [fixed-schema](#fixed-schema),
-[record-schema](#record-schema), [flex-map-schema](#flex-map-schema),
-and [merged-record-schema](#merged-record-schema)) have a `name-kw` parameter.
+[record-schema](#record-schema), and [merged-record-schema](#merged-record-schema)) have a `name-kw` parameter.
 
 In the EDN representation of a named schema, the :name attribute
 contains the name of the schema, including the namespace, if any.
@@ -517,37 +514,6 @@ The defined var
 * [map-schema](#map-schema): Creates a map schema.
 
 -------------------------------------------------------------------------------
-### def-flex-map-schema
-```clojure
-(def-flex-map-schema name-symbol keys-schema values-schema)
-```
-Defines a var whose value is a Lancaster schema object representing a
-map of keys to values, with the keys and values being described by the
-given schemas. Differs from def-map-schema, which only allows string keys.
-Note that flex-maps are not part of the
-[Avro Specification](http://avro.apache.org/docs/current/spec.html)
-and are implemented using an Avro `record`.
-For cases where a macro is not appropriate, use the
-[flex-map-schema](#flex-map-schema) function instead.
-
-#### Parameters
-* `name-symbol`: The symbol naming this schema object.
-* `keys-schema`: A Lancaster schema object describing the keys in the map.
-* `values-schema`: A Lancaster schema object describing the values in the map.
-
-#### Return Value
-The defined var
-
-#### Example
-```clojure
-(l/def-flex-map-scheema id-to-name-schema
-  l/int-schema l/string-schema)
-```
-
-#### See Also
-* [flex-map-schema](#flex-map-schema): Creates a flex-map schema.
-
--------------------------------------------------------------------------------
 ### def-union-schema
 ```clojure
 (def-union-schema name-symbol & member-schemas)
@@ -748,39 +714,6 @@ The new Lancaster map schema
 
 #### See Also
 * [def-map-schema](#def-map-schema): Defines a var w/ a map schema.
-* [flex-map-schema](#flex-map-schema): Creates a flex-map schema. Flex map keys may be of any schema type.
-* [def-flex-map-schema](#def-flex-map-schema): Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
-
--------------------------------------------------------------------------------
-### flex-map-schema
-```clojure
-(flex-map-schema name-kw keys-schema values-schema)
-```
-Creates a Lancaster schema object representing a
-map of keys to values, with the keys and values being described by the
-given schemas. Differs from map-schema, which only allows string keys.
-Note that flex-maps are not part of the
-[Avro Specification](http://avro.apache.org/docs/current/spec.html)
-and are implemented using an Avro `record`.
-
-#### Parameters
-* `name-kw`: A keyword naming this ```flex-map```. May or may not be
-             namespaced. The name-kw must start with a letter and subsequently
-             only contain letters, numbers, or hyphens.
-* `keys-schema`: A Lancaster schema object describing the keys in the map.
-* `values-schema`: A Lancaster schema object describing the values in the map.
-
-#### Return Value
-The new Lancaster flex-map schema
-
-#### Examples
-```clojure
-(def id-to-name-schema
-  (l/flex-map-schema l/int-schema l/string-schema))
-```
-#### See Also
-* [def-flex-map-schema](#def-flex-map-schema): Defines a var w/ a flex-map schema. Flex map keys may be of any schema type.
-* [map-schema](#map-schema) Creates a map schema. Keys must be strings.
 
 -------------------------------------------------------------------------------
 ### union-schema
