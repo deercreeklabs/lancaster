@@ -85,8 +85,7 @@ serialize data, and then deserialize it.
 ;; {:name "Alice" :age 40}
 ```
 
-Here is a more complex example, using nested schemas and
-the `maybe` function to make fields nillable:
+Here is a more complex example using nested schemas:
 ```clojure
 (require '[deercreeklabs.lancaster :as l])
 
@@ -98,13 +97,14 @@ the `maybe` function to make fields nillable:
   [:age l/int-schema]
   [:dominant-hand hand-schema]
   [:favorite-integers (l/array-schema l/int-schema)]
-  [:favorite-color (l/maybe l/string-schema)]) ;; Field is nillable
+  [:favorite-color l/string-schema])
 
 (def alice
   {:name "Alice"
    :age 40
    :favorite-integers [12 59]
    :dominant-hand :left})
+   ;; :favorite-color is missing. Record fields are optional by default.
 
 (def encoded (l/serialize person-schema alice))
 
@@ -337,11 +337,15 @@ is also derived from this symbol. See
 [Names and Namespaces](#names-and-namespaces) for more information about
 schema names. The name-symbol must start with a letter and subsequently
 only contain letters, numbers, or hyphens.
-* `fields`: Field definitions. Field definitions are sequences
-            of the form ```[field-name-kw field-schema default-value]```.
+* `docstring`: Optional. A documentation string
+* `fields`: Field definitions. Field definitions are sequences of the form
+            ```[field-name-kw <docstring> <:required> field-schema <default-value>]```
+            All fields are optional by default.
     * `field-name-kw`: A keyword naming this field. The keyword may have a namespace.
+    * `docstring`: Optional. A documentation string.
+    * `:required`: Optional. Indicates a required field.
     * `field-schema`: A Lancaster schema object representing the field's schema.
-    * `default-value`: Optional. The default data value for this field.
+    * `default-value`: Optional. The default data value for this field. Only `:required` fields can have default values.
 
 #### Return Value
 The defined var
@@ -349,8 +353,8 @@ The defined var
 #### Example
 ```clojure
 (l/def-record-schema person-schema
-  [:name l/string-schema "no name"]
-  [:age l/int-schema])
+  [:name :required l/string-schema "no name"]
+  [:age "The person's age" l/int-schema])
 ```
 
 #### See Also
@@ -412,6 +416,7 @@ is also derived from this symbol. See
 [Names and Namespaces](#names-and-namespaces) for more information about
 schema names. The name-symbol must start with a letter and subsequently
 only contain letters, numbers, or hyphens.
+* `docstring`: Optional. A documentation string
 * `symbol-keywords`: Keywords representing the symbols in the enum. The
 keywords may have namespaces.
 
@@ -611,11 +616,15 @@ concise way to declare a record schema, see
 * `name-kw`: A keyword naming this ```record```. May or may not be
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
-* `fields`: A sequence of field definitions. Field definitions are sequences
-            of the form ```[field-name-kw field-schema default-value]```.
-    * `field-name-kw`: A keyword naming this field.
+* `docstring`: Optional. A documentation string
+* `fields`: Field definitions. Field definitions are sequences of the form
+            ```[field-name-kw <docstring> <:required> field-schema <default-value>]```
+            All fields are optional by default.
+    * `field-name-kw`: A keyword naming this field. The keyword may have a namespace.
+    * `docstring`: Optional. A documentation string.
+    * `:required`: Optional. Indicates a required field.
     * `field-schema`: A Lancaster schema object representing the field's schema.
-    * `default-value`: Optional. The default data value for this field.
+    * `default-value`: Optional. The default data value for this field. Only `:required` fields can have default values.
 
 #### Return Value
 The new Lancaster record schema
@@ -624,7 +633,8 @@ The new Lancaster record schema
 ```clojure
 (def person-schema
   (l/record-schema :person
-                   [[:name l/string-schema "no name"]
+                   "A schema representing a person."
+                   [[:name :required l/string-schema "no name"]
                     [:age l/int-schema]]))
 ```
 
@@ -646,6 +656,7 @@ concise way to declare an enum schema, see
 * `name-kw`: A keyword naming this ```enum```. May or may not be
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
+* `docstring`: Optional. A documentation string
 * `symbol-keywords`: A sequence of keywords, representing the symbols in
              the enum.
 
