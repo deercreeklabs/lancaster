@@ -338,14 +338,15 @@ is also derived from this symbol. See
 schema names. The name-symbol must start with a letter and subsequently
 only contain letters, numbers, or hyphens.
 * `docstring`: Optional. A documentation string
-* `fields`: Field definitions. Field definitions are sequences of the form
+* `fields`: Field definitions. All fields are optional unless marked `:required`.
+Field definitions are sequences of the form
             ```[field-name-kw <docstring> <:required> field-schema <default-value>]```
-            All fields are optional by default.
     * `field-name-kw`: A keyword naming this field. The keyword may have a namespace.
     * `docstring`: Optional. A documentation string.
     * `:required`: Optional. Indicates a required field.
     * `field-schema`: A Lancaster schema object representing the field's schema.
-    * `default-value`: Optional. The default data value for this field. Only `:required` fields can have default values.
+    * `default-value`: Optional. The default data value for this field.
+    Only `:required` fields can have default values.
 
 #### Return Value
 The defined var
@@ -617,14 +618,15 @@ concise way to declare a record schema, see
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
 * `docstring`: Optional. A documentation string
-* `fields`: Field definitions. Field definitions are sequences of the form
+* `fields`: Field definitions. All fields are optional unless marked `:required`.
+Field definitions are sequences of the form
             ```[field-name-kw <docstring> <:required> field-schema <default-value>]```
-            All fields are optional by default.
     * `field-name-kw`: A keyword naming this field. The keyword may have a namespace.
     * `docstring`: Optional. A documentation string.
     * `:required`: Optional. Indicates a required field.
     * `field-schema`: A Lancaster schema object representing the field's schema.
-    * `default-value`: Optional. The default data value for this field. Only `:required` fields can have default values.
+    * `default-value`: Optional. The default data value for this field.
+    Only `:required` fields can have default values.
 
 #### Return Value
 The new Lancaster record schema
