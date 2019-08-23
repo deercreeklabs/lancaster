@@ -324,7 +324,7 @@
 (def LongOrInt (s/pred long-or-int?))
 
 (defn valid-int? [data]
-  (and (integer? data)
+  (and (long-or-int? data)
        (<= (int data) (int 2147483647))
        (>= (int data) (int -2147483648))))
 
@@ -712,8 +712,8 @@
 (def avro-type->data-types
   {:null #{nil}
    :boolean #{(type true)}
-   :int #?(:clj #{Integer Long} :cljs #{js/Number})
-   :long #?(:clj #{Integer Long} :cljs #{js/Number})
+   :int #?(:clj #{Integer Long} :cljs #{js/Number Long})
+   :long #?(:clj #{Integer Long} :cljs #{js/Number Long})
    :float #?(:clj #{Integer Long Float Double} :cljs #{js/Number})
    :double #?(:clj #{Integer Long Float Double} :cljs #{js/Number})
    :bytes bytes-types

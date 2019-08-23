@@ -1081,3 +1081,10 @@
         encoded (l/serialize sch v)
         decoded (l/deserialize-same sch encoded)]
     (is (= v decoded))))
+
+(deftest serialize-long-into-union
+  (let [sch (l/union-schema [l/null-schema l/long-schema])
+        v (u/str->long "-5442038735385698765")
+        encoded (l/serialize sch v)
+        decoded (l/deserialize-same sch encoded)]
+    (is (= v decoded))))
