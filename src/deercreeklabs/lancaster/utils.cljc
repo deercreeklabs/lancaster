@@ -714,7 +714,7 @@
    :boolean #{(type true)}
    :int #?(:clj #{Integer Long} :cljs #{js/Number})
    :long #?(:clj #{Integer Long} :cljs #{js/Number})
-   :float #?(:clj #{Integer Float} :cljs #{js/Number})
+   :float #?(:clj #{Integer Long Float Double} :cljs #{js/Number})
    :double #?(:clj #{Integer Long Float Double} :cljs #{js/Number})
    :bytes bytes-types
    :string #{(type "a")}

@@ -1074,3 +1074,10 @@
          #"Record data is missing key `:a`"
          (l/serialize sch4 [{:arg {:a 1}}
                             {:arg {:b 1}}])))))
+
+(deftest serialize-small-double-into-float-union
+  (let [sch (l/union-schema [l/null-schema l/float-schema])
+        v (double 6.0)
+        encoded (l/serialize sch v)
+        decoded (l/deserialize-same sch encoded)]
+    (is (= v decoded))))
