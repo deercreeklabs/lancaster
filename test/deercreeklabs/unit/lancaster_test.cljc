@@ -1088,3 +1088,10 @@
         encoded (l/serialize sch v)
         decoded (l/deserialize-same sch encoded)]
     (is (= v decoded))))
+
+(deftest serialize-lazy-sequence-into-union
+  (let [sch (l/union-schema [l/null-schema (l/array-schema l/int-schema)])
+        v (map identity [42 681 1024]) ; Make a lazy seq
+        encoded (l/serialize sch v)
+        decoded (l/deserialize-same sch encoded)]
+    (is (= v decoded))))

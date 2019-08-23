@@ -706,9 +706,6 @@
   #?(:clj #{(type (byte-array 1))}
      :cljs #{js/Int8Array js/Uint8Array}))
 
-(def sequential-types
-  #{(type '()) (type '(1)) (type []) (type (range 1)) (type (seq [1]))})
-
 (def avro-type->data-types
   {:null #{nil}
    :boolean #{(type true)}
@@ -719,8 +716,7 @@
    :bytes bytes-types
    :string #{(type "a")}
    :enum #{(type :a)}
-   :fixed bytes-types
-   :array sequential-types})
+   :fixed bytes-types})
 
 (defn maplike? [edn-schema name->edn-schema]
   (let [sch (if (keyword? edn-schema)
@@ -732,10 +728,13 @@
 
 (defn get-type-keys-for-schema [sch name->edn-schema single-maplike?]
   (let [avro-type (get-avro-type sch)]
-    (if (and single-maplike?
-             (maplike? sch name->edn-schema))
+    (if (and (maplike? sch name->edn-schema)
+             single-maplike?)
       #{:lancaster/maplike}
       (case avro-type
+        :array
+        #{:array}
+
         :map
         #{:map}
 
@@ -779,24 +778,25 @@
           {} (map-indexed vector edn-schema)))
 
 (defn get-type-key [data path single-maplike?]
-  (if-not (map? data)
-    (type data)
-    (if single-maplike?
-      :lancaster/maplike
-      (let [[k v] (first data)]
-        (cond
-          (keyword? k)
-          k
+  (cond
+    (sequential? data) :array
+    (not (map? data)) (type data)
+    :else (if single-maplike?
+            :lancaster/maplike
+            (let [[k v] (first data)]
+              (cond
+                (keyword? k)
+                k
 
-          (string? k)
-          :map
+                (string? k)
+                :map
 
-          (nil? k)
-          (if (nil? v)
-            :empty-map
-            (throw (ex-info (str "Illegal nil key in record or map. "
-                                 "Path: " path "Data: " data ".")
-                            (sym-map data path)))))))))
+                (nil? k)
+                (if (nil? v)
+                  :empty-map
+                  (throw (ex-info (str "Illegal nil key in record or map. "
+                                       "Path: " path "Data: " data ".")
+                                  (sym-map data path)))))))))
 
 (defn make-lt-test-branch-info-pairs
   [union-schema name->edn-schema single-maplike? *name->serializer]
