@@ -179,3 +179,23 @@
   (let [sch (l/int-map-schema ::test l/string-schema)
         data (l/default-data sch)]
     (is (= {} data))))
+
+(deftest test-lt-in-record
+  (let [user-schema (l/record-schema ::user
+                                     [[:name l/string-schema]
+                                      [:nickname l/string-schema]])
+        users-schema (l/int-map-schema ::users user-schema)
+        state-schema (l/record-schema ::state
+                                      [[:users users-schema]])
+        data {:users {1 {:name "Bo" :nickname "B"}}}
+        encoded (l/serialize state-schema data)
+        decoded (l/deserialize-same state-schema encoded)]
+    (is (= data decoded))))
+
+(deftest test-lt-in-record-from-json
+  (let [schema (l/int-map-schema ::im l/string-schema)
+        rt-schema (l/json->schema (l/pcf schema))
+        data {1 "yyy"}
+        encoded (l/serialize schema data)
+        decoded (l/deserialize schema rt-schema encoded)]
+    (is (= data decoded))))

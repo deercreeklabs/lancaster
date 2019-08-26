@@ -36,29 +36,6 @@ Lancaster does not support:
 * Avro protocols
 * Avro container files (may be supported in the future).
 
-## Performance
-Lancaster aims to be fast. Microbenchmarks show that it is generally faster
-than JSON serialization / deserialization while producing output
-that is much more compact. The output of an unscientific run of
-the microbenchmark in `deercreeklabs.perf-test` is pasted in below.
-Your mileage may vary.
-
-**Clojure 1.9 on JVM 1.8**
-
-Parameter    | Lancaster |    JSON   | JSON+Deflate
-:----------- | --------: |---------: | -----------:
-Encode ops/s | `235,849` | `138,696` | `29,240`
-Decode ops/s | `364,964` | `233,645` | `86,207`
-Encoded size (bytes) | `14` | `142`  | `105`
-
-**ClojureScript 1.10.339 on Node.js 8.10**
-
-Parameter    | Lancaster |    JSON   | JSON+Deflate
-:----------- | --------: |---------: | -----------:
-Encode ops/s | `32,468`  | `30,769`  | `2,865`
-Decode ops/s | `76,923`  | `10,428`  | `3,597`
-Encoded size (bytes) | `14` | `162`  | `109`
-
 ## Project Name
 The [Avro Lancaster](https://en.wikipedia.org/wiki/Avro_Lancaster) was an
 airplane manufactured by [Avro Aircraft](https://en.wikipedia.org/wiki/Avro).

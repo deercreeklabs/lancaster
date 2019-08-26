@@ -222,25 +222,29 @@
                              (conj! acc (deserialize-item is)))
                            a (range count)))))))))
 
+(defn get-reader-field [reader-fields writer-field-name]
+  (let [normalized-writer-field-name (u/fix-field-name writer-field-name)]
+    (reduce
+     (fn [acc reader-field]
+       (let [reader-field-name (:name reader-field)
+             normalized-reader-field-name (u/fix-field-name
+                                           reader-field-name)]
+         (if (= normalized-writer-field-name normalized-reader-field-name)
+           (reduced reader-field)
+           acc)))
+     nil reader-fields)))
+
 (defmethod make-deserializer [:record :record]
   [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
   (check-names writer-edn-schema reader-edn-schema)
   (binding [u/**enclosing-namespace** (namespace (:name writer-edn-schema))]
     (let [{writer-fields :fields} writer-edn-schema
-          ens u/**enclosing-namespace**
           {reader-fields :fields} reader-edn-schema
-          get-reader-field (fn [writer-field-name]
-                             (reduce
-                              (fn [acc reader-field]
-                                (if (= writer-field-name
-                                       (:name reader-field))
-                                  (reduced reader-field)
-                                  acc))
-                              nil reader-fields))
+
           ;; Use mapv, not map, below since map doesn't preserve
           ;; the u/**enclosing-namespace** binding due to laziness
           wfis (mapv (fn [{:keys [name type]}]
-                       (let [reader-field (get-reader-field name)
+                       (let [reader-field (get-reader-field reader-fields name)
                              reader-field-type (or (:type reader-field)
                                                    type)
                              deserialize (make-deserializer
@@ -250,10 +254,13 @@
                                         (:name reader-field))]
                          (u/sym-map deserialize reader-k)))
                      writer-fields)
-          writer-field-names (set (map #(-> % :name name) writer-fields))
+          norm-writer-field-names (->> writer-fields
+                                       (map #(-> % :name u/fix-field-name))
+                                       (set))
           added (reduce (fn [acc {reader-field-name :name
                                   reader-field-default :default}]
-                          (if (writer-field-names (name reader-field-name))
+                          (if (norm-writer-field-names
+                               (u/fix-field-name reader-field-name))
                             acc
                             (assoc acc reader-field-name reader-field-default)))
                         {} reader-fields)
