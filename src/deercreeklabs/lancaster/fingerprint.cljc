@@ -19,7 +19,7 @@
 
 
 ;; Based on
-;; http://avro.apache.org/docs/current/spec.html#Schema+Fingerprints
+;; http://avro.apache.org/docs/current/spec.html#schema_fingerprints
 
 (def seed (u/str->long "-4513414715797952619"))
 (def long-one (make-long 1))
