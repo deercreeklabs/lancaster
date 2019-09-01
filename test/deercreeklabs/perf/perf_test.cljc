@@ -63,6 +63,7 @@
         json-dec-ops (get-ops-per-sec json-dec-fn num-ops)
         floor #?(:cljs Math/floor
                  :clj #(int (Math/floor (double %))))]
+    (println)
     (println (str "Lancaster encode ops per sec:     " (floor enc-ops)))
     (println (str "JSON encode ops per sec:          " (floor json-enc-ops)))
     (println (str "Lancaster decode ops per sec:     " (floor dec-ops)))
