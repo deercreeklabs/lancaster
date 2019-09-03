@@ -149,7 +149,11 @@
             (if (valid-default? p2 p3)
               (assoc ret :doc p0 :required? true :field-schema p2 :default p3)
               (throw-invalid-default field-name p2 p3))
-            (throw-bad-field-schema field-name p2 field))))))
+            (throw-bad-field-schema field-name p2 field)))
+      (throw (ex-info (str "Too many arguments (" (count more) ") in field `"
+                           field-name "`.")
+                      {:field-name field-name
+                       :arguments more})))))
 
 (defn make-record-field [field]
   ;; [field-name [docstring] [:required] field-schema [default]]
