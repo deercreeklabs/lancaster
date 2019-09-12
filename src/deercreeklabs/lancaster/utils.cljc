@@ -742,8 +742,8 @@
         (into #{} (map :name (:fields sch)))
 
         :name-keyword
-        (cond-> #{sch}
-          (qualified-keyword? sch) (conj (keyword (name sch))))
+        (get-type-keys-for-schema (name->edn-schema sch) name->edn-schema
+                                  single-maplike?)
 
         ;; else
         (set (avro-type->data-types avro-type))))))
