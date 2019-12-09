@@ -545,8 +545,35 @@
                 :cljs (goog/typeOf data))]
     (throw
      (ex-info (str "Data `" display-data "` (type: " type ") is not a valid "
-                   expected ". Path: " path)
+                   expected ". Path: " path ".")
               (sym-map expected data type path edn-schema)))))
+
+(defn throw-non-string-map-key [k v edn-schema data path]
+  (let [display-k (if (nil? k)
+                    "nil"
+                    k)
+        type #?(:clj (if (nil? k)
+                       "nil"
+                       (.toString ^Class (class data)))
+                :cljs (goog/typeOf data))]
+    (throw
+     (ex-info (str "Map key `" display-k "` (type: " type ") is not a valid "
+                   "string. All map keys must be strings. Path: " path ".")
+              (sym-map k v data type path edn-schema)))))
+
+(defn throw-non-string-set-element [k edn-schema data path]
+  (let [display-k (if (nil? k)
+                    "nil"
+                    k)
+        type #?(:clj (if (nil? k)
+                       "nil"
+                       (.toString ^Class (class data)))
+                :cljs (goog/typeOf data))]
+    (throw
+     (ex-info (str "Set element `" display-k "` (type: " type ") is not a "
+                   "valid string. All set elements must be strings. Path: "
+                   path ".")
+              (sym-map k data type path edn-schema)))))
 
 (defn edn->json-string [edn]
   #?(:clj (json/generate-string edn)
@@ -656,20 +683,49 @@
     (swap! *name->serializer assoc name serializer)
     serializer))
 
+(defn make-serialize-set
+  "Implemented as an Avro map w/ null values."
+  [edn-schema]
+  (fn [os data path]
+    (when-not (set? data)
+      (let [display-data (if (nil? data)
+                           "nil"
+                           data)
+            type #?(:clj (if (nil? data)
+                           "nil"
+                           (.toString ^Class (class data)))
+                    :cljs (goog/typeOf data))]
+        (throw
+         (ex-info
+          (str "Data `" display-data "` (type: " type ") is not a valid "
+               "Clojure set. Path: " path)
+          (sym-map data type path edn-schema)))))
+    (when (pos? (count data))
+      (write-long-varint-zz os (count data))
+      (doseq [k data]
+        (when-not (string? k)
+          (throw-non-string-set-element k edn-schema data path))
+        (write-utf8-string os k)))
+    (write-byte os 0)))
+
 (defmethod make-serializer :map
   [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [values]} edn-schema
         serialize-value (make-serializer values name->edn-schema
                                          *name->serializer)]
-    (fn serialize [os data path]
-      (when-not (valid-map? data)
-        (throw-invalid-data-error edn-schema data path))
-      (when (pos? (count data))
-        (write-long-varint-zz os (count data))
-        (doseq [[k v] data]
-          (write-utf8-string os k)
-          (serialize-value os v (conj path k))))
-      (write-byte os 0))))
+    (if (= :null values)
+      (make-serialize-set edn-schema)
+      (fn serialize [os data path]
+        (when-not (valid-map? data)
+          (throw-invalid-data-error edn-schema data path))
+        (when (pos? (count data))
+          (write-long-varint-zz os (count data))
+          (doseq [[k v] data]
+            (when-not (string? k)
+              (throw-non-string-map-key k v edn-schema data path))
+            (write-utf8-string os k)
+            (serialize-value os v (conj path k))))
+        (write-byte os 0)))))
 
 (defmethod make-serializer :logical-type
   [edn-schema name->edn-schema *name->serializer]

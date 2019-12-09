@@ -100,6 +100,11 @@
   [member-schemas :- [LancasterSchemaOrNameKW]]
   (schemas/schema :union nil member-schemas))
 
+(def string-set-schema
+  "Lancaster schema object representing a Clojure set with string members.
+   Implemented using an Avro map with null values."
+  (map-schema null-schema))
+
 (s/defn maybe :- LancasterSchema
   "Creates a Lancaster union schema whose members are l/null-schema
    and the given schema. Makes a schema nillable. If the given schema

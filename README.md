@@ -113,6 +113,8 @@ The following vars are defined in the `deercreeklabs.lancaster` namespace:
 * `double-schema`: Represents an Avro `double`
 * `bytes-schema`: Represents an Avro `bytes`
 * `string-schema`: Represents an Avro `string`
+* `string-set-schema`: Represents an Avro `map` schema w/ `null` values; treated
+as a Clojure(Script) `set`.
 
 These schema objects can be used directly or combined into complex schemas.
 
@@ -181,6 +183,7 @@ Avro Type | Acceptable Clojure / ClojureScript Types
 `enum` | `keyword`
 `array` | Any data that passes `(sequential? data)`
 `map` | Any data that passes `(map? data)`, if all keys are strings. Clojure(Script) records *DO NOT* qualify, since their keys are keywords.
+`map` (w/ `null` values schema) | If the `values` in the map schema is `null`, the schema is interpreted to represent a Clojure(Script) set, and the data must be a set of strings. Only strings can be elements of this set.
 `record` | Any data that passes `(map? data)`, if all keys are Clojure(Script) keywords. Clojure(Script) records *DO* qualify, since their keys are keywords.
 `union` | Any data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. Note that there are some restrictions on what schemas may be in a union schema, as explained in [Notes About Union Data Types](#notes-about-union-data-types) below.
 
@@ -203,6 +206,7 @@ Avro Type | Clojure Type | ClojureScript Type
 `enum` | `keyword` | `keyword`
 `array` | `vector` | `vector`
 `map` | `hash-map` | `hash-map`
+`map` (w/ `null` values schema) | `set` (w/ `string` elements) | `set` (w/ `string` elements)
 `record` | `hash-map` | `hash-map`
 `union` | Data that matches one of the member schemas declared in the creation of the Lancaster `union` schema.
 

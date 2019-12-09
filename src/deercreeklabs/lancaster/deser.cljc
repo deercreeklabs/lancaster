@@ -173,23 +173,37 @@
            deserializer)
     deserializer))
 
+(defn deserialize-set [is]
+  (loop [s (transient #{})]
+    (let [long-count (u/read-long-varint-zz is)
+          count (int (u/long->int long-count))]
+      (if (zero? count)
+        (persistent! s)
+        (recur (reduce (fn [acc i]
+                         (let [k (u/read-utf8-string is)]
+                           (conj! acc k)))
+                       s (range count)))))))
+
 (defmethod make-deserializer [:map :map]
   [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]
-  (let [deserialize-value (make-deserializer
-                           (:values writer-edn-schema)
-                           (:values reader-edn-schema)
-                           name->edn-schema *deserializers)]
-    (fn deserialize [is]
-      (loop [m (transient {})]
-        (let [long-count (u/read-long-varint-zz is)
-              count (int (u/long->int long-count))]
-          (if (zero? count)
-            (persistent! m)
-            (recur (reduce (fn [acc i]
-                             (let [k (u/read-utf8-string is)
-                                   v (deserialize-value is)]
-                               (assoc! acc k v)))
-                           m (range count)))))))))
+  (if (and (= :null (:values writer-edn-schema))
+           (= :null (:values reader-edn-schema)))
+    deserialize-set
+    (let [deserialize-value (make-deserializer
+                             (:values writer-edn-schema)
+                             (:values reader-edn-schema)
+                             name->edn-schema *deserializers)]
+      (fn deserialize [is]
+        (loop [m (transient {})]
+          (let [long-count (u/read-long-varint-zz is)
+                count (int (u/long->int long-count))]
+            (if (zero? count)
+              (persistent! m)
+              (recur (reduce (fn [acc i]
+                               (let [k (u/read-utf8-string is)
+                                     v (deserialize-value is)]
+                                 (assoc! acc k v)))
+                             m (range count))))))))))
 
 (defmethod make-deserializer :logical-type
   [writer-edn-schema reader-edn-schema name->edn-schema *deserializers]

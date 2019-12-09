@@ -1095,3 +1095,26 @@
         encoded (l/serialize sch v)
         decoded (l/deserialize-same sch encoded)]
     (is (= v decoded))))
+
+(deftest test-rt-set
+  (let [sch l/string-set-schema
+        v #{"a" "b" "1234" "c45"}
+        encoded (l/serialize sch v)
+        decoded (l/deserialize-same sch encoded)]
+    (is (= v decoded))))
+
+(deftest test-bad-set-type
+  (let [sch l/string-set-schema
+        v #{"2" :k}] ;; not strictly string members
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"Set element `:k` .* is not a valid string"
+         (l/serialize sch v)))))
+
+(deftest test-bad-set-type-map-of-nils
+  (let [sch (l/map-schema l/null-schema) ;; equivalent to l/string-set-schema
+        v {"a" nil "b" nil}] ;; Must be a set
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"is not a valid Clojure set"
+         (l/serialize sch v)))))
