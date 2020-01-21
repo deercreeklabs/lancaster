@@ -5,9 +5,10 @@
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.utils :as u]
    #?(:cljs [goog.math :as gm])
-   [schema.core :as s :include-macros true]))
-
-#?(:cljs (def Long gm/Long))
+   [schema.core :as s :include-macros true])
+  #?(:cljs
+     (:import
+      (goog.math Long))))
 
 (s/defn make-long :- Long
   [x :- s/Any]

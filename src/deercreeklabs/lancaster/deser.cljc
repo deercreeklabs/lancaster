@@ -4,9 +4,10 @@
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.utils :as u]
-   #?(:cljs [goog.math :as gm])))
-
-#?(:cljs (def Long gm/Long))
+   #?(:cljs [goog.math :as gm]))
+  #?(:cljs
+     (:import
+      (goog.math Long))))
 
 (defn check-names [writer-edn-schema reader-edn-schema]
   (let [writer-name (:name writer-edn-schema)

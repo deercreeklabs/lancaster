@@ -10,14 +10,15 @@
    #?(:cljs [goog.math :as gm])
    [schema.core :as s :include-macros true])
   #?(:cljs
-     (:require-macros deercreeklabs.lancaster)))
+     (:require-macros deercreeklabs.lancaster))
+  #?(:cljs
+     (:import
+      (goog.math Long))))
 
 (def ^:no-doc LancasterSchema (s/protocol u/ILancasterSchema))
 (def ^:no-doc LancasterSchemaOrNameKW (s/if keyword?
                                         s/Keyword
                                         LancasterSchema))
-#?(:cljs
-   (def Long ^:no-doc gm/Long))
 
 (s/defn json->schema :- LancasterSchema
   "Creates a Lancaster schema object from an Avro schema in JSON format."
