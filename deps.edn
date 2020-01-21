@@ -12,11 +12,11 @@
              "clojars" {:url "https://repo.clojars.org/"}}
 
  :aliases
- {:cider-clj {:extra-deps {cider/cider-nrepl {:mvn/version "0.22.4"}}
+ {:cider-clj {:extra-deps {cider/cider-nrepl {:mvn/version "0.23.0"}}
               :main-opts ["-m" "nrepl.cmdline" "--middleware"
                           "[cider.nrepl/cider-middleware]"]}
 
-  :cider-cljs {:extra-deps {cider/cider-nrepl {:mvn/version "0.22.4"}
+  :cider-cljs {:extra-deps {cider/cider-nrepl {:mvn/version "0.23.0"}
                             cider/piggieback {:mvn/version "0.4.2"}}
                :main-opts
                ["-m" "nrepl.cmdline" "--middleware"

@@ -13,13 +13,15 @@
    [schema.core :as s])
   #?(:cljs
      (:require-macros
-      [deercreeklabs.lancaster.utils :refer [sym-map]])))
+      [deercreeklabs.lancaster.utils :refer [sym-map]]))
+  #?(:cljs
+     (:import
+      (goog.math Long))))
 
 #?(:cljs (def class type))
-#?(:cljs (def Long gm/Long))
 
-#?(:cljs (def max-int (gm/Long.fromInt 2147483647)))
-#?(:cljs (def min-int (gm/Long.fromInt -2147483648)))
+#?(:cljs (def max-int (Long.fromInt 2147483647)))
+#?(:cljs (def min-int (Long.fromInt -2147483648)))
 
 #?(:clj (pm/use-primitive-operators))
 
