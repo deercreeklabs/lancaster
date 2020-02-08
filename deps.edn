@@ -1,6 +1,6 @@
 {:deps
  {camel-snake-kebab {:mvn/version "0.4.1"}
-  cheshire {:mvn/version "5.9.0"}
+  cheshire {:mvn/version "5.10.0"}
   deercreeklabs/baracus {:mvn/version "0.2.5"}
   mvxcvi/puget {:mvn/version "1.2.0"}
   org.clojure/clojure {:mvn/version "1.10.1"}
@@ -31,6 +31,6 @@
          :main-opts ["-m"]}
 
   :test {:extra-paths ["test"]
-         :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-573"}
+         :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-590"}
                       lambdaisland/kaocha-cljs {:mvn/version "0.0-68"}
                       lambdaisland/kaocha-cloverage {:mvn/version "0.0-41"}}}}}
