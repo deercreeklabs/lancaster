@@ -776,17 +776,10 @@
 (deftest test-recursive-schema-serdes
   (let [data {:value 5
               :right {:value -10
-                      :right {:value -20
-                              :right nil
-                              :left nil}
-                      :left nil}
+                      :right {:value -20}}
               :left {:value 10
-                     :right nil
                      :left {:value 20
-                            :right nil
-                            :left {:value 40
-                                   :right nil
-                                   :left nil}}}}
+                            :left {:value 40}}}}
         encoded (l/serialize tree-schema data)
         decoded (l/deserialize-same tree-schema encoded)]
     (is (ba/equivalent-byte-arrays?
@@ -906,7 +899,7 @@
   (let [data {:name "Sharon"}
         encoded (l/serialize rec-w-maybe-field-schema data)
         decoded (l/deserialize-same rec-w-maybe-field-schema encoded)]
-    (is (= (assoc data :age nil) decoded))))
+    (is (= data decoded))))
 
 (deftest test-schema?
   (is (l/schema? person-or-dog-schema))

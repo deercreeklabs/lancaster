@@ -116,7 +116,6 @@
               ;; No date provided
               :tax-type :taxable
               :item-ids ["item43" "item689"]}
-        expected (assoc data :date-ms nil)
         encoded (l/serialize invoice-schema data)
         decoded (l/deserialize-same invoice-schema encoded)]
-    (is (= expected decoded))))
+    (is (= data decoded))))

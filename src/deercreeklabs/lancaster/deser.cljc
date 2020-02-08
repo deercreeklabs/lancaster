@@ -284,7 +284,7 @@
                           (reduce (fn [acc info]
                                     (let [{:keys [deserialize reader-k]} info
                                           v (deserialize is)]
-                                      (if reader-k
+                                      (if (and reader-k (not (nil? v)))
                                         (assoc! acc reader-k v)
                                         acc)))
                                   (transient added) wfis)))]
