@@ -12,18 +12,18 @@
              "clojars" {:url "https://repo.clojars.org/"}}
 
  :aliases
- {:cider-clj {:extra-deps {cider/cider-nrepl {:mvn/version "0.23.0"}}
+ {:cider-clj {:extra-deps {cider/cider-nrepl {:mvn/version "0.24.0"}}
               :main-opts ["-m" "nrepl.cmdline" "--middleware"
                           "[cider.nrepl/cider-middleware]"]}
 
-  :cider-cljs {:extra-deps {cider/cider-nrepl {:mvn/version "0.23.0"}
+  :cider-cljs {:extra-deps {cider/cider-nrepl {:mvn/version "0.24.0"}
                             cider/piggieback {:mvn/version "0.4.2"}}
                :main-opts
                ["-m" "nrepl.cmdline" "--middleware"
                 "[cider.nrepl/cider-middleware,cider.piggieback/wrap-cljs-repl]"]}
 
-  :dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.9.1"}
-                     org.clojure/tools.namespace {:mvn/version "0.3.1"}}}
+  :dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.9.2"}
+                     org.clojure/tools.namespace {:mvn/version "1.0.0"}}}
 
   :pack {:extra-deps {pack/pack.alpha
                       {:git/url "https://github.com/juxt/pack.alpha.git"
@@ -31,6 +31,6 @@
          :main-opts ["-m"]}
 
   :test {:extra-paths ["test"]
-         :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-590"}
-                      lambdaisland/kaocha-cljs {:mvn/version "0.0-68"}
+         :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-601"}
+                      lambdaisland/kaocha-cljs {:mvn/version "0.0-71"}
                       lambdaisland/kaocha-cloverage {:mvn/version "0.0-41"}}}}}
