@@ -153,3 +153,7 @@
   (let [schema (l/schema-at-path person-schema
                                  [:children 0 :children 1 :children])]
     (is (lt/round-trip? schema [ralph]))))
+
+(deftest test-schema-at-path-evolution
+  (is (nil? (l/schema-at-path sys-state-schema [:new-state-field])))
+  (is (nil? (l/schema-at-path sys-state-schema [::msgs 0 :new-msg-field]))))

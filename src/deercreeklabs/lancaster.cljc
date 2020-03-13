@@ -243,7 +243,7 @@
               {:given-arg schema})))
   (u/default-data (edn schema)))
 
-(s/defn schema-at-path :- LancasterSchema
+(s/defn schema-at-path :- (s/maybe LancasterSchema)
   [schema :- LancasterSchema
    path :- [s/Any]]
   (when-not (satisfies? u/ILancasterSchema schema)

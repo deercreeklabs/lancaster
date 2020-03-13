@@ -75,14 +75,10 @@
                             (reduced field*)
                             acc))
                         nil (:fields edn-schema))]
-      (when-not field
-        (let [ex-type :not-a-field]
-          (throw (ex-info (str "Key `" k "` is not a field of the indicated "
-                               "record.")
-                          (u/sym-map full-path i k edn-schema ex-type)))))
-      (let [child (-> (:type field)
-                      (expand-name-kws name->edn-schema))]
-        (edn-schema-at-path child full-path (inc i) name->edn-schema)))))
+      (when field
+        (let [child (-> (:type field)
+                        (expand-name-kws name->edn-schema))]
+          (edn-schema-at-path child full-path (inc i) name->edn-schema))))))
 
 (defmethod edn-schema-at-path :array
   [edn-schema full-path i name->edn-schema]
@@ -153,4 +149,5 @@
         name->edn-schema (u/make-name->edn-schema top-edn-schema)
         sub-edn-schema (edn-schema-at-path top-edn-schema path 0
                                            name->edn-schema)]
-    (schemas/edn-schema->lancaster-schema sub-edn-schema)))
+    (when sub-edn-schema
+      (schemas/edn-schema->lancaster-schema sub-edn-schema))))
