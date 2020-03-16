@@ -274,8 +274,9 @@
                                        (set))
           added (reduce (fn [acc {reader-field-name :name
                                   reader-field-default :default}]
-                          (if (norm-writer-field-names
-                               (u/fix-field-name reader-field-name))
+                          (if (or (norm-writer-field-names
+                                   (u/fix-field-name reader-field-name))
+                                  (nil? reader-field-default))
                             acc
                             (assoc acc reader-field-name reader-field-default)))
                         {} reader-fields)
