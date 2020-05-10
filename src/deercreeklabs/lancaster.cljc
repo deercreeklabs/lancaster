@@ -124,7 +124,7 @@
     (throw
      (ex-info (str "First argument to serialize must be a schema "
                    "object. The object must satisfy the ILancasterSchema "
-                   "protocol.")
+                   "protocol. Got `" writer-schema "`.")
               {:schema writer-schema
                :schema-type (#?(:clj class :cljs type) writer-schema)})))
   (u/serialize writer-schema data))
@@ -139,7 +139,8 @@
     (throw
      (ex-info (str "First argument to deserialize must be a schema "
                    "object representing the reader's schema. The object "
-                   "must satisfy the ILancasterSchema protocol.")
+                   "must satisfy the ILancasterSchema protocol. Got: `"
+                   reader-schema "`.")
               {:reader-schema reader-schema
                :reader-schema-type
                (#?(:clj class :cljs type) reader-schema)})))
@@ -147,14 +148,15 @@
     (throw
      (ex-info (str "Second argument to deserialize must be a schema "
                    "object representing the writer's schema. The object "
-                   "must satisfy the ILancasterSchema protocol.")
+                   "must satisfy the ILancasterSchema protocol. Got `"
+                   writer-schema "`.")
               {:writer-schema writer-schema
                :writer-schema-type
                (#?(:clj class :cljs type) writer-schema)})))
   (when-not (instance? ba/ByteArray ba)
     (throw (ex-info (str "Final argument to deserialize must be a byte array. "
                          "The byte array must include the binary data to "
-                         "be deserialized.")
+                         "be deserialized. Got `" ba "`.")
                     {:ba ba
                      :ba-type (#?(:clj class :cljs type) ba)})))
   (let [is (impl/input-stream ba)]
@@ -221,11 +223,13 @@
    writer-schema :- LancasterSchema]
   (when-not (satisfies? u/ILancasterSchema reader-schema)
     (throw
-     (ex-info "reader-schema must be a schema object."
+     (ex-info (str "reader-schema must be a schema object. Got `"
+                   reader-schema "`.")
               {:given-arg reader-schema})))
   (when-not (satisfies? u/ILancasterSchema writer-schema)
     (throw
-     (ex-info "reader-schema must be a schema object."
+     (ex-info (str "writer-schema must be a schema object. Got `"
+                   writer-schema "`.")
               {:given-arg writer-schema})))
   (schemas/match? reader-schema writer-schema))
 
@@ -239,7 +243,8 @@
   [schema :- LancasterSchema]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
-     (ex-info "Argument to default-data must be a schema object."
+     (ex-info (str "Argument to default-data must be a schema object. Got `"
+                   schema "`.")
               {:given-arg schema})))
   (u/default-data (edn schema)))
 
@@ -248,7 +253,8 @@
    path :- [s/Any]]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
-     (ex-info "First argument to schema-at-path must be a schema object."
+     (ex-info (str "First argument to schema-at-path must be a schema object. "
+                   "Got `" schema "`.")
               {:given-arg schema})))
   (if (nil? path)
     schema
@@ -256,7 +262,8 @@
       (throw
        (ex-info
         (str "Second argument to schema-at-path must be nil or a sequence of "
-             "path keys, which must be keywords, strings, or integers.")
+             "path keys, which must be keywords, strings, or integers. Got: `"
+             path "`.")
         {:given-path path}))))
   (sub/schema-at-path schema path))
 
@@ -265,7 +272,8 @@
   [schema :- LancasterSchema]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
-     (ex-info "Argument to `schema-type` must be a schema object."
+     (ex-info (str "Argument to `schema-type` must be a schema object. Got `"
+                   schema "`.")
               {:given-arg schema})))
   (u/get-avro-type (u/edn-schema schema)))
 
@@ -313,7 +321,8 @@
   [clj-name size]
   (when-not (and (pos? size) (integer? size))
     (throw
-     (ex-info "Second argument to def-fixed-schema must be a positive integer."
+     (ex-info (str "Second argument (size )to def-fixed-schema must be a "
+                   "positive integer. Got: `" size "`.")
               (u/sym-map clj-name size))))
   (let [ns-name (str (or
                       (:name (:ns &env)) ;; cljs
@@ -326,9 +335,10 @@
 (defmacro def-array-schema
   "Defines a var whose value is a Lancaster array schema object"
   [clj-name items-schema]
-  (when-not items-schema
+  (when-not (satisfies? u/ILancasterSchema items-schema)
     (throw
-     (ex-info "Second argument to def-array-schema must be a schema object."
+     (ex-info (str "Second argument to def-array-schema must be a schema "
+                   " object. Got: `" items-schema "`.")
               (u/sym-map clj-name items-schema))))
   `(def ~clj-name
      (schemas/schema :array nil ~items-schema)))
@@ -336,9 +346,10 @@
 (defmacro def-map-schema
   "Defines a var whose value is a Lancaster map schema object"
   [clj-name values-schema]
-  (when-not values-schema
+  (when-not (satisfies? u/ILancasterSchema values-schema)
     (throw
-     (ex-info "Second argument to def-map-schema must be a schema object."
+     (ex-info (str "Second argument to def-map-schema must be a schema "
+                   "object. Got: `" values-schema "`.")
               (u/sym-map clj-name values-schema))))
   `(def ~clj-name
      (schemas/schema :map nil ~values-schema)))
