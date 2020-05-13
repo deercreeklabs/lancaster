@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+rm -fr .cljs_node_repl .cpcache out node_modules target
+npm install

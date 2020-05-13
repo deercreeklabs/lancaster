@@ -335,10 +335,10 @@
 (defmacro def-array-schema
   "Defines a var whose value is a Lancaster array schema object"
   [clj-name items-schema]
-  (when-not (satisfies? u/ILancasterSchema items-schema)
+  (when-not items-schema ; This is a symbol not a value at this point
     (throw
-     (ex-info (str "Second argument to def-array-schema must be a schema "
-                   " object. Got: `" items-schema "`.")
+     (ex-info (str "When calling `def-array-schema`, `items-schema` argument "
+                   "must be a schema object. Got nil.")
               (u/sym-map clj-name items-schema))))
   `(def ~clj-name
      (schemas/schema :array nil ~items-schema)))
@@ -346,10 +346,10 @@
 (defmacro def-map-schema
   "Defines a var whose value is a Lancaster map schema object"
   [clj-name values-schema]
-  (when-not (satisfies? u/ILancasterSchema values-schema)
+  (when-not values-schema ; This is a symbol not a value at this point
     (throw
-     (ex-info (str "Second argument to def-map-schema must be a schema "
-                   "object. Got: `" values-schema "`.")
+     (ex-info (str "When calling `def-map-schema`, `values-schema` argument "
+                   "must be a schema object. Got nil.")
               (u/sym-map clj-name values-schema))))
   `(def ~clj-name
      (schemas/schema :map nil ~values-schema)))
