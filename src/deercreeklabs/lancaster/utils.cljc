@@ -366,10 +366,11 @@
   [a :- s/Any
    b :- s/Any]
   #?(:clj (= a b)
-     :cljs (cond
-             (long? a) (.equals ^Long a b)
-             (long? b) (.equals ^Long b a)
-             :else (= a b))))
+     :cljs (when (and a b)
+             (cond
+               (long? a) (.equals ^Long a b)
+               (long? b) (.equals ^Long b a)
+               :else (= a b)))))
 
 #?(:cljs (extend-type Long
            IEquiv
