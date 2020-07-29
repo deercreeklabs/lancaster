@@ -4,7 +4,7 @@
   <groupId>deercreeklabs</groupId>
   <artifactId>lancaster</artifactId>
   <packaging>jar</packaging>
-  <version>0.9.3</version>
+  <version>0.9.4</version>
   <name>lancaster</name>
   <description>Tools for working with Apache Avro</description>
   <url>https://github.com/deercreeklabs/lancaster</url>
@@ -50,12 +50,12 @@
     <dependency>
       <groupId>mvxcvi</groupId>
       <artifactId>puget</artifactId>
-      <version>1.2.1</version>
+      <version>1.1.1</version>
     </dependency>
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>clojurescript</artifactId>
-      <version>1.10.758</version>
+      <version>1.10.773</version>
     </dependency>
     <dependency>
       <groupId>primitive-math</groupId>
