@@ -3,7 +3,7 @@
   (:require
    [camel-snake-kebab.core :as csk]
    #?(:clj [cheshire.core :as json])
-   #?(:cljs [clojure.pprint :as pprint])
+   [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
@@ -75,6 +75,9 @@
                             :bytes :string})
 (def avro-primitive-type-strings (into #{} (map name avro-primitive-types)))
 (def Nil (s/eq nil))
+
+(defn pprint-str [x]
+  (with-out-str (pprint/pprint x)))
 
 (defn pprint [x]
   #?(:clj (.write *out* (str (cprint-str x) "\n"))

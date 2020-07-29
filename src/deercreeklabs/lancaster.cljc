@@ -125,7 +125,7 @@
      (ex-info (str "First argument to serialize must be a schema "
                    "object. The object must satisfy the ILancasterSchema "
                    "protocol. Got `" writer-schema "`.")
-              {:schema writer-schema
+              {:schema (u/pprint-str writer-schema)
                :schema-type (#?(:clj class :cljs type) writer-schema)})))
   (u/serialize writer-schema data))
 
@@ -141,7 +141,7 @@
                    "object representing the reader's schema. The object "
                    "must satisfy the ILancasterSchema protocol. Got: `"
                    reader-schema "`.")
-              {:reader-schema reader-schema
+              {:reader-schema (u/pprint-str reader-schema)
                :reader-schema-type
                (#?(:clj class :cljs type) reader-schema)})))
   (when-not (satisfies? u/ILancasterSchema writer-schema)
@@ -150,7 +150,7 @@
                    "object representing the writer's schema. The object "
                    "must satisfy the ILancasterSchema protocol. Got `"
                    writer-schema "`.")
-              {:writer-schema writer-schema
+              {:writer-schema (u/pprint-str writer-schema)
                :writer-schema-type
                (#?(:clj class :cljs type) writer-schema)})))
   (when-not (instance? ba/ByteArray ba)
@@ -163,10 +163,12 @@
     (try
       (u/deserialize reader-schema writer-schema is)
       (catch #?(:clj Exception :cljs js/Error) e
-        (throw (ex-info (str "Serialized data in byte array does not match "
-                             "given writer schema.")
-                        {:writer-edn-schema (u/edn-schema writer-schema)
-                         :orig-e e}))))))
+        (throw (ex-info
+                (str "Serialized data in byte array does not match "
+                     "given writer schema.")
+                {:writer-edn-schema (u/pprint-str
+                                     (u/edn-schema writer-schema))
+                 :orig-e e}))))))
 
 (s/defn deserialize-same :- s/Any
   "Deserializes Avro-encoded data from a byte array, using the given schema
@@ -339,7 +341,8 @@
     (throw
      (ex-info (str "When calling `def-array-schema`, `items-schema` argument "
                    "must be a schema object. Got nil.")
-              (u/sym-map clj-name items-schema))))
+              {:clj-name clj-name
+               :items-schema (u/pprint-str items-schema)})))
   `(def ~clj-name
      (schemas/schema :array nil ~items-schema)))
 
@@ -350,7 +353,8 @@
     (throw
      (ex-info (str "When calling `def-map-schema`, `values-schema` argument "
                    "must be a schema object. Got nil.")
-              (u/sym-map clj-name values-schema))))
+              {:clj-name clj-name
+               :values-schema (u/pprint-str values-schema)})))
   `(def ~clj-name
      (schemas/schema :map nil ~values-schema)))
 
@@ -394,7 +398,7 @@
   (when-not (nat-int? key-size)
     (throw (ex-info (str "Second argument to fixed-map-schema must be a "
                          "positive integer. Got `" key-size "`.")
-                    (u/sym-map key-size ))))
+                    (u/sym-map key-size))))
   (let [key-schema-name (keyword (namespace name-kw)
                                  (str (name name-kw) "-value"))
         key-schema (fixed-schema key-schema-name key-size)]
