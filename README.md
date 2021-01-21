@@ -434,7 +434,7 @@ The defined var
 
 #### Example
 ```clojure
-(l/def-fixed-scheema md5-schema
+(l/def-fixed-schema md5-schema
   16)
 ```
 
@@ -460,7 +460,7 @@ The defined var
 
 #### Example
 ```clojure
-(l/def-array-scheema numbers-schema
+(l/def-array-schema numbers-schema
   l/int-schema)
 ```
 
@@ -487,7 +487,7 @@ The defined var
 
 #### Example
 ```clojure
-(l/def-map-scheema name-to-age-schema
+(l/def-map-schema name-to-age-schema
   l/int-schema)
 ```
 
@@ -514,7 +514,7 @@ The defined var
 
 #### Example
 ```clojure
-(l/def-union-scheema maybe-name-schema
+(l/def-union-schema maybe-name-schema
   l/null-schema l/string-schema)
 ```
 
@@ -542,7 +542,7 @@ The defined var
 
 #### Example
 ```clojure
-(l/def-maybe-scheema maybe-name-schema
+(l/def-maybe-schema maybe-name-schema
   l/string-schema)
 ```
 
@@ -931,7 +931,7 @@ The new Lancaster schema
 ```clojure
 (wrap data-schema data)
 ```
-Wraps the given data for serializing with an ambigous union. See
+Wraps the given data for serializing with an ambiguous union. See
 [Notes About Union Data Types](#notes-about-union-data-types)
 for more information.
 
@@ -1017,7 +1017,7 @@ The EDN name of the schema that represents the wrapped data
 ```
 
 #### See Also
-* [wrap](#wrap): Wraps the given data for serializing with an ambigous union.
+* [wrap](#wrap): Wraps the given data for serializing with an ambiguous union.
 * [data](#data): Returns the data portion of wrapped data.
 
 -------------------------------------------------------------------------------
@@ -1060,7 +1060,7 @@ The data portion of the wrapped data
 ```
 
 #### See Also
-* [wrap](#wrap): Wraps the given data for serializing with an ambigous union.
+* [wrap](#wrap): Wraps the given data for serializing with an ambiguous union.
 * [schema-name](#schema-name): Returns the schema-name portion of wrapped data.
 
 -------------------------------------------------------------------------------
