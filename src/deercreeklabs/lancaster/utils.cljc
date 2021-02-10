@@ -1429,7 +1429,9 @@
   [avro-union-schema]
   (mapv avro-schema->edn-schema avro-union-schema))
 
-(defn records-match? [writer-edn-schema reader-edn-schema name->edn-schema]
+(defn records-match?
+  [writer-edn-schema reader-edn-schema
+   writer-name->edn-schema reader-name->edn-schema]
   (or (= writer-edn-schema reader-edn-schema)
       (let [{writer-name :name
              writer-fields :fields} writer-edn-schema
@@ -1442,33 +1444,40 @@
                              r-field (some #(when (= field-name (:name %)) %)
                                            reader-fields)]
                          (if (edn-schemas-match? (:type w-field) (:type r-field)
-                                                 name->edn-schema)
+                                                 writer-name->edn-schema
+                                                 reader-name->edn-schema)
                            acc
                            (reduced false))))
                      true
                      (set/union (set (map :name writer-fields))
                                 (set (map :name reader-fields))))))))
 
-(defn union-writer-match? [writer-edn-schema reader-edn-schema name->edn-schema]
+(defn union-writer-match?
+  [writer-edn-schema reader-edn-schema
+   writer-name->edn-schema reader-name->edn-schema]
   ;; At least one of the writer's members must match the reader
   (reduce (fn [acc writer-item-schema]
             (if (edn-schemas-match? writer-item-schema reader-edn-schema
-                                    name->edn-schema)
+                                    writer-name->edn-schema
+                                    reader-name->edn-schema)
               (reduced true)
               acc))
           false writer-edn-schema))
 
-(defn union-reader-match? [writer-edn-schema reader-edn-schema name->edn-schema]
+(defn union-reader-match?
+  [writer-edn-schema reader-edn-schema
+   writer-name->edn-schema reader-name->edn-schema]
   ;; At least one of the reader's members must match the writer
   (reduce (fn [acc reader-item-schema]
             (if (edn-schemas-match? writer-edn-schema reader-item-schema
-                                    name->edn-schema)
+                                    writer-name->edn-schema
+                                    reader-name->edn-schema)
               (reduced true)
               acc))
           false reader-edn-schema))
 
 (defn edn-schemas-match? [writer-edn-schema reader-edn-schema
-                          name->edn-schema]
+                          writer-name->edn-schema reader-name->edn-schema]
   (when (nil? writer-edn-schema)
     (throw (ex-info "writer-edn-schema is nil."
                     (sym-map writer-edn-schema reader-edn-schema))))
@@ -1479,24 +1488,30 @@
         reader-type (get-avro-type reader-edn-schema)]
     (cond
       (= :name-keyword writer-type)
-      (edn-schemas-match? (name->edn-schema writer-edn-schema)
-                          reader-edn-schema name->edn-schema)
+      (edn-schemas-match? (writer-name->edn-schema writer-edn-schema)
+                          reader-edn-schema
+                          writer-name->edn-schema
+                          reader-name->edn-schema)
 
       (= :name-keyword reader-type)
-      (edn-schemas-match? writer-edn-schema (name->edn-schema reader-edn-schema)
-                          name->edn-schema)
+      (edn-schemas-match? writer-edn-schema
+                          (reader-name->edn-schema reader-edn-schema)
+                          writer-name->edn-schema
+                          reader-name->edn-schema)
 
       :else
       (or
        (and (= :array writer-type) (= :array reader-type)
             (edn-schemas-match? (:items writer-edn-schema)
                                 (:items reader-edn-schema)
-                                name->edn-schema))
+                                writer-name->edn-schema
+                                reader-name->edn-schema))
 
        (and (= :map writer-type) (= :map reader-type)
             (edn-schemas-match? (:values writer-edn-schema)
                                 (:values reader-edn-schema)
-                                name->edn-schema))
+                                writer-name->edn-schema
+                                reader-name->edn-schema))
 
        (and (= :enum writer-type) (= :enum reader-type)
             (= (:name writer-edn-schema)
@@ -1510,7 +1525,8 @@
 
        (and (= :record writer-type) (= :record reader-type)
             (records-match? writer-edn-schema reader-edn-schema
-                            name->edn-schema))
+                            writer-name->edn-schema
+                            reader-name->edn-schema))
 
        (and (avro-primitive-types writer-type)
             (= writer-type reader-type))
@@ -1527,12 +1543,13 @@
 
        (and (= :union writer-type)
             (union-writer-match? writer-edn-schema reader-edn-schema
-                                 name->edn-schema)
-            name->edn-schema)
+                                 writer-name->edn-schema
+                                 reader-name->edn-schema))
 
        (and (= :union reader-type)
             (union-reader-match? writer-edn-schema reader-edn-schema
-                                 name->edn-schema))))))
+                                 writer-name->edn-schema
+                                 reader-name->edn-schema))))))
 
 (defn dedupe-schemas [schemas]
   (vals (reduce (fn [acc schema]

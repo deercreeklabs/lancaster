@@ -36,7 +36,10 @@
             deser (or (@*writer-fp->deserializer writer-fp)
                       (let [deser* (deser/make-deserializer
                                     (u/edn-schema writer-schema)
-                                    edn-schema name->edn-schema (atom {}))]
+                                    edn-schema
+                                    (:name->edn-schema writer-schema)
+                                    name->edn-schema
+                                    (atom {}))]
                         (swap! *writer-fp->deserializer assoc writer-fp deser*)
                         deser*))]
         (deser is))
@@ -436,7 +439,7 @@
   (try
     (deser/make-deserializer (u/edn-schema writer-schema)
                              (u/edn-schema reader-schema)
-                             {} (atom {}))
+                             {} {} (atom {}))
     true
     (catch #?(:clj Exception :cljs js/Error) e
       (if-not (u/match-exception? e)

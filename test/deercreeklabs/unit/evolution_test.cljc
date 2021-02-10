@@ -299,3 +299,19 @@
         decoded (l/deserialize r-schema w-schema encoded)
         expected {:user/name "Alice"}]
     (is (= expected decoded))))
+
+(deftest test-nested-kw-evolution
+  (let [unit-schema (l/enum-schema ::unit [:a :b])
+        w-schema (l/record-schema ::foo
+                                  [[:name l/string-schema]
+                                   [:unit-1 unit-schema]
+                                   [:unit-2 unit-schema]])
+        r-schema (l/record-schema ::foo
+                                  [[:name l/string-schema]])
+        data {:name "blah"
+              :unit-1 :a
+              :unit-2 :b}
+        encoded (l/serialize w-schema data)
+        decoded (l/deserialize r-schema w-schema encoded)
+        expected (dissoc data :unit-1 :unit-2)]
+    (is (= expected decoded))))
