@@ -23,6 +23,12 @@
 (s/defn json->schema :- LancasterSchema
   "Creates a Lancaster schema object from an Avro schema in JSON format."
   [json :- s/Str]
+  (when-not (string? json)
+    (throw (ex-info (str "Argument to json->schema must be a string. Got "
+                         (if (nil? json)
+                           "nil."
+                           (str "`" json "`.")))
+                    (u/sym-map json))))
   (schemas/json-schema->lancaster-schema json))
 
 (def int-schema
