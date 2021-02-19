@@ -589,6 +589,14 @@
   #?(:clj (json/parse-string json-str true)
      :cljs (js->clj (js/JSON.parse json-str) :keywordize-keys true)))
 
+(defn swap-named-value!
+  "Add a thing to a named atom map. Used for *name->serializer and name->edn-schema.
+   Adds the bare name as a keyword and the namespaced keyword if it exists."
+  [*atom edn-schema value]
+  (swap! *atom assoc (:name edn-schema) value)
+  (when-let [ns (:namespace edn-schema)]
+    (swap! *atom assoc (keyword ns (name (:name edn-schema))) value)))
+
 (defmethod make-serializer :null
   [edn-schema name->edn-schema *name->serializer]
   (fn serialize [os data path]
@@ -667,7 +675,7 @@
                    (ex-info (str "Enum data must be a keyword. Got: " data)
                             (sym-map data)))
                   (throw-bad-enum-data data path symbols edn-schema))))]
-    (swap! *name->serializer assoc name ser)
+    (swap-named-value! *name->serializer edn-schema ser)
     ser))
 
 (defmethod make-serializer :fixed
@@ -686,7 +694,7 @@
                           :schema-size size
                           :path path})))
                      (write-bytes os data size))]
-    (swap! *name->serializer assoc name serializer)
+    (swap-named-value! *name->serializer edn-schema serializer)
     serializer))
 
 (defn make-serialize-set
@@ -745,7 +753,7 @@
         lt-ser (fn serialize [os data path]
                  (non-lt-ser os (lt->avro data) path))]
     ;; Store the lt serializer, overwriting the non-lt serializer
-    (swap! *name->serializer assoc (:name edn-schema) lt-ser)
+    (swap-named-value! *name->serializer edn-schema lt-ser)
     lt-ser))
 
 (defmethod make-serializer :array
@@ -947,6 +955,7 @@
 (defmethod make-serializer :record
   [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [fields name]} edn-schema
+        schema-namespace (:namespace edn-schema)
         field-infos (binding [**enclosing-namespace** (namespace name)]
                       (mapv #(make-field-info name % name->edn-schema
                                               *name->serializer)
@@ -964,15 +973,18 @@
                                (throw-non-nilable-value-error k data path)
                                (throw-missing-key-error k data path))))
                          (serializer os field-data (conj path k)))))]
-    (swap! *name->serializer assoc name serializer)
+    (swap-named-value! *name->serializer edn-schema serializer)
     serializer))
 
 (defmethod make-serializer :name-keyword
   [name-kw name->edn-schema *name->serializer]
   (let [qualified-name-kw (qualify-name-kw name-kw)]
     (fn serialize [os data path]
-      (let [serializer (@*name->serializer qualified-name-kw)]
-        (serializer os data path)))))
+      (if-let [serializer (@*name->serializer qualified-name-kw)]
+        (serializer os data path)
+        (throw (ex-info "Failed to find schema for named type."
+                        {:qualified-name qualified-name-kw
+                         :name->serializer-keys (keys @*name->serializer)}))))))
 
 (defmethod edn-schema->plumatic-schema :null
   [edn-schema name->edn-schema]
@@ -1087,7 +1099,8 @@
 (defn get-schemas! [edn-schema *name->edn-schema]
   (let [avro-type (get-avro-type edn-schema)]
     (when (avro-named-types avro-type)
-      (swap! *name->edn-schema assoc (:name edn-schema) edn-schema))
+      (swap-named-value! *name->edn-schema edn-schema edn-schema))
+
     (let [child-schemas (case avro-type
                           :record (map :type (:fields edn-schema))
                           :array [(:items edn-schema)]
