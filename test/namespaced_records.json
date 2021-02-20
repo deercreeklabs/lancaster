@@ -1,0 +1,24 @@
+{
+  "type" : "record",
+  "name" : "TestNamespacedRecords",
+  "namespace" : "com.company",
+  "fields" : [ {
+    "name" : "foo",
+    "type" : [ "null", {
+      "type" : "record",
+      "name" : "FooRecord",
+      "namespace": "com.company",
+      "fields": [
+        {
+          "type": ["null", "string"],
+          "name": "baz"
+        }
+      ]
+    } ],
+    "default" : null
+  }, {
+    "name" : "bar",
+    "type" : [ "null", "com.company.FooRecord" ],
+    "default" : null
+  } ]
+}

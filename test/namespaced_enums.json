@@ -1,0 +1,19 @@
+{
+  "type" : "record",
+  "name" : "TestNamespacedEnums",
+  "namespace" : "com.company",
+  "fields" : [ {
+    "name" : "foo",
+    "type" : [ "null", {
+      "type" : "enum",
+      "name" : "FooEnum",
+      "namespace": "com.company",
+      "symbols" : [ "FOO_X", "FOO_Y", "FOO_Z" ]
+    } ],
+    "default" : null
+  }, {
+    "name" : "bar",
+    "type" : [ "null", "com.company.FooEnum" ],
+    "default" : null
+  } ]
+}
