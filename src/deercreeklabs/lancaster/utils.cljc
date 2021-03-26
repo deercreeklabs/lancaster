@@ -593,9 +593,10 @@
   "Add a thing to a named atom map. Used for *name->serializer and name->edn-schema.
    Adds the bare name as a keyword and the namespaced keyword if it exists."
   [*atom edn-schema value]
-  (swap! *atom assoc (:name edn-schema) value)
-  (when-let [ns (:namespace edn-schema)]
-    (swap! *atom assoc (keyword ns (name (:name edn-schema))) value)))
+  (let [name (:name edn-schema)]
+    (swap! *atom assoc (:name edn-schema) value)
+    (when-let [ns (or (:namespace edn-schema) (namespace name) **enclosing-namespace**)]
+      (swap! *atom assoc (keyword ns (clojure.core/name name)) value))))
 
 (defmethod make-serializer :null
   [edn-schema name->edn-schema *name->serializer]
@@ -758,9 +759,9 @@
 
 (defmethod make-serializer :array
   [edn-schema name->edn-schema *name->serializer]
-  (let [{:keys [items]} edn-schema
-        serialize-item (make-serializer items name->edn-schema
-                                        *name->serializer)]
+  (let [{:keys [items namespace]} edn-schema
+        serialize-item (binding [**enclosing-namespace** (or (:namespace edn-schema) **enclosing-namespace**)]
+                         (make-serializer items name->edn-schema *name->serializer))]
     (fn serialize [os data path]
       (when-not (sequential? data)
         (throw-invalid-data-error edn-schema data path))
@@ -956,7 +957,7 @@
   [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [fields name]} edn-schema
         schema-namespace (:namespace edn-schema)
-        field-infos (binding [**enclosing-namespace** (namespace name)]
+        field-infos (binding [**enclosing-namespace** (or (namespace name) schema-namespace)]
                       (mapv #(make-field-info name % name->edn-schema
                                               *name->serializer)
                             fields))
@@ -1096,10 +1097,13 @@
          (mapcat #(edn-schema->pred-and-plumatic-schema % name->edn-schema)
                  edn-schema)))
 
-(defn get-schemas! [edn-schema *name->edn-schema]
+(defn get-schemas!
+  [edn-schema *name->edn-schema]
   (let [avro-type (get-avro-type edn-schema)]
     (when (avro-named-types avro-type)
-      (swap-named-value! *name->edn-schema edn-schema edn-schema))
+      (swap-named-value! *name->edn-schema
+                         edn-schema
+                         edn-schema))
 
     (let [child-schemas (case avro-type
                           :record (map :type (:fields edn-schema))
@@ -1107,8 +1111,9 @@
                           :map [(:values edn-schema)]
                           :union edn-schema
                           [])]
-      (doseq [child-schema child-schemas]
-        (get-schemas! child-schema *name->edn-schema)))))
+      (binding [**enclosing-namespace** (or (:namespace edn-schema) **enclosing-namespace**)]
+        (doseq [child-schema child-schemas]
+          (get-schemas! child-schema *name->edn-schema))))))
 
 (defn make-name->edn-schema [edn-schema]
   (let [*name->edn-schema (atom (zipmap avro-primitive-types

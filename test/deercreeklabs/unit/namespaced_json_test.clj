@@ -13,8 +13,38 @@
 
 (deftest test-namespaced-records-from-json
   (let [schema (l/json->schema (slurp "test/namespaced_records.json"))
-        obj {:foo {:baz "a string"} :bar {}}]
+        obj {:foo {:baz "a string"
+                   :subfoo {:x 1}
+                   :subfoofoo {:x 2}} :bar {}}]
     (is (= :test-namespaced-records (get-in schema [:edn-schema :name])))
-    (is (= [2, 2, 16, 97, 32, 115, 116, 114, 105, 110, 103, 2, 0]
+    (is (= #{:long
+             :double
+             :com.company/test-namespaced-records
+             :int
+             :sub-foo-record
+             :float
+             :com.company/foo-record
+             :string
+             :null
+             :test-namespaced-records
+             :com.company/sub-foo-record
+             :bytes
+             :foo-record
+             :boolean} (set (keys (get-in schema [:name->edn-schema])))))
+    (is (= #{:long
+             :double
+             :com.company/test-namespaced-records
+             :int
+             :sub-foo-record
+             :float
+             :com.company/foo-record
+             :string
+             :null
+             :test-namespaced-records
+             :com.company/sub-foo-record
+             :bytes
+             :foo-record
+             :boolean} (set (keys @(get-in schema [:*name->serializer])))))
+    (is (= '(2 2 16 97 32 115 116 114 105 110 103 2 2 2 2 2 4 2 0 0 0)
            (map int (l/serialize schema obj))))
     (is (= obj (l/deserialize-same schema (l/serialize schema obj))))))
