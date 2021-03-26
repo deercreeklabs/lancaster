@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "@cljs-oss/module-deps": "1.1.1",
+    "isomorphic-ws": "4.0.1",
+    "source-map-support": "0.5.19",
+    "ws": "7.4.4"
+  }
+}
