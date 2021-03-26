@@ -20,11 +20,11 @@
 
   :cider-nrepl {:extra-deps {cider/cider-nrepl {:mvn/version "0.25.9"}}}
 
-  :clj {:extra-deps {org.clojure/clojure {:mvn/version "1.10.2"}}}
+  :clj {:extra-deps {org.clojure/clojure {:mvn/version "1.10.3"}}}
 
   :cljs {:extra-deps {org.clojure/clojurescript {:mvn/version "1.10.773"}}}
 
-  :dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.10.1"}
+  :dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.10.2"}
                      org.clojure/tools.namespace {:mvn/version "1.1.0"}}}
 
   :pack {:extra-deps {pack/pack.alpha
@@ -33,6 +33,6 @@
          :main-opts ["-m"]}
 
   :test {:extra-paths ["test"]
-         :extra-deps {lambdaisland/kaocha {:mvn/version "1.0.732"}
+         :extra-deps {lambdaisland/kaocha {:mvn/version "1.0.829"}
                       lambdaisland/kaocha-cljs {:mvn/version "0.0-71"}
                       lambdaisland/kaocha-cloverage {:mvn/version "1.0.75"}}}}}
