@@ -2,6 +2,6 @@
 
 rm -rf target
 mkdir target
-clj -A:pack mach.pack.alpha.skinny --no-libs --project-path target/lancaster.jar
+clj -M:pack mach.pack.alpha.skinny --no-libs --project-path target/lancaster.jar
 mvn deploy:deploy-file -Dfile=target/lancaster.jar -DrepositoryId=clojars \
     -Durl=https://clojars.org/repo -DpomFile=pom.xml
