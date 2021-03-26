@@ -12,6 +12,26 @@
         {
           "type": ["null", "string"],
           "name": "baz"
+        },
+        {
+          "name": "subfoo",
+          "type": ["null",
+                   {
+                     "type": "record",
+                     "name": "SubFooRecord",
+                     "fields": [
+                       {
+                         "type": ["null", "int"],
+                         "name": "x"
+                       }
+                     ]
+                   }
+                  ]
+        },
+        {
+          "name": "subfoofoo",
+          "type": ["null",
+                  "com.company.SubFooRecord"]
         }
       ]
     } ],
