@@ -595,7 +595,7 @@
   [*atom edn-schema value]
   (let [name (:name edn-schema)]
     (swap! *atom assoc (:name edn-schema) value)
-    (when-let [ns (or (:namespace edn-schema) (namespace name) **enclosing-namespace**)]
+    (when-let [ns (java-namespace->clj-namespace (or (:namespace edn-schema) (namespace name) **enclosing-namespace**))]
       (swap! *atom assoc (keyword ns (clojure.core/name name)) value))))
 
 (defmethod make-serializer :null

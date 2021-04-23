@@ -7,7 +7,7 @@
     "type" : [ "null", {
       "type" : "record",
       "name" : "FooRecord",
-      "namespace": "com.company",
+      "namespace": "com.company.foo_bar",
       "fields": [
         {
           "type": ["null", "string"],
@@ -31,14 +31,14 @@
         {
           "name": "subfoofoo",
           "type": ["null",
-                  "com.company.SubFooRecord"]
+                  "com.company.foo_bar.SubFooRecord"]
         }
       ]
     } ],
     "default" : null
   }, {
     "name" : "bar",
-    "type" : [ "null", "com.company.FooRecord" ],
+    "type" : [ "null", "com.company.foo_bar.FooRecord" ],
     "default" : null
   } ]
 }
