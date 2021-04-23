@@ -33,7 +33,7 @@
 
 (defmethod filter-attrs :record
   [sch]
-  (-> (select-keys sch [:type :name :fields])
+  (-> (select-keys sch [:type :name :namespace :fields])
       (update :fields fix-field-attrs)))
 
 (defmethod filter-attrs :union
@@ -47,7 +47,7 @@
     sch))
 
 (defn emit-field [field]
-  (let [{:keys [name type]} field]
+  (let [{:keys [name type namespace]} field]
     (str "{\"name\":\"" name "\",\"type\":" (emit type) "}")))
 
 (defn emit-fields [fields]
@@ -101,7 +101,11 @@
 
 (defmethod emit :record
   [sch]
-  (let [{:keys [name fields]} sch
+  (let [{:keys [name namespace fields]} sch
+        name (cond (re-find #"\." name) name
+                   namespace (str (u/clj-namespace->java-namespace namespace) "." name)
+                   u/**enclosing-namespace** (str u/**enclosing-namespace** "." name)
+                   :else name)
         sch-ns (u/fullname->ns name)
         name-pair (str "\"name\":\"" name "\"")
         type-pair (str "\"type\":\"record\"")
