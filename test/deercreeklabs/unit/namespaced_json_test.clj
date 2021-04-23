@@ -1,7 +1,10 @@
 (ns deercreeklabs.unit.namespaced-json-test
   (:require
    [clojure.test :refer [deftest is]]
-   [deercreeklabs.lancaster :as l]))
+   [cheshire.core :as json]
+   [deercreeklabs.lancaster :as l])
+  (:import org.apache.avro.Schema$Parser
+           org.apache.avro.SchemaNormalization))
 
 (deftest test-namespaced-enums-from-json
   (let [schema (l/json->schema (slurp "test/namespaced_enums.json"))
@@ -48,3 +51,11 @@
     (is (= '(2 2 16 97 32 115 116 114 105 110 103 2 2 2 2 2 4 2 0 0 0)
            (map int (l/serialize schema obj))))
     (is (= obj (l/deserialize-same schema (l/serialize schema obj))))))
+
+(deftest test-namespaced-schema-pcf
+  (is (= (SchemaNormalization/toParsingForm
+          (.parse (Schema$Parser.)
+                  (slurp "test/namespaced_records.json")))
+         (l/pcf
+          (l/json->schema
+           (slurp "test/namespaced_records.json"))))))
