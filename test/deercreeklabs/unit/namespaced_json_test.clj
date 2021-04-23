@@ -26,11 +26,11 @@
              :int
              :sub-foo-record
              :float
-             :com.company/foo-record
+             :com.company.foo-bar/foo-record
              :string
              :null
              :test-namespaced-records
-             :com.company/sub-foo-record
+             :com.company.foo-bar/sub-foo-record
              :bytes
              :foo-record
              :boolean} (set (keys (get-in schema [:name->edn-schema])))))
@@ -40,11 +40,11 @@
              :int
              :sub-foo-record
              :float
-             :com.company/foo-record
+             :com.company.foo-bar/foo-record
              :string
              :null
              :test-namespaced-records
-             :com.company/sub-foo-record
+             :com.company.foo-bar/sub-foo-record
              :bytes
              :foo-record
              :boolean} (set (keys @(get-in schema [:*name->serializer])))))
