@@ -848,11 +848,11 @@
                 (assoc :empty-map branch-info))))
           {} (map-indexed vector edn-schema)))
 
-(defn get-type-key [data path single-maplike?]
+(defn get-type-key [data path num-maplike]
   (cond
     (sequential? data) :array
     (not (map? data)) (type data)
-    :else (if single-maplike?
+    :else (if (<= num-maplike 1)
             :lancaster/maplike
             (let [[k v] (first data)]
               (cond
@@ -897,7 +897,8 @@
 
 (defmethod make-serializer :union
   [edn-schema name->edn-schema *name->serializer]
-  (let [single-maplike? (= 1 (num-maplike-schemas edn-schema name->edn-schema))
+  (let [num-maplike (num-maplike-schemas edn-schema name->edn-schema)
+        single-maplike? (= 1 num-maplike)
         lt-test-branch-info-pairs (make-lt-test-branch-info-pairs
                                    edn-schema name->edn-schema single-maplike?
                                    *name->serializer)
@@ -910,13 +911,14 @@
                                (reduced bi)
                                acc))
                            nil lt-test-branch-info-pairs)
-                   (let [type-key (get-type-key data path single-maplike?)]
+                   (let [type-key (get-type-key data path num-maplike)]
                      (type->branch-info type-key)))
             [branch serializer] bi]
+
         (when-not branch
           (let [data-type (type data)
                 type-keys (keys type->branch-info)
-                type-key (get-type-key data path single-maplike?)]
+                type-key (get-type-key data path num-maplike)]
             (throw
              (ex-info (str "Data `" data "` does not match any schema in "
                            "the union schema. Path: " path)

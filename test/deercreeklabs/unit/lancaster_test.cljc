@@ -1111,3 +1111,12 @@
          #?(:clj ExceptionInfo :cljs js/Error)
          #"is not a valid Clojure set"
          (l/serialize sch v)))))
+
+(deftest test-serialize-map-instead-of-sequence
+  (let [sch (l/record-schema ::test-record
+                             [[:items (l/array-schema l/string-schema)]])
+        v {:items {0 "a"}}]
+    (is (thrown-with-msg?
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"does not match any schema in the union schema"
+         (l/serialize sch v)))))
