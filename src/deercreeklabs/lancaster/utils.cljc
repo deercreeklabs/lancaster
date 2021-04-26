@@ -959,7 +959,8 @@
   [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [fields name]} edn-schema
         schema-namespace (:namespace edn-schema)
-        field-infos (binding [**enclosing-namespace** (or (namespace name) schema-namespace)]
+        field-infos (binding [**enclosing-namespace** (or (namespace name)
+                                                          schema-namespace)]
                       (mapv #(make-field-info name % name->edn-schema
                                               *name->serializer)
                             fields))
