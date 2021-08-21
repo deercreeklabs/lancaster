@@ -760,8 +760,11 @@
 (defmethod make-serializer :array
   [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [items namespace]} edn-schema
-        serialize-item (binding [**enclosing-namespace** (or (:namespace edn-schema) **enclosing-namespace**)]
-                         (make-serializer items name->edn-schema *name->serializer))]
+        serialize-item (binding [**enclosing-namespace**
+                                 (or (:namespace edn-schema)
+                                     **enclosing-namespace**)]
+                         (make-serializer items name->edn-schema
+                                          *name->serializer))]
     (fn serialize [os data path]
       (when-not (sequential? data)
         (throw-invalid-data-error edn-schema data path))
