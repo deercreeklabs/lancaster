@@ -725,9 +725,12 @@
 
 (defmethod make-serializer :map
   [edn-schema name->edn-schema *name->serializer]
-  (let [{:keys [values]} edn-schema
-        serialize-value (make-serializer values name->edn-schema
-                                         *name->serializer)]
+  (let [{:keys [values namespace]} edn-schema
+        serialize-value (binding [**enclosing-namespace**
+                                  (or (:namespace edn-schema)
+                                      **enclosing-namespace**)]
+                          (make-serializer values name->edn-schema
+                                           *name->serializer))]
     (if (= :null values)
       (make-serialize-set edn-schema)
       (fn serialize [os data path]
