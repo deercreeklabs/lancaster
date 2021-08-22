@@ -725,7 +725,7 @@
 
 (defmethod make-serializer :map
   [edn-schema name->edn-schema *name->serializer]
-  (let [{:keys [values namespace]} edn-schema
+  (let [{:keys [values]} edn-schema
         serialize-value (binding [**enclosing-namespace**
                                   (or (:namespace edn-schema)
                                       **enclosing-namespace**)]
@@ -739,10 +739,11 @@
         (when (pos? (count data))
           (write-long-varint-zz os (count data))
           (doseq [[k v] data]
-            (when-not (string? k)
-              (throw-non-string-map-key k v edn-schema data path))
-            (write-utf8-string os k)
-            (serialize-value os v (conj path k))))
+            (let [child-path (conj path k)]
+              (when-not (string? k)
+                (throw-non-string-map-key k v edn-schema data child-path))
+              (write-utf8-string os k)
+              (serialize-value os v child-path))))
         (write-byte os 0)))))
 
 (defmethod make-serializer :logical-type
@@ -762,7 +763,7 @@
 
 (defmethod make-serializer :array
   [edn-schema name->edn-schema *name->serializer]
-  (let [{:keys [items namespace]} edn-schema
+  (let [{:keys [items]} edn-schema
         serialize-item (binding [**enclosing-namespace**
                                  (or (:namespace edn-schema)
                                      **enclosing-namespace**)]
