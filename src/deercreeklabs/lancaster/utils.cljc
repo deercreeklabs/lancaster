@@ -993,7 +993,7 @@
     (fn serialize [os data path]
       (if-let [serializer (@*name->serializer qualified-name-kw)]
         (serializer os data path)
-        (throw (ex-info "Failed to find schema for named type."
+        (throw (ex-info "Failed to find serializer for named type."
                         {:qualified-name qualified-name-kw
                          :name->serializer-keys (keys @*name->serializer)}))))))
 
