@@ -178,14 +178,14 @@
   (cond
     (sequential? edn-schema) :union
     (map? edn-schema) (:type edn-schema)
+    (keyword? edn-schema) :name-keyword
+    (avro-primitive-types edn-schema) edn-schema
+    (string? edn-schema) :name-string ;; For Avro schemas
     (nil? edn-schema) (throw
                        (ex-info "Schema argument to get-avro-type is nil."
                                 {:type :illegal-schema
                                  :subtype :schema-is-nil
                                  :schema edn-schema}))
-    (string? edn-schema) :name-string ;; For Avro schemas
-    (avro-primitive-types edn-schema) edn-schema
-    (keyword? edn-schema) :name-keyword
     :else (throw (ex-info (str "Failed to get avro type for schema: "
                                edn-schema)
                           (sym-map edn-schema)))))
@@ -921,7 +921,6 @@
                    (let [type-key (get-type-key data path num-maplike)]
                      (type->branch-info type-key)))
             [branch serializer] bi]
-
         (when-not branch
           (let [data-type (type data)
                 type-keys (keys type->branch-info)
@@ -1121,7 +1120,8 @@
                           :map [(:values edn-schema)]
                           :union edn-schema
                           [])]
-      (binding [**enclosing-namespace** (or (:namespace edn-schema) **enclosing-namespace**)]
+      (binding [**enclosing-namespace** (or (:namespace edn-schema)
+                                            **enclosing-namespace**)]
         (doseq [child-schema child-schemas]
           (get-schemas! child-schema *name->edn-schema))))))
 
