@@ -10,6 +10,14 @@
 /.cpcache
 /out
 
+# CLJS stuff
+.cljs_node_repl
+/node_modules
+package-lock.json
+/.shadow-cljs
+
+
 # JS stuff
 /node_modules
 package-lock.json
+/resources/public/js

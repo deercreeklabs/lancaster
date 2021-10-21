@@ -1,7 +1,7 @@
 {:deps
  {camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.2"}
-  cheshire/cheshire {:mvn/version "5.10.0"}
-  deercreeklabs/baracus {:mvn/version "0.2.7"}
+  cheshire/cheshire {:mvn/version "5.10.1"}
+  deercreeklabs/baracus {:mvn/version "0.3.1"}
   mvxcvi/puget {:mvn/version "1.3.1"}
   primitive-math/primitive-math {:mvn/version "0.1.6"}
   prismatic/schema {:mvn/version "1.1.12"}}
@@ -18,11 +18,11 @@
                ["-m" "nrepl.cmdline" "--middleware"
                 "[cider.nrepl/cider-middleware,cider.piggieback/wrap-cljs-repl]"]}
 
-  :cider-nrepl {:extra-deps {cider/cider-nrepl {:mvn/version "0.26.0"}}}
+  :cider-nrepl {:extra-deps {cider/cider-nrepl {:mvn/version "0.27.2"}}}
 
   :clj {:extra-deps {org.clojure/clojure {:mvn/version "1.10.3"}}}
 
-  :cljs {:extra-deps {org.clojure/clojurescript {:mvn/version "1.10.844"}}}
+  :cljs {:extra-deps {org.clojure/clojurescript {:mvn/version "1.10.879"}}}
 
   :dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.10.2"}
                      org.clojure/tools.namespace {:mvn/version "1.1.0"}}}
@@ -32,7 +32,8 @@
                        :sha "b093f79420fef019faf62a75b888b5e10f4e8cc9"}}
          :main-opts ["-m"]}
 
-  :test {:extra-paths ["test"]
-         :extra-deps {lambdaisland/kaocha {:mvn/version "1.0.829"}
-                      lambdaisland/kaocha-cljs {:mvn/version "0.0-71"}
-                      lambdaisland/kaocha-cloverage {:mvn/version "1.0.75"}}}}}
+  :test-clj {:extra-paths ["test"]
+             :extra-deps {lambdaisland/kaocha {:mvn/version "1.0.937"}}}
+
+  :test-cljs {:extra-paths ["test"]
+              :extra-deps {thheller/shadow-cljs {:mvn/version "2.15.12"}}}}}

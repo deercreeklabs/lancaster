@@ -1,0 +1,13 @@
+{:deps true
+ :nrepl {:port 8777}
+ :builds
+ {:browser-test {:target :browser-test
+                 :test-dir "resources/public/js/test"
+                 :ns-regexp "-test$"
+                 :runner-ns shadow.test.browser
+                 :devtools  {:http-port 8021
+                             :http-root "resources/public/js/test"}}
+  :node-test {:target :node-test
+              :output-to "out/node-tests.js"
+              :ns-regexp "-test$"
+              :autorun   true}}}
