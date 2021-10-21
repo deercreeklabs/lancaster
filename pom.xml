@@ -4,7 +4,7 @@
   <groupId>deercreeklabs</groupId>
   <artifactId>lancaster</artifactId>
   <packaging>jar</packaging>
-  <version>0.9.10</version>
+  <version>0.9.11</version>
   <name>lancaster</name>
   <description>Tools for working with Apache Avro</description>
   <url>https://github.com/deercreeklabs/lancaster</url>
@@ -30,7 +30,7 @@
     <dependency>
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
-      <version>1.10.2</version>
+      <version>1.10.3</version>
     </dependency>
     <dependency>
       <groupId>mvxcvi</groupId>
@@ -50,12 +50,12 @@
     <dependency>
       <groupId>cheshire</groupId>
       <artifactId>cheshire</artifactId>
-      <version>5.10.0</version>
+      <version>5.10.1</version>
     </dependency>
     <dependency>
       <groupId>deercreeklabs</groupId>
       <artifactId>baracus</artifactId>
-      <version>0.2.7</version>
+      <version>0.3.1</version>
     </dependency>
     <dependency>
       <groupId>camel-snake-kebab</groupId>
