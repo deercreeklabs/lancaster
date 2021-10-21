@@ -70,3 +70,13 @@
         (let [b (aget #^bytes ba i)]
           (recur (f acc b)
                  (inc i)))))))
+
+(s/defn fingerprint128 :- ba/ByteArray
+  [s :- s/Str]
+  (->  (ba/utf8->byte-array s)
+       (ba/md5)))
+
+(s/defn fingerprint256 :- ba/ByteArray
+  [s :- s/Str]
+  (->  (ba/utf8->byte-array s)
+       (ba/sha256)))

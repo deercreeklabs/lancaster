@@ -21,8 +21,8 @@
 
 (defrecord LancasterSchema
     [edn-schema name->edn-schema json-schema parsing-canonical-form
-     fingerprint64 plumatic-schema serializer default-data-size
-     *name->serializer *writer-fp->deserializer]
+     fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
+     default-data-size *name->serializer *writer-fp->deserializer]
   u/ILancasterSchema
   (serialize [this data]
     (let [os (impl/output-stream default-data-size)]
@@ -32,7 +32,8 @@
     (serializer os data []))
   (deserialize [this writer-schema is]
     (try
-      (let [writer-fp (u/fingerprint64 writer-schema)
+      (let [writer-fp (-> (u/fingerprint256 writer-schema)
+                          (ba/byte-array->b64))
             deser (or (@*writer-fp->deserializer writer-fp)
                       (let [deser* (deser/make-deserializer
                                     (u/edn-schema writer-schema)
@@ -61,6 +62,10 @@
     parsing-canonical-form)
   (fingerprint64 [this]
     fingerprint64)
+  (fingerprint128 [this]
+    fingerprint128)
+  (fingerprint256 [this]
+    fingerprint256)
   (plumatic-schema [this]
     plumatic-schema))
 
@@ -243,7 +248,7 @@
 
 (defn get-unique-descriptor [schema]
   (if (satisfies? u/ILancasterSchema schema)
-    (-> schema u/fingerprint64 u/long->str)
+    (-> schema u/fingerprint256 ba/byte-array->b64)
     (if (keyword? schema)
       schema
       (throw (ex-info (str "Unexpected schema type in union: `" schema "`.")
@@ -313,6 +318,8 @@
          json-schema (or json-schema* (u/edn->json-string avro-schema))
          parsing-canonical-form (pcf-utils/avro-schema->pcf avro-schema)
          fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
+         fingerprint128 (fingerprint/fingerprint128 parsing-canonical-form)
+         fingerprint256 (fingerprint/fingerprint256 parsing-canonical-form)
          plumatic-schema (u/edn-schema->plumatic-schema edn-schema
                                                         name->edn-schema)
          *name->serializer (u/make-initial-*name->f
@@ -324,8 +331,8 @@
                                                      name->edn-schema)]
      (->LancasterSchema
       edn-schema name->edn-schema json-schema parsing-canonical-form
-      fingerprint64 plumatic-schema serializer default-data-size
-      *name->serializer *writer-fp->deserializer))))
+      fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
+      default-data-size *name->serializer *writer-fp->deserializer))))
 
 (defn json-schema->lancaster-schema [json-schema]
   (let [edn-schema (-> json-schema

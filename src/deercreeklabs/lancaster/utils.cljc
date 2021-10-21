@@ -44,6 +44,8 @@
   (json-schema [this])
   (parsing-canonical-form [this])
   (fingerprint64 [this])
+  (fingerprint128 [this])
+  (fingerprint256 [this])
   (plumatic-schema [this]))
 
 (defprotocol IOutputStream
@@ -178,8 +180,8 @@
   (cond
     (sequential? edn-schema) :union
     (map? edn-schema) (:type edn-schema)
-    (keyword? edn-schema) :name-keyword
     (avro-primitive-types edn-schema) edn-schema
+    (keyword? edn-schema) :name-keyword
     (string? edn-schema) :name-string ;; For Avro schemas
     (nil? edn-schema) (throw
                        (ex-info "Schema argument to get-avro-type is nil."
@@ -1581,5 +1583,7 @@
 
 (defn dedupe-schemas [schemas]
   (vals (reduce (fn [acc schema]
-                  (assoc acc (fingerprint64 schema) schema))
+                  (let [fp (-> (fingerprint256 schema)
+                               (ba/byte-array->b64))]
+                    (assoc acc fp schema)))
                 {} schemas)))

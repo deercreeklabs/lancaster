@@ -218,6 +218,18 @@
   [schema :- LancasterSchema]
   (u/fingerprint64 schema))
 
+(s/defn fingerprint128 :- ba/ByteArray
+  "Returns the 128-bit MD5 digest of the Parsing Canonical Form
+   of the given Lancaster schema."
+  [schema :- LancasterSchema]
+  (u/fingerprint128 schema))
+
+(s/defn fingerprint256 :- ba/ByteArray
+  "Returns the 256-bit SHA-256 hash of the Parsing Canonical Form
+   of the given Lancaster schema."
+  [schema :- LancasterSchema]
+  (u/fingerprint256 schema))
+
 (s/defn schema? :- s/Bool
   "Returns a boolean indicating whether or not the argument is a
    Lancaster schema object."

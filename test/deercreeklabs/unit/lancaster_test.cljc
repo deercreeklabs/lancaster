@@ -886,7 +886,13 @@
                     :default nil}]}
          (l/edn rec-w-maybe-field-schema)))
   (is (= "-5686522258470805846"
-         (u/long->str (l/fingerprint64 rec-w-maybe-field-schema)))))
+         (u/long->str (l/fingerprint64 rec-w-maybe-field-schema))))
+  (is (= "8614342a3c7b1d979361bb2f91e684e3"
+         (-> (l/fingerprint128 rec-w-maybe-field-schema)
+             (ba/byte-array->hex-str))))
+  (is (= "ca448fc66bedd19450250f871fe26a2859a227db1ca5ceac1f632d58528f17a9"
+         (-> (l/fingerprint256 rec-w-maybe-field-schema)
+             (ba/byte-array->hex-str)))))
 
 (deftest test-record-serdes-missing-field
   (let [data {:qty-requested 100}]
