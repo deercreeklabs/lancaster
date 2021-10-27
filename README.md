@@ -157,7 +157,9 @@ resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Res
 * [json](#json): Returns the JSON representation of the schema.
 * [pcf](#pcf): Returns a JSON string containing the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
-* [fingerprint64](#fingerprint64): Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
+* [fingerprint64](#fingerprint64): Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema. 
+* [fingerprint128](#fingerprint128): Returns the 128-bit [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
+* [fingerprint256](#fingerprint256): Returns the 256-bit [SHA-256 Hash](https://en.wikipedia.org/wiki/SHA-2) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
 * [schema?](#schema): Is the argument a Lancaster schema?
 * [plumatic-schema](#plumatic-schema): Returns a [Plumatic schema](https://github.com/plumatic/schema) for the schema.
 * [default-data](#default-data): Returns default data that conforms to the schema.
@@ -1027,6 +1029,14 @@ A JSON string
 
 #### See Also
 * [fingerprint64](#fingerprint64): Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
+* [fingerprint128](#fingerprint128: Returns the 128-bit 
+[MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+of the schema.
+* [fingerprint256](#fingerprint256): Returns the 256-bit 
+[SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+of the schema.
 
 -------------------------------------------------------------------------------
 ### fingerprint64
@@ -1051,12 +1061,98 @@ java.lang.Long. For ClojureScript, it is a goog.math.Long.
   :clubs :diamonds :hearts :spades)
 
 (l/fingerprint64 suite-schema)
-;; 5882396032713186004
+5882396032713186004
 ```
 
 #### See Also
 * [pcf](#pcf): Returns a JSON string containing the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+of the schema
+* [fingerprint128](#fingerprint128: Returns the 128-bit 
+[MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+of the schema.
+* [fingerprint256](#fingerprint256): Returns the 256-bit 
+[SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+of the schema.
+
+-------------------------------------------------------------------------------
+### fingerprint128
+```clojure
+(fingerprint128 schema)
+```
+Returns the 128-bit [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+for the given Lancaster schema.
+
+#### Parameters
+* `schema`: The Lancaster schema
+
+#### Return Value
+A byte array of 16 bytes (128 bits) representing the fingerprint. 
+
+#### Example
+```clojure
+(l/def-enum-schema suite-schema
+  :clubs :diamonds :hearts :spades)
+
+(l/fingerprint128 suite-schema)
+[92, 31, 14, -85, -40, 26, 121, -60, -38, 4, -81, -125, 100, 71, 101, 94]
+```
+
+#### See Also
+* [pcf](#pcf): Returns a JSON string containing the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+of the schema
+* [fingerprint64](#fingerprint64): Returns the 64-bit 
+[Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+of the schema.
+* [fingerprint256](#fingerprint256): Returns the 256-bit 
+[SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+of the schema.
+
+-------------------------------------------------------------------------------
+### fingerprint256
+```clojure
+(fingerprint256 schema)
+```
+Returns the 256-bit 
+[SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+for the given Lancaster schema.
+
+#### Parameters
+* `schema`: The Lancaster schema
+
+#### Return Value
+A byte array of 32 bytes (256 its) representing the fingerprint. 
+
+#### Example
+```clojure
+(l/def-enum-schema suite-schema
+  :clubs :diamonds :hearts :spades)
+
+(l/fingerprint256 suite-schema)
+[-119, 91, -127, 37, -2, 96, 35, -95, 79, -123, -108, -27, -49, 39,
+ 118, 95, -106, -34, -72, 63, -118, -33, -123, -10, -19, 96, 33, -40,
+ 73, -34, 25, -109]
+```
+
+#### See Also
+* [pcf](#pcf): Returns a JSON string containing the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+of the schema
+* [fingerprint64](#fingerprint64): Returns the 64-bit 
+[Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+of the schema.
+* [fingerprint128](#fingerprint128: Returns the 128-bit 
+[MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+of the schema.
 
 -------------------------------------------------------------------------------
 ### schema?
