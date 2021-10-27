@@ -156,10 +156,20 @@ resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Res
 * [edn](#edn): Returns the EDN representation of the schema.
 * [json](#json): Returns the JSON representation of the schema.
 * [pcf](#pcf): Returns a JSON string containing the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
-* [fingerprint64](#fingerprint64): Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema. 
-* [fingerprint128](#fingerprint128): Returns the 128-bit [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
-* [fingerprint256](#fingerprint256): Returns the 256-bit [SHA-256 Hash](https://en.wikipedia.org/wiki/SHA-2) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+of the schema.
+* [fingerprint64](#fingerprint64): Returns the 64-bit 
+[Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+of the schema. 
+* [fingerprint128](#fingerprint128): Returns the 128-bit 
+[MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+of the schema.
+* [fingerprint256](#fingerprint256): Returns the 256-bit 
+[SHA-256 Hash](https://en.wikipedia.org/wiki/SHA-2) of the [
+Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+of the schema.
 * [schema?](#schema): Is the argument a Lancaster schema?
 * [plumatic-schema](#plumatic-schema): Returns a [Plumatic schema](https://github.com/plumatic/schema) for the schema.
 * [default-data](#default-data): Returns default data that conforms to the schema.
@@ -1029,9 +1039,9 @@ A JSON string
 
 #### See Also
 * [fingerprint64](#fingerprint64): Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
-* [fingerprint128](#fingerprint128: Returns the 128-bit 
-[MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+* [fingerprint128](#fingerprint128): Returns the 128-bit 
+[MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
 * [fingerprint256](#fingerprint256): Returns the 256-bit 
 [SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the 
@@ -1068,7 +1078,7 @@ java.lang.Long. For ClojureScript, it is a goog.math.Long.
 * [pcf](#pcf): Returns a JSON string containing the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema
-* [fingerprint128](#fingerprint128: Returns the 128-bit 
+* [fingerprint128](#fingerprint128): Returns the 128-bit 
 [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
 of the schema.
@@ -1149,7 +1159,7 @@ of the schema
 [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the 
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
 of the schema.
-* [fingerprint128](#fingerprint128: Returns the 128-bit 
+* [fingerprint128](#fingerprint128): Returns the 128-bit 
 [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
 of the schema.
