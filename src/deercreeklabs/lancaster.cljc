@@ -166,15 +166,7 @@
                     {:ba ba
                      :ba-type (#?(:clj class :cljs type) ba)})))
   (let [is (impl/input-stream ba)]
-    (try
-      (u/deserialize reader-schema writer-schema is)
-      (catch #?(:clj Exception :cljs js/Error) e
-        (throw (ex-info
-                (str "Serialized data in byte array does not match "
-                     "given writer schema.")
-                {:writer-edn-schema (u/pprint-str
-                                     (u/edn-schema writer-schema))
-                 :orig-e e}))))))
+    (u/deserialize reader-schema writer-schema is)))
 
 (s/defn deserialize-same :- s/Any
   "Deserializes Avro-encoded data from a byte array, using the given schema
