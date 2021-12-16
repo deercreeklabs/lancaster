@@ -6,6 +6,7 @@
 * [Data Types](#data-types)
 * [Names and Namespaces](#names-and-namespaces)
 * [API Documentation](#api-documentation)
+* [Developing](#developing)
 * [License](#license)
 
 # Installation
@@ -158,17 +159,17 @@ resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Res
 * [pcf](#pcf): Returns a JSON string containing the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
-* [fingerprint64](#fingerprint64): Returns the 64-bit 
-[Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the 
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
-of the schema. 
-* [fingerprint128](#fingerprint128): Returns the 128-bit 
-[MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the 
+* [fingerprint64](#fingerprint64): Returns the 64-bit
+[Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
-* [fingerprint256](#fingerprint256): Returns the 256-bit 
+* [fingerprint128](#fingerprint128): Returns the 128-bit
+[MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+of the schema.
+* [fingerprint256](#fingerprint256): Returns the 256-bit
 [SHA-256 Hash](https://en.wikipedia.org/wiki/SHA-2) of the [
-Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
 * [schema?](#schema): Is the argument a Lancaster schema?
 * [plumatic-schema](#plumatic-schema): Returns a [Plumatic schema](https://github.com/plumatic/schema) for the schema.
@@ -1039,12 +1040,12 @@ A JSON string
 
 #### See Also
 * [fingerprint64](#fingerprint64): Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
-* [fingerprint128](#fingerprint128): Returns the 128-bit 
-[MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the 
+* [fingerprint128](#fingerprint128): Returns the 128-bit
+[MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
-* [fingerprint256](#fingerprint256): Returns the 256-bit 
-[SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the 
+* [fingerprint256](#fingerprint256): Returns the 256-bit
+[SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
 
@@ -1078,12 +1079,12 @@ java.lang.Long. For ClojureScript, it is a goog.math.Long.
 * [pcf](#pcf): Returns a JSON string containing the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema
-* [fingerprint128](#fingerprint128): Returns the 128-bit 
+* [fingerprint128](#fingerprint128): Returns the 128-bit
 [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
-* [fingerprint256](#fingerprint256): Returns the 256-bit 
-[SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the 
+* [fingerprint256](#fingerprint256): Returns the 256-bit
+[SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
 
@@ -1100,7 +1101,7 @@ for the given Lancaster schema.
 * `schema`: The Lancaster schema
 
 #### Return Value
-A byte array of 16 bytes (128 bits) representing the fingerprint. 
+A byte array of 16 bytes (128 bits) representing the fingerprint.
 
 #### Example
 ```clojure
@@ -1113,15 +1114,15 @@ A byte array of 16 bytes (128 bits) representing the fingerprint.
 
 #### See Also
 * [pcf](#pcf): Returns a JSON string containing the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema
-* [fingerprint64](#fingerprint64): Returns the 64-bit 
-[Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the 
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+* [fingerprint64](#fingerprint64): Returns the 64-bit
+[Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
-* [fingerprint256](#fingerprint256): Returns the 256-bit 
-[SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the 
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+* [fingerprint256](#fingerprint256): Returns the 256-bit
+[SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
 
 -------------------------------------------------------------------------------
@@ -1129,7 +1130,7 @@ of the schema.
 ```clojure
 (fingerprint256 schema)
 ```
-Returns the 256-bit 
+Returns the 256-bit
 [SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the
 [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 for the given Lancaster schema.
@@ -1138,7 +1139,7 @@ for the given Lancaster schema.
 * `schema`: The Lancaster schema
 
 #### Return Value
-A byte array of 32 bytes (256 its) representing the fingerprint. 
+A byte array of 32 bytes (256 its) representing the fingerprint.
 
 #### Example
 ```clojure
@@ -1153,15 +1154,15 @@ A byte array of 32 bytes (256 its) representing the fingerprint.
 
 #### See Also
 * [pcf](#pcf): Returns a JSON string containing the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema
-* [fingerprint64](#fingerprint64): Returns the 64-bit 
-[Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the 
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+* [fingerprint64](#fingerprint64): Returns the 64-bit
+[Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
-* [fingerprint128](#fingerprint128): Returns the 128-bit 
+* [fingerprint128](#fingerprint128): Returns the 128-bit
 [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) 
+[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
 of the schema.
 
 -------------------------------------------------------------------------------
@@ -1224,7 +1225,24 @@ Data that matches the given schema
 ;; :clubs
 ```
 -------------------------------------------------------------------------------
+# Developing
 
+Issues and PRs are welcome. When submitting a PR, please run the Clojure, Browser,
+and Node unit tests on your PR. Here's how:
+
+* Clojure: Run `bin/kaocha unit` in a shell. You can see the various kaocha test
+runner options (like `--watch`) by running `bin/kaocha --help`.
+* Browser: Run `bin/watch-browser-test` and then open a browser
+to http://localhost:8021/ to see the results.
+* Node: Run `bin/watch-node-test`. If `bin/watch-browser-test` is still running
+in a different shell, they will share a shadow-cljs process, so the node test
+output will actually be in the shell where `watch-browser-test` is running.
+Otherwise, the test output will be in the shell where `bin/watch-node-test` is.
+
+If your PR might affect performance, it can be helpful to run the performance
+tests (`bin/kaocha perf`).
+
+-------------------------------------------------------------------------------
 # License
 
 Copyright (c) 2017-2019 Deer Creek Labs, LLC
