@@ -101,12 +101,10 @@
         writer-schema lt/fish-or-person-or-dog-v2-schema
         reader-schema lt/person-or-dog-schema
         encoded (l/serialize writer-schema data)]
-    (try
-      (l/deserialize reader-schema writer-schema encoded)
-      (is (= :did-not-throw :but-should-have))
-      (catch #?(:clj Exception :cljs js/Error) e
-        (let [msg (u/ex-msg e)]
-          (is (str/includes? msg "does not match")))))))
+    (is (thrown-with-msg?
+          #?(:clj ExceptionInfo :cljs js/Error)
+          #"do not match."
+          (l/deserialize reader-schema writer-schema encoded)))))
 
 (deftest test-schema-evolution-no-match
   (let [data {:sku 123
@@ -116,7 +114,7 @@
         encoded (l/serialize writer-schema data)]
     (is (thrown-with-msg?
          #?(:clj ExceptionInfo :cljs js/Error)
-         #"does not match."
+         #"do not match."
          (l/deserialize reader-schema writer-schema encoded)))))
 
 (deftest test-schema-evolution-named-ref
