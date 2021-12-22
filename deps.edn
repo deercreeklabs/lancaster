@@ -2,9 +2,9 @@
  {camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.2"}
   cheshire/cheshire {:mvn/version "5.10.1"}
   deercreeklabs/baracus {:mvn/version "0.3.1"}
-  mvxcvi/puget {:mvn/version "1.3.1"}
+  mvxcvi/puget {:mvn/version "1.3.2"}
   primitive-math/primitive-math {:mvn/version "0.1.6"}
-  prismatic/schema {:mvn/version "1.1.12"}}
+  prismatic/schema {:mvn/version "1.2.0"}}
 
  :mvn/repos {"central" {:url "https://repo1.maven.org/maven2/"}
              "clojars" {:url "https://repo.clojars.org/"}}
@@ -13,27 +13,27 @@
  {:cider-clj {:main-opts ["-m" "nrepl.cmdline" "--middleware"
                           "[cider.nrepl/cider-middleware]"]}
 
-  :cider-cljs {:extra-deps {cider/piggieback {:mvn/version "0.5.2"}}
+  :cider-cljs {:extra-deps {cider/piggieback {:mvn/version "0.5.3"}}
                :main-opts
                ["-m" "nrepl.cmdline" "--middleware"
                 "[cider.nrepl/cider-middleware,cider.piggieback/wrap-cljs-repl]"]}
 
-  :cider-nrepl {:extra-deps {cider/cider-nrepl {:mvn/version "0.27.2"}}}
+  :cider-nrepl {:extra-deps {cider/cider-nrepl {:mvn/version "0.27.4"}}}
 
   :clj {:extra-deps {org.clojure/clojure {:mvn/version "1.10.3"}}}
 
-  :cljs {:extra-deps {org.clojure/clojurescript {:mvn/version "1.10.879"}}}
+  :cljs {:extra-deps {org.clojure/clojurescript {:mvn/version "1.10.914"}}}
 
-  :dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.10.2"}
-                     org.clojure/tools.namespace {:mvn/version "1.1.0"}}}
+  :dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.11.0"}
+                     org.clojure/tools.namespace {:mvn/version "1.2.0"}}}
 
   :pack {:extra-deps {pack/pack.alpha
                       {:git/url "https://github.com/juxt/pack.alpha.git"
-                       :sha "b093f79420fef019faf62a75b888b5e10f4e8cc9"}}
+                       :sha "9fd4a63ddeec3bedcbc819422de5a40ccb9eb8c9"}}
          :main-opts ["-m"]}
 
   :test-clj {:extra-paths ["test"]
-             :extra-deps {lambdaisland/kaocha {:mvn/version "1.0.937"}}}
+             :extra-deps {lambdaisland/kaocha {:mvn/version "1.60.972"}}}
 
   :test-cljs {:extra-paths ["test"]
-              :extra-deps {thheller/shadow-cljs {:mvn/version "2.15.12"}}}}}
+              :extra-deps {thheller/shadow-cljs {:mvn/version "2.16.9"}}}}}
