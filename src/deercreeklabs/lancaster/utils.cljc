@@ -798,19 +798,35 @@
    :enum #{(type :a)}
    :fixed bytes-types})
 
+(defn string-set? [edn-schema]
+  (and (= :map (:type edn-schema))
+       (= :null (:values edn-schema))))
+
 (defn maplike? [edn-schema name->edn-schema]
   (let [sch (if (keyword? edn-schema)
               (name->edn-schema edn-schema)
               edn-schema)]
-    (if sch
+    (cond
+      (string-set? sch)
+      false
+
+      sch
       (avro-map-types (get-avro-type sch))
+
+      :else
       true))) ;; Recursively defined record
 
 (defn get-type-keys-for-schema [sch name->edn-schema single-maplike?]
   (let [avro-type (get-avro-type sch)]
-    (if (and (maplike? sch name->edn-schema)
-             single-maplike?)
+    (cond
+      (string-set? sch)
+      #{:string-set}
+
+      (and (maplike? sch name->edn-schema)
+           single-maplike?)
       #{:lancaster/maplike}
+
+      :else
       (case avro-type
         :array
         #{:array}
@@ -860,6 +876,7 @@
 (defn get-type-key [data path num-maplike]
   (cond
     (sequential? data) :array
+    (set? data) :string-set
     (not (map? data)) (type data)
     :else (if (<= num-maplike 1)
             :lancaster/maplike

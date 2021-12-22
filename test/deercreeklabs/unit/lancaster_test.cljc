@@ -1102,6 +1102,16 @@
         decoded (l/deserialize-same sch encoded)]
     (is (= v decoded))))
 
+(deftest ^:this test-rt-set-record-field
+  (let [sch (l/record-schema ::a-rec
+                             [[:the-set l/string-set-schema]
+                              [:the-string l/string-schema]])
+        v {:the-set #{"a" "b" "1234" "c45"}
+           :the-string "yo"}
+        encoded (l/serialize sch v)
+        decoded (l/deserialize-same sch encoded)]
+    (is (= v decoded))))
+
 (deftest test-bad-set-type
   (let [sch l/string-set-schema
         v #{"2" :k}] ;; not strictly string members
