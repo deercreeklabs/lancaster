@@ -2,6 +2,7 @@
   (:require
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.utils :as u]
+   [goog.object :as googo]
    [schema.core :as s :include-macros true]))
 
 (defprotocol IResize
@@ -35,7 +36,7 @@
     (let [new-pos (+ pos 4)
           _ (when (> new-pos buflen)
               (embiggen this 4))
-          dataview (js/DataView. (goog.object/get ba "buffer"))]
+          dataview (js/DataView. (googo/get ba "buffer"))]
       (.setFloat32 dataview pos f true)
       (set! pos new-pos)))
 
@@ -43,7 +44,7 @@
     (let [new-pos (+ pos 8)
           _ (when (> new-pos buflen)
               (embiggen this 8))
-          dataview (js/DataView. (goog.object/get ba "buffer"))]
+          dataview (js/DataView. (googo/get ba "buffer"))]
       (.setFloat64 dataview pos d true)
       (set! pos new-pos)))
 
@@ -90,7 +91,7 @@
 
   (read-float [this]
     (let [bs (u/read-bytes this 4)
-          dataview (js/DataView. (goog.object/get bs "buffer"))]
+          dataview (js/DataView. (googo/get bs "buffer"))]
       (.getFloat32 dataview 0 true)))
 
   (read-double [this]
