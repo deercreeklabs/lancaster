@@ -306,7 +306,8 @@
     (throw (ex-info
             (str "The second argument to `member-schema-at-branch` must "
                  "be an integer indicating the union branch index. Got `"
-                 (or branch-index "nil") "`."))))
+                 (or branch-index "nil") "`.")
+            (u/sym-map branch-index))))
   (sub/member-schema-at-branch union-schema branch-index))
 
 (s/defn schema-type :- s/Keyword
