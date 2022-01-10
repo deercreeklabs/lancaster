@@ -128,7 +128,7 @@
    data :- s/Any]
   (when-not (satisfies? u/ILancasterSchema writer-schema)
     (throw
-     (ex-info (str "First argument to serialize must be a schema "
+     (ex-info (str "First argument to `serialize` must be a schema "
                    "object. The object must satisfy the ILancasterSchema "
                    "protocol. Got `" writer-schema "`.")
               {:schema (u/pprint-str writer-schema)
@@ -143,7 +143,7 @@
    ba :- ba/ByteArray]
   (when-not (satisfies? u/ILancasterSchema reader-schema)
     (throw
-     (ex-info (str "First argument to deserialize must be a schema "
+     (ex-info (str "First argument to `deserialize` must be a schema "
                    "object representing the reader's schema. The object "
                    "must satisfy the ILancasterSchema protocol. Got: `"
                    reader-schema "`.")
@@ -152,7 +152,7 @@
                (#?(:clj class :cljs type) reader-schema)})))
   (when-not (satisfies? u/ILancasterSchema writer-schema)
     (throw
-     (ex-info (str "Second argument to deserialize must be a schema "
+     (ex-info (str "Second argument to `deserialize` must be a schema "
                    "object representing the writer's schema. The object "
                    "must satisfy the ILancasterSchema protocol. Got `"
                    writer-schema "`.")
@@ -160,9 +160,9 @@
                :writer-schema-type
                (#?(:clj class :cljs type) writer-schema)})))
   (when-not (instance? ba/ByteArray ba)
-    (throw (ex-info (str "Final argument to deserialize must be a byte array. "
-                         "The byte array must include the binary data to "
-                         "be deserialized. Got `" ba "`.")
+    (throw (ex-info (str "Final argument to `deserialize` must be a byte "
+                         "array. The byte array must include the binary data "
+                         "to be deserialized. Got `" ba "`.")
                     {:ba ba
                      :ba-type (#?(:clj class :cljs type) ba)})))
   (let [is (impl/input-stream ba)]
@@ -278,6 +278,36 @@
              path "`.")
         {:given-path path}))))
   (sub/schema-at-path schema path))
+
+(s/defn member-schemas :- [LancasterSchema]
+  "Returns the member schemas of the given union schema."
+  [union-schema :- LancasterSchema]
+  (when-not (satisfies? u/ILancasterSchema union-schema)
+    (throw
+     (ex-info (str "The argument to `member-schemas` must satisfy the "
+                   "ILancasterSchema protocol. Got `"
+                   (or union-schema "nil") "`.")
+              {:schema (u/pprint-str union-schema)
+               :schema-type (#?(:clj class :cljs type) union-schema)})))
+  (sub/member-schemas union-schema))
+
+(s/defn member-schema-at-branch :- LancasterSchema
+  "Returns the member schema at the given union schema."
+  [union-schema :- LancasterSchema
+   branch-index :- s/Int]
+  (when-not (satisfies? u/ILancasterSchema union-schema)
+    (throw
+     (ex-info (str "The first argument to `member-schema-at-branch` must "
+                   "satisfy the  ILancasterSchema protocol. Got `"
+                   (or union-schema "nil") "`.")
+              {:schema (u/pprint-str union-schema)
+               :schema-type (#?(:clj class :cljs type) union-schema)})))
+  (when-not (int? branch-index)
+    (throw (ex-info
+            (str "The second argument to `member-schema-at-branch` must "
+                 "be an integer indicating the union branch index. Got `"
+                 (or branch-index "nil") "`."))))
+  (sub/member-schema-at-branch union-schema branch-index))
 
 (s/defn schema-type :- s/Keyword
   "Returns the Avro type of the given schema"

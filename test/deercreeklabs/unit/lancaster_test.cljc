@@ -915,22 +915,22 @@
   (s/without-fn-validation ;; Allow built-in handlers to throw
    (is (thrown-with-msg?
         #?(:clj ExceptionInfo :cljs js/Error)
-        #"First argument to serialize must be a schema object"
+        #"First argument to `serialize` must be a schema object"
         (l/serialize nil nil)))))
 
 (deftest test-bad-deserialize-args
   (s/without-fn-validation ;; Allow built-in handlers to throw
    (is (thrown-with-msg?
         #?(:clj ExceptionInfo :cljs js/Error)
-        #"First argument to deserialize must be a schema object"
+        #"First argument to `deserialize` must be a schema object"
         (l/deserialize nil nil nil)))
    (is (thrown-with-msg?
         #?(:clj ExceptionInfo :cljs js/Error)
-        #"Second argument to deserialize must be a "
+        #"Second argument to `deserialize` must be a "
         (l/deserialize why-schema nil (ba/byte-array []))))
    (is (thrown-with-msg?
         #?(:clj ExceptionInfo :cljs js/Error)
-        #"argument to deserialize must be a byte array"
+        #"argument to `deserialize` must be a byte array"
         (l/deserialize why-schema why-schema [])))))
 
 (deftest test-field-default-validation
@@ -1102,7 +1102,7 @@
         decoded (l/deserialize-same sch encoded)]
     (is (= v decoded))))
 
-(deftest ^:this test-rt-set-record-field
+(deftest test-rt-set-record-field
   (let [sch (l/record-schema ::a-rec
                              [[:the-set l/string-set-schema]
                               [:the-string l/string-schema]])

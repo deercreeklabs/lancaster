@@ -5,7 +5,6 @@
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]))
 
-
 (defmulti expand-name-kws u/avro-type-dispatch)
 
 (defmethod expand-name-kws :default
@@ -14,7 +13,13 @@
 
 (defmethod expand-name-kws :name-keyword
   [edn-schema name->edn-schema]
-  (name->edn-schema edn-schema))
+  (let [schema (name->edn-schema edn-schema)]
+    (when-not schema
+      (throw (ex-info (str "Name keyword `" edn-schema "` is not found in "
+                           "this schema.")
+                      {:name-keyword edn-schema
+                       :known-names (keys name->edn-schema)})))
+    schema))
 
 (defmethod expand-name-kws :map
   [edn-schema name->edn-schema]
@@ -75,6 +80,16 @@
                             (reduced field*)
                             acc))
                         nil (:fields edn-schema))]
+      (when (= {:name :deercreeklabs.unit.sub-test/tree,
+                :type :record,
+                :fields
+                [{:name :value, :type [:null :int], :default nil}
+                 {:name :right,
+                  :type [:null :deercreeklabs.unit.sub-test/tree],
+                  :default nil}
+                 {:name :left,
+                  :type [:null :deercreeklabs.unit.sub-test/tree],
+                  :default nil}]} edn-schema))
       (when field
         (let [child (-> (:type field)
                         (expand-name-kws name->edn-schema))]
@@ -151,3 +166,27 @@
                                            name->edn-schema)]
     (when sub-edn-schema
       (schemas/edn-schema->lancaster-schema sub-edn-schema))))
+
+(defn member-schemas [schema]
+  (let [{:keys [edn-schema name->edn-schema]} schema
+        avro-type (u/get-avro-type edn-schema)
+        _ (when-not (= :union avro-type)
+            (throw (ex-info (str "The argument to `member-schemas` must be "
+                                 "a union schema. Got type `" avro-type "`.")
+                            (u/sym-map schema avro-type))))]
+    (map (fn [member-edn-schema]
+           (-> (expand-name-kws member-edn-schema name->edn-schema)
+               (schemas/edn-schema->lancaster-schema)))
+         edn-schema)))
+
+(defn member-schema-at-branch [schema branch-index]
+  (let [{:keys [edn-schema name->edn-schema]} schema
+        avro-type (u/get-avro-type edn-schema)
+        _ (when-not (= :union avro-type)
+            (throw
+             (ex-info (str "The argument to `member-schema-at-branch` must be "
+                           "a union schema. Got type `" avro-type "`.")
+                      (u/sym-map schema avro-type))))
+        member-edn-schema (nth edn-schema branch-index)]
+    (-> (expand-name-kws member-edn-schema name->edn-schema)
+        (schemas/edn-schema->lancaster-schema))))

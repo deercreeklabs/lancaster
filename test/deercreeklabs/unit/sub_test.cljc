@@ -50,6 +50,11 @@
    :age 100
    :children [bob mary]})
 
+(l/def-record-schema tree-schema
+  [:value l/int-schema]
+  [:right ::tree]
+  [:left ::tree])
+
 (deftest test-schema-at-path-nested-recs
   (let [path [:req :sku]
         ret (-> (l/schema-at-path lt/add-to-cart-rsp-schema path)
@@ -157,3 +162,26 @@
 (deftest test-schema-at-path-evolution
   (is (nil? (l/schema-at-path sys-state-schema [:new-state-field])))
   (is (nil? (l/schema-at-path sys-state-schema [::msgs 0 :new-msg-field]))))
+
+(deftest test-member-schemas-recursive
+  (let [field-schema (l/schema-at-path tree-schema [:right])
+        members (l/member-schemas field-schema)
+        _ (is (= 2 (count members)))
+        _ (is (= [:null :record] (map l/schema-type members)))
+        tree-schema (second members)
+        tree {:right {:right {:value 7}}
+              :left {:left {:value 8}}
+              :value 3}
+        encoded (l/serialize tree-schema tree)
+        decoded (l/deserialize-same tree-schema encoded)]
+    (is (= tree decoded))))
+
+(deftest test-member-schema-at-branch-recursive
+  (let [field-schema (l/schema-at-path tree-schema [:right])
+        tree-schema (l/member-schema-at-branch field-schema 1)
+        tree {:right {:right {:value 7}}
+              :left {:left {:value 8}}
+              :value 3}
+        encoded (l/serialize tree-schema tree)
+        decoded (l/deserialize-same tree-schema encoded)]
+    (is (= tree decoded))))

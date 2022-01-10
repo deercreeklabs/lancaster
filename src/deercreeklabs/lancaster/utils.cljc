@@ -592,12 +592,15 @@
      :cljs (js->clj (js/JSON.parse json-str) :keywordize-keys true)))
 
 (defn swap-named-value!
-  "Add a thing to a named atom map. Used for *name->serializer and name->edn-schema.
-   Adds the bare name as a keyword and the namespaced keyword if it exists."
+  "Add a thing to a named atom map. Used for *name->serializer and
+   name->edn-schema. Adds the bare name as a keyword and the namespaced
+   keyword if it exists."
   [*atom edn-schema value]
   (let [name (:name edn-schema)]
     (swap! *atom assoc (:name edn-schema) value)
-    (when-let [ns (java-namespace->clj-namespace (or (:namespace edn-schema) (namespace name) **enclosing-namespace**))]
+    (when-let [ns (java-namespace->clj-namespace (or (:namespace edn-schema)
+                                                     (namespace name)
+                                                     **enclosing-namespace**))]
       (swap! *atom assoc (keyword ns (clojure.core/name name)) value))))
 
 (defmethod make-serializer :null
@@ -1132,7 +1135,6 @@
       (swap-named-value! *name->edn-schema
                          edn-schema
                          edn-schema))
-
     (let [child-schemas (case avro-type
                           :record (map :type (:fields edn-schema))
                           :array [(:items edn-schema)]
