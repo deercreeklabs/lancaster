@@ -184,9 +184,23 @@
         avro-type (u/get-avro-type edn-schema)
         _ (when-not (= :union avro-type)
             (throw
-             (ex-info (str "The argument to `member-schema-at-branch` must be "
-                           "a union schema. Got type `" avro-type "`.")
-                      (u/sym-map schema avro-type))))
+             (ex-info (str "The `schema` argument to `member-schema-at-branch` "
+                           "must be a union schema. Got type: `" avro-type "`.")
+                      (u/sym-map edn-schema avro-type))))
+        _ (when-not (int? branch-index)
+            (throw
+             (ex-info
+              (str "The `branch-index` argument to `member-schema-at-branch` "
+                   "must be an integer. Got: `" branch-index "`.")
+              (u/sym-map branch-index edn-schema avro-type))))
+        _ (when (or (>= branch-index (count edn-schema))
+                    (neg? branch-index))
+            (throw
+             (ex-info
+              (str "The `branch-index` argument (`" branch-index "`) "
+                   "to `member-schema-at-branch` is out of range. Length of "
+                   "union schema is " (count edn-schema) ".")
+              (u/sym-map edn-schema branch-index))))
         member-edn-schema (nth edn-schema branch-index)]
     (-> (expand-name-kws member-edn-schema name->edn-schema)
         (schemas/edn-schema->lancaster-schema))))
