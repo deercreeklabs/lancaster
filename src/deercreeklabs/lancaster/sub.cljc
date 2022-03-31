@@ -80,16 +80,6 @@
                             (reduced field*)
                             acc))
                         nil (:fields edn-schema))]
-      (when (= {:name :deercreeklabs.unit.sub-test/tree,
-                :type :record,
-                :fields
-                [{:name :value, :type [:null :int], :default nil}
-                 {:name :right,
-                  :type [:null :deercreeklabs.unit.sub-test/tree],
-                  :default nil}
-                 {:name :left,
-                  :type [:null :deercreeklabs.unit.sub-test/tree],
-                  :default nil}]} edn-schema))
       (when field
         (let [child (-> (:type field)
                         (expand-name-kws name->edn-schema))]
@@ -165,7 +155,8 @@
         sub-edn-schema (edn-schema-at-path top-edn-schema path 0
                                            name->edn-schema)]
     (when sub-edn-schema
-      (schemas/edn-schema->lancaster-schema sub-edn-schema))))
+      (-> (expand-name-kws sub-edn-schema name->edn-schema)
+          (schemas/edn-schema->lancaster-schema)))))
 
 (defn member-schemas [schema]
   (let [{:keys [edn-schema name->edn-schema]} schema
