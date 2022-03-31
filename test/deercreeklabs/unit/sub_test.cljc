@@ -159,6 +159,30 @@
                                  [:children 0 :children 1 :children])]
     (is (lt/round-trip? schema [ralph]))))
 
+(l/def-record-schema z-schema
+  [:z l/string-schema])
+
+(def d-schema
+  (l/array-schema z-schema))
+
+(l/def-record-schema a-schema
+  [:aa d-schema])
+
+(l/def-record-schema b-schema
+  [:bb d-schema])
+
+(l/def-record-schema root-schema
+  [:a a-schema]
+  [:b b-schema]
+  [:c b-schema])
+
+(def c
+  {:bb [{:z "test"} {:z "another"}]})
+
+(deftest test-schema-at-path-name-expansion-deeper-than-path-nesting
+  (let [schema (l/schema-at-path root-schema [:c])]
+    (is (lt/round-trip? schema c))))
+
 (deftest test-schema-at-path-evolution
   (is (nil? (l/schema-at-path sys-state-schema [:new-state-field])))
   (is (nil? (l/schema-at-path sys-state-schema [::msgs 0 :new-msg-field]))))
