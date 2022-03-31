@@ -179,7 +179,7 @@
 (def c
   {:bb [{:z "test"} {:z "another"}]})
 
-(deftest test-schema-at-path-expansion-deeper-than-path-nesting
+(deftest test-schema-at-path-name-expansion-deeper-than-path-nesting
   (let [schema (l/schema-at-path root-schema [:c])]
     (is (lt/round-trip? schema c))))
 
