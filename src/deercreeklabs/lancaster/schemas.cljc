@@ -300,10 +300,10 @@
                  name-or-schema))
      edn-schema)))
 
-(defn edn-schema->lancaster-schema
+(defn edn-schema->lancaster-schema*
   ;; TODO: Validate the edn-schema
   ([edn-schema*]
-   (edn-schema->lancaster-schema edn-schema* nil))
+   (edn-schema->lancaster-schema* edn-schema* nil))
   ([edn-schema* json-schema*]
    (when (= :name-keyword (u/get-avro-type edn-schema*))
      (throw (ex-info (str "Can't construct schema from name keyword: `"
@@ -333,6 +333,8 @@
       edn-schema name->edn-schema json-schema parsing-canonical-form
       fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
       default-data-size *name->serializer *writer-fp->deserializer))))
+
+(def edn-schema->lancaster-schema (memoize edn-schema->lancaster-schema*))
 
 (defn json-schema->lancaster-schema [json-schema]
   (let [edn-schema (-> json-schema
