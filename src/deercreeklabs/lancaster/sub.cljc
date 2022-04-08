@@ -149,7 +149,7 @@
                                     (u/sym-map edn-schema k))))]
       (edn-schema-at-path child full-path (inc i) name->edn-schema))))
 
-(defn schema-at-path [schema path]
+(defn schema-at-path* [schema path]
   (let [top-edn-schema (u/edn-schema schema)
         name->edn-schema (u/make-name->edn-schema top-edn-schema)
         sub-edn-schema (edn-schema-at-path top-edn-schema path 0
@@ -157,6 +157,8 @@
     (when sub-edn-schema
       (-> (expand-name-kws sub-edn-schema name->edn-schema)
           (schemas/edn-schema->lancaster-schema)))))
+
+(def schema-at-path (memoize schema-at-path*))
 
 (defn member-schemas [schema]
   (let [{:keys [edn-schema name->edn-schema]} schema
@@ -170,7 +172,7 @@
                (schemas/edn-schema->lancaster-schema)))
          edn-schema)))
 
-(defn member-schema-at-branch [schema branch-index]
+(defn member-schema-at-branch* [schema branch-index]
   (let [{:keys [edn-schema name->edn-schema]} schema
         avro-type (u/get-avro-type edn-schema)
         _ (when-not (= :union avro-type)
@@ -195,3 +197,5 @@
         member-edn-schema (nth edn-schema branch-index)]
     (-> (expand-name-kws member-edn-schema name->edn-schema)
         (schemas/edn-schema->lancaster-schema))))
+
+(def member-schema-at-branch (memoize member-schema-at-branch*))
