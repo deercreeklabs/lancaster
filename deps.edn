@@ -20,7 +20,7 @@
 
   :cider-nrepl {:extra-deps {cider/cider-nrepl {:mvn/version "0.28.3"}}}
 
-  :clj {:extra-deps {org.clojure/clojure {:mvn/version "1.11.0"}}}
+  :clj {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"}}}
 
   :cljs {:extra-deps {org.clojure/clojurescript {:mvn/version "1.11.4"}}}
 
@@ -36,4 +36,4 @@
              :extra-deps {lambdaisland/kaocha {:mvn/version "1.64.1010"}}}
 
   :test-cljs {:extra-paths ["test"]
-              :extra-deps {thheller/shadow-cljs {:mvn/version "2.17.8"}}}}}
+              :extra-deps {thheller/shadow-cljs {:mvn/version "2.18.0"}}}}}
