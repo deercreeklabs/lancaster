@@ -5,14 +5,9 @@
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]))
 
-(defmulti expand-name-kws u/avro-type-dispatch)
+(declare expand-name-kws)
 
-(defmethod expand-name-kws :default
-  [edn-schema name->edn-schema]
-  edn-schema)
-
-(defmethod expand-name-kws :name-keyword
-  [edn-schema name->edn-schema]
+(defn expand-name-kws-name-keyword [edn-schema name->edn-schema]
   (let [schema (name->edn-schema edn-schema)]
     (when-not schema
       (throw (ex-info (str "Name keyword `" edn-schema "` is not found in "
@@ -21,12 +16,10 @@
                        :known-names (keys name->edn-schema)})))
     schema))
 
-(defmethod expand-name-kws :map
-  [edn-schema name->edn-schema]
+(defn expand-name-kws-map [edn-schema name->edn-schema]
   (update edn-schema :values #(expand-name-kws % name->edn-schema)))
 
-(defmethod expand-name-kws :array
-  [edn-schema name->edn-schema]
+(defn expand-name-kws-array [edn-schema name->edn-schema]
   (update edn-schema :items #(expand-name-kws % name->edn-schema)))
 
 (defn expand-fields [fields name->edn-schema]
@@ -34,13 +27,23 @@
           (update field :type #(expand-name-kws % name->edn-schema)))
         fields))
 
-(defmethod expand-name-kws :record
-  [edn-schema name->edn-schema]
-  (update edn-schema :fields #(expand-fields % name->edn-schema) ))
+(defn expand-name-kws-record [edn-schema name->edn-schema]
+  (update edn-schema :fields #(expand-fields % name->edn-schema)))
 
-(defmethod expand-name-kws :union
-  [edn-schema name->edn-schema]
+(defn expand-name-kws-union [edn-schema name->edn-schema]
   (mapv #(expand-name-kws % name->edn-schema) edn-schema))
+
+(defn expand-name-kws* [edn-schema name->edn-schema]
+  (let [avro-type (u/get-avro-type edn-schema)]
+    (case avro-type
+      :name-keyword (expand-name-kws-name-keyword edn-schema name->edn-schema)
+      :map (expand-name-kws-map edn-schema name->edn-schema)
+      :array (expand-name-kws-array edn-schema name->edn-schema)
+      :record (expand-name-kws-record edn-schema name->edn-schema)
+      :union (expand-name-kws-union edn-schema name->edn-schema)
+      edn-schema)))
+
+(def expand-name-kws (memoize expand-name-kws*))
 
 (defmulti edn-schema-at-path u/avro-type-dispatch-lt)
 

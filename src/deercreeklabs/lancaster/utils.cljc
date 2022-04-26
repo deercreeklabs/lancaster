@@ -178,19 +178,19 @@
 (s/defn get-avro-type :- s/Keyword
   [edn-schema]
   (cond
-    (sequential? edn-schema) :union
-    (map? edn-schema) (:type edn-schema)
-    (avro-primitive-types edn-schema) edn-schema
-    (keyword? edn-schema) :name-keyword
-    (string? edn-schema) :name-string ;; For Avro schemas
-    (nil? edn-schema) (throw
-                       (ex-info "Schema argument to get-avro-type is nil."
-                                {:type :illegal-schema
-                                 :subtype :schema-is-nil
-                                 :schema edn-schema}))
-    :else (throw (ex-info (str "Failed to get avro type for schema: "
-                               edn-schema)
-                          (sym-map edn-schema)))))
+   (map? edn-schema) (:type edn-schema)
+   (sequential? edn-schema) :union
+   (avro-primitive-types edn-schema) edn-schema
+   (keyword? edn-schema) :name-keyword
+   (string? edn-schema) :name-string ;; For Avro schemas
+   (nil? edn-schema) (throw
+                      (ex-info "Schema argument to get-avro-type is nil."
+                               {:type :illegal-schema
+                                :subtype :schema-is-nil
+                                :schema edn-schema}))
+   :else (throw (ex-info (str "Failed to get avro type for schema: "
+                              edn-schema)
+                         (sym-map edn-schema)))))
 
 (defn strip-lt-attrs [edn-schema]
   (dissoc edn-schema :logical-type :lt->avro :avro->lt :lt? :default-data
@@ -1146,11 +1146,13 @@
         (doseq [child-schema child-schemas]
           (get-schemas! child-schema *name->edn-schema))))))
 
-(defn make-name->edn-schema [edn-schema]
+(defn make-name->edn-schema* [edn-schema]
   (let [*name->edn-schema (atom (zipmap avro-primitive-types
                                         avro-primitive-types))]
     (get-schemas! edn-schema *name->edn-schema)
     @*name->edn-schema))
+
+(def make-name->edn-schema (memoize make-name->edn-schema*))
 
 (defn make-initial-*name->f [make-f]
   (reduce (fn [*acc edn-schema]
