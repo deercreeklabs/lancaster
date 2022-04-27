@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-clojure -A:test-clj:dev -m kaocha.runner "$@"
+clojure -M:test-clj:dev -m kaocha.runner "$@"

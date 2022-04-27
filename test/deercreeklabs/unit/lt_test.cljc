@@ -116,7 +116,7 @@
                                sku-to-qty-schema encoded)]
     (is (= data decoded))))
 
-(deftest test-schema-at-path-int-map
+(deftest ^:this test-schema-at-path-int-map
   (let [path [1]
         ret (-> (l/schema-at-path sku-to-qty-schema path)
                 (u/edn-schema)

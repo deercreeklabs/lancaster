@@ -150,14 +150,53 @@
                                     (u/sym-map edn-schema k))))]
       (edn-schema-at-path child full-path (inc i) name->edn-schema))))
 
+(defn path-type* [path-entry]
+  (cond
+   (keyword? path-entry) :keyword
+   (string? path-entry) :string
+   (int? path-entry) :int
+   :else nil))
+
+(defn ->matching-union-child-schema [union-schema union-edn-schema path-entry]
+  (let [path-type (path-type* path-entry)
+        ret (some
+                (fn [[i sub]]
+                  (case [(u/get-avro-type sub) path-type]
+                    [:record :keyword] (-> (u/child-schema union-schema i)
+                                           (u/child-schema path-entry))
+                    [:map :string] (-> (u/child-schema union-schema i)
+                                       (u/child-schema))
+                    [:array :int] (-> (u/child-schema union-schema i)
+                                      (u/child-schema))
+                    ;; Can't be union as per Avro spec dissallowing immediatley
+                    ;; nested unions. If it's anything else we return nil
+                    ;; causing the nil branch of the following if to throw.
+                    nil))
+                (map-indexed vector union-edn-schema))]
+    (if ret
+      ret
+      (throw
+       (ex-info
+        (str "No matching schema in union for "
+             "key `" path-entry "`.")
+        {:schema union-schema :k path-entry})))))
+
 (defn schema-at-path [schema path]
-  (let [top-edn-schema (u/edn-schema schema)
-        name->edn-schema (u/make-name->edn-schema top-edn-schema)
-        sub-edn-schema (edn-schema-at-path top-edn-schema path 0
-                                           name->edn-schema)]
-    (when sub-edn-schema
-      (-> (expand-name-kws sub-edn-schema name->edn-schema)
-          (schemas/edn-schema->lancaster-schema)))))
+  (let [child (first path)]
+    (if-not child
+      schema
+      (let [edn-schema (:edn-schema schema)
+            child-schema (case (u/get-avro-type edn-schema)
+                           :record (u/child-schema schema child)
+                           :map (u/child-schema schema)
+                           :array (u/child-schema schema)
+                           :union (->matching-union-child-schema
+                                   schema edn-schema child)
+                           (throw
+                            (ex-info
+                             "Can't get schema at path for non container type."
+                             (u/sym-map schema path))))]
+        (recur child-schema (rest path))))))
 
 (defn member-schemas [schema]
   (let [{:keys [edn-schema name->edn-schema]} schema
@@ -166,10 +205,10 @@
             (throw (ex-info (str "The argument to `member-schemas` must be "
                                  "a union schema. Got type `" avro-type "`.")
                             (u/sym-map schema avro-type))))]
-    (map (fn [member-edn-schema]
-           (-> (expand-name-kws member-edn-schema name->edn-schema)
-               (schemas/edn-schema->lancaster-schema)))
-         edn-schema)))
+    (map (fn [sub] (if (keyword? sub)
+                     (sub @u/*__INTERNAL__name->schema)
+                     sub))
+         (:child-info schema))))
 
 (defn member-schema-at-branch [schema branch-index]
   (let [{:keys [edn-schema name->edn-schema]} schema
@@ -194,5 +233,4 @@
                    "union schema is " (count edn-schema) ".")
               (u/sym-map edn-schema branch-index))))
         member-edn-schema (nth edn-schema branch-index)]
-    (-> (expand-name-kws member-edn-schema name->edn-schema)
-        (schemas/edn-schema->lancaster-schema))))
+    (u/child-schema schema branch-index)))

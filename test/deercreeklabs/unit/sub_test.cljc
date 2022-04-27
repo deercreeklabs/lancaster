@@ -185,7 +185,7 @@
 
 (deftest test-schema-at-path-evolution
   (is (nil? (l/schema-at-path sys-state-schema [:new-state-field])))
-  (is (nil? (l/schema-at-path sys-state-schema [::msgs 0 :new-msg-field]))))
+  (is (nil? (l/schema-at-path sys-state-schema [:msgs 0 :new-msg-field]))))
 
 (deftest test-member-schemas-recursive
   (let [field-schema (l/schema-at-path tree-schema [:right])

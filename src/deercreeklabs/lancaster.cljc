@@ -260,6 +260,13 @@
               {:given-arg schema})))
   (u/default-data (edn schema)))
 
+(s/defn child-schema :- LancasterSchema
+  "Returns the child schema of the given schema"
+  ([schema]
+   (u/child-schema schema))
+  ([schema field-kw-or-branch-i]
+   (u/child-schema schema field-kw-or-branch-i)))
+
 (s/defn schema-at-path :- (s/maybe LancasterSchema)
   [schema :- LancasterSchema
    path :- [s/Any]]
@@ -319,13 +326,6 @@
                    schema "`.")
               {:given-arg schema})))
   (u/get-avro-type (u/edn-schema schema)))
-
-(s/defn child-schema :- LancasterSchema
-  "Returns the child schema of the given schema"
-  ([schema]
-   (u/child-schema schema))
-  ([schema field-name-kw]
-   (u/child-schema schema field-name-kw)))
 
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 
