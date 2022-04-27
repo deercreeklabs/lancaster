@@ -305,6 +305,8 @@
                  name-or-schema))
      edn-schema)))
 
+(declare edn-schema->lancaster-schema)
+
 (defn ->child-info [edn-schema]
   (case (u/get-avro-type edn-schema)
     :record {:child-schema nil
@@ -317,15 +319,12 @@
           :field->schema nil}
     :array {:child-schema (edn-schema->lancaster-schema (:items edn-schema))
             :field->schema nil}
-    {:child-schema :lancaster/no-children :field->schema nil}
-    (edn-schema->lancaster-schema)))
+    {:child-schema :lancaster/no-children :field->schema nil}))
 
-(declare edn-schema->lancaster-schema)
-
-(defn edn-schema->lancaster-schema*
+(defn edn-schema->lancaster-schema
   ;; TODO: Validate the edn-schema
   ([edn-schema*]
-   (edn-schema->lancaster-schema* edn-schema* nil))
+   (edn-schema->lancaster-schema edn-schema* nil))
   ([edn-schema* json-schema*]
    (when (= :name-keyword (u/get-avro-type edn-schema*))
      (throw (ex-info (str "Can't construct schema from name keyword: `"
@@ -351,7 +350,7 @@
                                        *name->serializer)
          default-data-size (u/make-default-data-size edn-schema
                                                      name->edn-schema)
-         {:keys [child-schema field->schema]} {} #_(->child-info edn-schema)
+         {:keys [child-schema field->schema]} (->child-info edn-schema)
          lancaster-schema (->LancasterSchema
                            edn-schema name->edn-schema json-schema
                            parsing-canonical-form fingerprint64 fingerprint128
@@ -363,7 +362,7 @@
             lancaster-schema)
      lancaster-schema)))
 
-(def edn-schema->lancaster-schema (memoize edn-schema->lancaster-schema*))
+; (def edn-schema->lancaster-schema (memoize edn-schema->lancaster-schema*))
 
 (defn json-schema->lancaster-schema [json-schema]
   (let [edn-schema (-> json-schema

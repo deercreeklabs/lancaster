@@ -13,7 +13,8 @@
  {:cider-clj {:main-opts ["-m" "nrepl.cmdline" "--middleware"
                           "[cider.nrepl/cider-middleware]"]}
 
-  :cider-cljs {:extra-deps {cider/piggieback {:mvn/version "0.5.3"}}
+  :cider-cljs {:extra-deps {cider/cider-nrepl {:mvn/version "0.28.3"}
+                            cider/piggieback {:mvn/version "0.5.3"}}
                :main-opts
                ["-m" "nrepl.cmdline" "--middleware"
                 "[cider.nrepl/cider-middleware,cider.piggieback/wrap-cljs-repl]"]}
