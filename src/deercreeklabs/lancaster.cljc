@@ -320,6 +320,13 @@
               {:given-arg schema})))
   (u/get-avro-type (u/edn-schema schema)))
 
+(s/defn child-schema :- LancasterSchema
+  "Returns the child schema of the given schema"
+  ([schema]
+   (u/child-schema schema))
+  ([schema field-name-kw]
+   (u/child-schema schema field-name-kw)))
+
 ;;;;;;;;;; Named Schema Helper Macros ;;;;;;;;;;;;;;;;
 
 (defmacro def-record-schema

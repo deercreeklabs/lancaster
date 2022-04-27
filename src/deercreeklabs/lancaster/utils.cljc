@@ -25,6 +25,8 @@
 
 #?(:clj (pm/use-primitive-operators))
 
+(defonce *name->schema (atom {}))
+
 (declare default-data edn-schemas-match?)
 
 (defmacro sym-map
@@ -46,7 +48,8 @@
   (fingerprint64 [this])
   (fingerprint128 [this])
   (fingerprint256 [this])
-  (plumatic-schema [this]))
+  (plumatic-schema [this])
+  (child-schema [this] [this field-name-kw]))
 
 (defprotocol IOutputStream
   (write-byte [this b])

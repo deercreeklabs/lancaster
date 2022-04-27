@@ -22,7 +22,8 @@
 (defrecord LancasterSchema
     [edn-schema name->edn-schema json-schema parsing-canonical-form
      fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
-     default-data-size *name->serializer *writer-fp->deserializer]
+     default-data-size *name->serializer *writer-fp->deserializer child-schema
+     field->schema]
   u/ILancasterSchema
   (serialize [this data]
     (let [os (impl/output-stream default-data-size)]
@@ -67,7 +68,11 @@
   (fingerprint256 [this]
     fingerprint256)
   (plumatic-schema [this]
-    plumatic-schema))
+    plumatic-schema)
+  (child-schema [this]
+    )
+  (child-schema [this field-name-kw]
+    ))
 
 (defmulti validate-schema-args u/first-arg-dispatch)
 (defmulti make-edn-schema u/first-arg-dispatch)
@@ -300,6 +305,23 @@
                  name-or-schema))
      edn-schema)))
 
+(defn ->child-info [edn-schema]
+  (case (u/get-avro-type edn-schema)
+    :record {:child-schema nil
+             :field->schema
+             (reduce (fn [acc field]
+                       (assoc acc (:name field)
+                              (edn-schema->lancaster-schema (:type field))))
+                     (:fields edn-schema))}
+    :map {:child-schema (edn-schema->lancaster-schema (:values edn-schema))
+          :field->schema nil}
+    :array {:child-schema (edn-schema->lancaster-schema (:items edn-schema))
+            :field->schema nil}
+    {:child-schema :lancaster/no-children :field->schema nil}
+    (edn-schema->lancaster-schema)))
+
+(declare edn-schema->lancaster-schema)
+
 (defn edn-schema->lancaster-schema*
   ;; TODO: Validate the edn-schema
   ([edn-schema*]
@@ -328,11 +350,18 @@
          serializer (u/make-serializer edn-schema name->edn-schema
                                        *name->serializer)
          default-data-size (u/make-default-data-size edn-schema
-                                                     name->edn-schema)]
-     (->LancasterSchema
-      edn-schema name->edn-schema json-schema parsing-canonical-form
-      fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
-      default-data-size *name->serializer *writer-fp->deserializer))))
+                                                     name->edn-schema)
+         {:keys [child-schema field->schema]} {} #_(->child-info edn-schema)
+         lancaster-schema (->LancasterSchema
+                           edn-schema name->edn-schema json-schema
+                           parsing-canonical-form fingerprint64 fingerprint128
+                           fingerprint256 plumatic-schema serializer
+                           default-data-size *name->serializer
+                           *writer-fp->deserializer child-schema field->schema)]
+     (swap! u/*name->schema assoc
+            (u/edn-schema->name-kw edn-schema)
+            lancaster-schema)
+     lancaster-schema)))
 
 (def edn-schema->lancaster-schema (memoize edn-schema->lancaster-schema*))
 
