@@ -17,14 +17,14 @@
 (l/edn b-schema)
 (println b-schema)
 
-(println (:int (deref u/*name->schema)))
+(println (:int (deref u/*__INTERNAL__name->schema)))
 
 (u/edn-schema->name-kw (l/edn a-schema))
 
 (l/edn l/int-schema)
 
 (-> (l/array-schema a-schema) (u/edn-schema->name-kw (:type (l/edn a-schema))))
-(keys (deref u/*name->schema))
+(keys (deref u/*__INTERNAL__name->schema))
 
 
 

@@ -3,13 +3,13 @@
   (:require
    [camel-snake-kebab.core :as csk]
    #?(:clj [cheshire.core :as json])
-   #?(:cljs [clojure.pprint :as pprint])
+   [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
    #?(:cljs [goog.math :as gm])
    #?(:clj [primitive-math :as pm])
-   #?(:clj [puget.printer :as puget])
+   #?(:clj [puget.printer :refer [cprint-str]])
    [schema.core :as s])
   #?(:cljs
      (:require-macros
@@ -25,7 +25,7 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-(defonce *name->schema (atom {}))
+(defonce *__INTERNAL__name->schema (atom {}))
 
 (declare default-data edn-schemas-match?)
 
@@ -81,18 +81,12 @@
 (def avro-primitive-type-strings (into #{} (map name avro-primitive-types)))
 (def Nil (s/eq nil))
 
-(defn pprint [x]
-  #?(:clj (let [^String s (puget/with-color (puget/pprint-str x))]
-            (.write *out* s))
-     :cljs (pprint/pprint x)))
-
-(defn pprint-str* [x]
-  #?(:clj (puget/pprint-str x)
-     :cljs (with-out-str (pprint/pprint x))))
-
 (defn pprint-str [x]
-  #?(:clj (puget/with-color (pprint-str* x))
-     :cljs (pprint-str* x)))
+  (with-out-str (pprint/pprint x)))
+
+(defn pprint [x]
+  #?(:clj (.write *out* (str (cprint-str x) "\n"))
+     :cljs (pprint/pprint (str x "\n"))))
 
 (s/defn ex-msg :- s/Str
   [e]
@@ -213,21 +207,26 @@
     :else (throw (ex-info (str "Argument (" kw ") is not a keyword.")
                           {:arg kw}))))
 
+(defn named-type->name [edn-schema]
+  (if-let [schema-ns (:namespace edn-schema)]
+    (keyword (name schema-ns) (name (:name edn-schema)))
+    (:name edn-schema)))
+
 (defn edn-schema->named-name-kw [edn-schema]
-  (if (avro-named-types (:type edn-schema))
-    (if-let [schema-ns (:namespace edn-schema)]
-      (keyword (name schema-ns) (name (:name edn-schema)))
-      (:name edn-schema))
-    (when (and (keyword? edn-schema) (not (avro-primitive-types edn-schema)))
-      edn-schema)))
+  (cond
+    (avro-named-types (:type edn-schema))
+    (named-type->name edn-schema)
+
+    (and (keyword? edn-schema) (not (avro-primitive-types edn-schema)))
+    edn-schema
+
+    :else nil))
 
 (s/defn edn-schema->name-kw :- s/Keyword
   [edn-schema]
   (cond
     (avro-named-types (:type edn-schema))
-    (if-let [schema-ns (:namespace edn-schema)]
-      (keyword (name schema-ns) (name (:name edn-schema)))
-      (:name edn-schema))
+    (named-type->name edn-schema)
 
     (map? edn-schema)
     (:type edn-schema)

@@ -22,8 +22,7 @@
 (defrecord LancasterSchema
     [edn-schema name->edn-schema json-schema parsing-canonical-form
      fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
-     default-data-size *name->serializer *writer-fp->deserializer child-schema
-     field->schema]
+     default-data-size *name->serializer *writer-fp->deserializer child-info]
   u/ILancasterSchema
   (serialize [this data]
     (let [os (impl/output-stream default-data-size)]
@@ -71,15 +70,15 @@
     plumatic-schema)
   (child-schema [this]
     ;; TODO: throw if not map or array?
-    (if (keyword? child-schema)
-      (child-schema @u/*name->schema)
-      child-schema))
-  (child-schema [this field-name-kw]
-    ;; TODO: throw if not record?
-    (let [field-schema (field-name-kw field->schema)]
-      (if (keyword? field-schema)
-        (field-schema @u/*name->schema)
-        field-schema))))
+    (if (keyword? child-info)
+      (child-info @u/*__INTERNAL__name->schema)
+      child-info))
+  (child-schema [this field-or-branch]
+    ;; TODO: throw if not record or union?
+    (let [schema (get child-info field-or-branch)]
+      (if (keyword? schema)
+        (schema @u/*__INTERNAL__name->schema)
+        schema))))
 
 (defmulti validate-schema-args u/first-arg-dispatch)
 (defmulti make-edn-schema u/first-arg-dispatch)
@@ -315,32 +314,30 @@
 (declare edn-schema->lancaster-schema)
 
 (defn child-edn-schema->child-schema [child-edn-schema]
-  (println child-edn-schema)
-  (if-let [named-name-kw (u/edn-schema->named-name-kw
-                          child-edn-schema)]
-    (if (named-name-kw @u/*name->schema)
+  (let [named-name-kw (u/edn-schema->named-name-kw child-edn-schema)]
+    (cond
+      (contains? @u/*__INTERNAL__name->schema named-name-kw)
       named-name-kw
-      (if (= child-edn-schema named-name-kw)
-        named-name-kw
-        (swap! u/*name->schema assoc
-               named-name-kw
-               (edn-schema->lancaster-schema child-edn-schema))))
-    (edn-schema->lancaster-schema child-edn-schema)))
+
+      (= child-edn-schema named-name-kw)
+      named-name-kw
+
+      named-name-kw
+      (swap! u/*__INTERNAL__name->schema assoc
+             named-name-kw (edn-schema->lancaster-schema child-edn-schema))
+
+      :else (edn-schema->lancaster-schema child-edn-schema))))
 
 (defn ->child-info [edn-schema]
-  (println edn-schema (u/get-avro-type edn-schema))
   (case (u/get-avro-type edn-schema)
-    :record {:child-schema nil
-             :field->schema
-             (reduce (fn [acc field]
-                       (assoc acc (:name field)
-                              (child-edn-schema->child-schema (:type field))))
-                     {} (:fields edn-schema))}
-    :map {:child-schema (child-edn-schema->child-schema (:values edn-schema))
-          :field->schema nil}
-    :array {:child-schema (child-edn-schema->child-schema (:items edn-schema))
-            :field->schema nil}
-    {:child-schema :lancaster/no-children :field->schema nil}))
+    :record (reduce (fn [acc field]
+                      (assoc acc (:name field)
+                             (child-edn-schema->child-schema (:type field))))
+                    {} (:fields edn-schema))
+    :map (child-edn-schema->child-schema (:values edn-schema))
+    :array (child-edn-schema->child-schema (:items edn-schema))
+    :union (mapv child-edn-schema->child-schema edn-schema)
+    :lancaster/no-children))
 
 (defn edn-schema->lancaster-schema
   ;; TODO: Validate the edn-schema
@@ -371,16 +368,16 @@
                                        *name->serializer)
          default-data-size (u/make-default-data-size edn-schema
                                                      name->edn-schema)
-         {:keys [child-schema field->schema]} (->child-info edn-schema)
+         child-info (->child-info edn-schema)
          lancaster-schema (->LancasterSchema
                            edn-schema name->edn-schema json-schema
                            parsing-canonical-form fingerprint64 fingerprint128
                            fingerprint256 plumatic-schema serializer
                            default-data-size *name->serializer
-                           *writer-fp->deserializer child-schema field->schema)]
+                           *writer-fp->deserializer child-info)]
      (when-let [named-name-kw (u/edn-schema->named-name-kw edn-schema)]
-       (when-not (named-name-kw @u/*name->schema)
-         (swap! u/*name->schema assoc named-name-kw lancaster-schema)))
+       (when-not (named-name-kw @u/*__INTERNAL__name->schema)
+         (swap! u/*__INTERNAL__name->schema assoc named-name-kw lancaster-schema)))
      lancaster-schema)))
 
 ; (def edn-schema->lancaster-schema (memoize edn-schema->lancaster-schema*))
