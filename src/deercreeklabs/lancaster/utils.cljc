@@ -3,13 +3,13 @@
   (:require
    [camel-snake-kebab.core :as csk]
    #?(:clj [cheshire.core :as json])
-   [clojure.pprint :as pprint]
+   #?(:cljs [clojure.pprint :as pprint])
    [clojure.set :as set]
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
    #?(:cljs [goog.math :as gm])
    #?(:clj [primitive-math :as pm])
-   #?(:clj [puget.printer :refer [cprint-str]])
+   #?(:clj [puget.printer :as puget])
    [schema.core :as s])
   #?(:cljs
      (:require-macros
@@ -81,12 +81,18 @@
 (def avro-primitive-type-strings (into #{} (map name avro-primitive-types)))
 (def Nil (s/eq nil))
 
-(defn pprint-str [x]
-  (with-out-str (pprint/pprint x)))
-
 (defn pprint [x]
-  #?(:clj (.write *out* (str (cprint-str x) "\n"))
-     :cljs (pprint/pprint (str x "\n"))))
+  #?(:clj (let [^String s (puget/with-color (puget/pprint-str x))]
+            (.write *out* s))
+     :cljs (pprint/pprint x)))
+
+(defn pprint-str* [x]
+  #?(:clj (puget/pprint-str x)
+     :cljs (with-out-str (pprint/pprint x))))
+
+(defn pprint-str [x]
+  #?(:clj (puget/with-color (pprint-str* x))
+     :cljs (pprint-str* x)))
 
 (s/defn ex-msg :- s/Str
   [e]
@@ -208,11 +214,12 @@
                           {:arg kw}))))
 
 (defn edn-schema->named-name-kw [edn-schema]
-  (if-not (avro-named-types (:type edn-schema))
-    nil
+  (if (avro-named-types (:type edn-schema))
     (if-let [schema-ns (:namespace edn-schema)]
       (keyword (name schema-ns) (name (:name edn-schema)))
-      (:name edn-schema))))
+      (:name edn-schema))
+    (when (and (keyword? edn-schema) (not (avro-primitive-types edn-schema)))
+      edn-schema)))
 
 (s/defn edn-schema->name-kw :- s/Keyword
   [edn-schema]

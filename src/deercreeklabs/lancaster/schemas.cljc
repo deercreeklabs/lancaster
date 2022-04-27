@@ -315,23 +315,27 @@
 (declare edn-schema->lancaster-schema)
 
 (defn child-edn-schema->child-schema [child-edn-schema]
-  (let [named-name-kw (u/edn-schema->named-name-kw
-                       child-edn-schema)]
-    (if named-name-kw
-      (if (named-name-kw @u/*name->schema)
+  (println child-edn-schema)
+  (if-let [named-name-kw (u/edn-schema->named-name-kw
+                          child-edn-schema)]
+    (if (named-name-kw @u/*name->schema)
+      named-name-kw
+      (if (= child-edn-schema named-name-kw)
         named-name-kw
-        (swap! u/*name->schema assoc named-name-kw
-               (edn-schema->lancaster-schema child-edn-schema)))
-      (edn-schema->lancaster-schema child-edn-schema))))
+        (swap! u/*name->schema assoc
+               named-name-kw
+               (edn-schema->lancaster-schema child-edn-schema))))
+    (edn-schema->lancaster-schema child-edn-schema)))
 
 (defn ->child-info [edn-schema]
+  (println edn-schema (u/get-avro-type edn-schema))
   (case (u/get-avro-type edn-schema)
     :record {:child-schema nil
              :field->schema
              (reduce (fn [acc field]
                        (assoc acc (:name field)
                               (child-edn-schema->child-schema (:type field))))
-                     (:fields edn-schema))}
+                     {} (:fields edn-schema))}
     :map {:child-schema (child-edn-schema->child-schema (:values edn-schema))
           :field->schema nil}
     :array {:child-schema (child-edn-schema->child-schema (:items edn-schema))
@@ -374,11 +378,9 @@
                            fingerprint256 plumatic-schema serializer
                            default-data-size *name->serializer
                            *writer-fp->deserializer child-schema field->schema)]
-     (when-let [named-schema-name-kw (u/edn-schema->named-name-kw edn-schema)]
-       (when-not (named-schema-name-kw @u/*name->schema)
-         (swap! u/*name->schema assoc
-                (u/edn-schema->name-kw edn-schema)
-                lancaster-schema)))
+     (when-let [named-name-kw (u/edn-schema->named-name-kw edn-schema)]
+       (when-not (named-name-kw @u/*name->schema)
+         (swap! u/*name->schema assoc named-name-kw lancaster-schema)))
      lancaster-schema)))
 
 ; (def edn-schema->lancaster-schema (memoize edn-schema->lancaster-schema*))
