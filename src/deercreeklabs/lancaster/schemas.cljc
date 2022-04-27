@@ -70,9 +70,16 @@
   (plumatic-schema [this]
     plumatic-schema)
   (child-schema [this]
-    )
+    ;; TODO: throw if not map or array?
+    (if (keyword? child-schema)
+      (child-schema @u/*name->schema)
+      child-schema))
   (child-schema [this field-name-kw]
-    ))
+    ;; TODO: throw if not record?
+    (let [field-schema (field-name-kw field->schema)]
+      (if (keyword? field-schema)
+        (field-schema @u/*name->schema)
+        field-schema))))
 
 (defmulti validate-schema-args u/first-arg-dispatch)
 (defmulti make-edn-schema u/first-arg-dispatch)
@@ -307,17 +314,27 @@
 
 (declare edn-schema->lancaster-schema)
 
+(defn child-edn-schema->child-schema [child-edn-schema]
+  (let [named-name-kw (u/edn-schema->named-name-kw
+                       child-edn-schema)]
+    (if named-name-kw
+      (if (named-name-kw @u/*name->schema)
+        named-name-kw
+        (swap! u/*name->schema assoc named-name-kw
+               (edn-schema->lancaster-schema child-edn-schema)))
+      (edn-schema->lancaster-schema child-edn-schema))))
+
 (defn ->child-info [edn-schema]
   (case (u/get-avro-type edn-schema)
     :record {:child-schema nil
              :field->schema
              (reduce (fn [acc field]
                        (assoc acc (:name field)
-                              (edn-schema->lancaster-schema (:type field))))
+                              (child-edn-schema->child-schema (:type field))))
                      (:fields edn-schema))}
-    :map {:child-schema (edn-schema->lancaster-schema (:values edn-schema))
+    :map {:child-schema (child-edn-schema->child-schema (:values edn-schema))
           :field->schema nil}
-    :array {:child-schema (edn-schema->lancaster-schema (:items edn-schema))
+    :array {:child-schema (child-edn-schema->child-schema (:items edn-schema))
             :field->schema nil}
     {:child-schema :lancaster/no-children :field->schema nil}))
 
@@ -357,9 +374,11 @@
                            fingerprint256 plumatic-schema serializer
                            default-data-size *name->serializer
                            *writer-fp->deserializer child-schema field->schema)]
-     (swap! u/*name->schema assoc
-            (u/edn-schema->name-kw edn-schema)
-            lancaster-schema)
+     (when-let [named-schema-name-kw (u/edn-schema->named-name-kw edn-schema)]
+       (when-not (named-schema-name-kw @u/*name->schema)
+         (swap! u/*name->schema assoc
+                (u/edn-schema->name-kw edn-schema)
+                lancaster-schema)))
      lancaster-schema)))
 
 ; (def edn-schema->lancaster-schema (memoize edn-schema->lancaster-schema*))

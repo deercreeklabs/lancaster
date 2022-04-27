@@ -18,7 +18,10 @@
 
 (println (:int (deref u/*name->schema)))
 
-(-> (l/array-schema a-schema) (l/edn))
+(u/edn-schema->name-kw (l/edn a-schema))
+
+(-> (l/array-schema a-schema) (u/edn-schema->name-kw (:type (l/edn a-schema))))
+(keys (deref u/*name->schema))
 
 
 

@@ -207,6 +207,13 @@
     :else (throw (ex-info (str "Argument (" kw ") is not a keyword.")
                           {:arg kw}))))
 
+(defn edn-schema->named-name-kw [edn-schema]
+  (if-not (avro-named-types (:type edn-schema))
+    nil
+    (if-let [schema-ns (:namespace edn-schema)]
+      (keyword (name schema-ns) (name (:name edn-schema)))
+      (:name edn-schema))))
+
 (s/defn edn-schema->name-kw :- s/Keyword
   [edn-schema]
   (cond
