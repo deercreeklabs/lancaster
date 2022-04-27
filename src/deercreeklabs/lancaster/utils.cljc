@@ -1162,13 +1162,11 @@
         (doseq [child-schema child-schemas]
           (get-schemas! child-schema *name->edn-schema))))))
 
-(defn make-name->edn-schema* [edn-schema]
+(defn make-name->edn-schema [edn-schema]
   (let [*name->edn-schema (atom (zipmap avro-primitive-types
                                         avro-primitive-types))]
     (get-schemas! edn-schema *name->edn-schema)
     @*name->edn-schema))
-
-(def make-name->edn-schema (memoize make-name->edn-schema*))
 
 (defn make-initial-*name->f [make-f]
   (reduce (fn [*acc edn-schema]

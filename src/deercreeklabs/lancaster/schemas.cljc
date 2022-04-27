@@ -377,10 +377,9 @@
                            *writer-fp->deserializer child-info)]
      (when-let [named-name-kw (u/edn-schema->named-name-kw edn-schema)]
        (when-not (named-name-kw @u/*__INTERNAL__name->schema)
-         (swap! u/*__INTERNAL__name->schema assoc named-name-kw lancaster-schema)))
+         (swap! u/*__INTERNAL__name->schema assoc
+                named-name-kw lancaster-schema)))
      lancaster-schema)))
-
-; (def edn-schema->lancaster-schema (memoize edn-schema->lancaster-schema*))
 
 (defn json-schema->lancaster-schema [json-schema]
   (let [edn-schema (-> json-schema
