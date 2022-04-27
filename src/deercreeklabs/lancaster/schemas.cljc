@@ -103,7 +103,9 @@
 
 (defn schema-or-kw? [x]
   (or (instance? LancasterSchema x)
-      (keyword? x)))
+      (keyword? x)
+      ;; TODO: Why isn't l/keyword-schema responding true with instance?
+      (= :deercreeklabs.lancaster.bilt/keyword (-> x :edn-schema :name))))
 
 (defn validate-name-kw [name-kw]
   (when-not (re-matches #"[A-Za-z][A-Za-z0-9\-]*" (name name-kw))
@@ -329,7 +331,7 @@
       :else (edn-schema->lancaster-schema child-edn-schema))))
 
 (defn ->child-info [edn-schema]
-  (case (u/get-avro-type edn-schema)
+  (case (u/avro-type-dispatch-lt edn-schema)
     :record (reduce (fn [acc field]
                       (assoc acc (:name field)
                              (child-edn-schema->child-schema (:type field))))
@@ -337,6 +339,9 @@
     :map (child-edn-schema->child-schema (:values edn-schema))
     :array (child-edn-schema->child-schema (:items edn-schema))
     :union (mapv child-edn-schema->child-schema edn-schema)
+    :logical-type (if-let [->ces (:k->child-edn-schema edn-schema)]
+                    (child-edn-schema->child-schema (->ces))
+                    :lancaster/no-children)
     :lancaster/no-children))
 
 (defn edn-schema->lancaster-schema

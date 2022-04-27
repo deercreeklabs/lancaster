@@ -157,41 +157,46 @@
    (int? path-entry) :int
    :else nil))
 
-(defn ->matching-union-child-schema [union-schema union-edn-schema path-entry]
+(defn ->matching-union-child-schema [schema edn-schema path-entry]
   (let [path-type (path-type* path-entry)
         ret (some
                 (fn [[i sub]]
-                  (case [(u/get-avro-type sub) path-type]
-                    [:record :keyword] (-> (u/child-schema union-schema i)
-                                           (u/child-schema path-entry))
-                    [:map :string] (-> (u/child-schema union-schema i)
-                                       (u/child-schema))
-                    [:array :int] (-> (u/child-schema union-schema i)
-                                      (u/child-schema))
-                    ;; Can't be union as per Avro spec dissallowing immediatley
-                    ;; nested unions. If it's anything else we return nil
-                    ;; causing the nil branch of the following if to throw.
-                    nil))
-                (map-indexed vector union-edn-schema))]
+                  (let [avro-type (u/avro-type-dispatch-lt sub)]
+                    (case [avro-type path-type]
+                      [:record :keyword] (-> (u/child-schema schema i)
+                                             (u/child-schema path-entry))
+                      [:map :string] (-> (u/child-schema schema i)
+                                         (u/child-schema))
+                      [:array :int] (-> (u/child-schema schema i)
+                                        (u/child-schema))
+                      ;; Can't be union as per Avro spec disallowing
+                      ;; immediately nested unions.
+                      (if (= :logical-type avro-type)
+                        (when-let [->ces (:k->child-edn-schema edn-schema)]
+                          (-> (u/child-schema schema i)
+                              (u/child-schema)))
+                        nil))))
+                (map-indexed vector edn-schema))]
     (if ret
       ret
       (throw
        (ex-info
         (str "No matching schema in union for "
              "key `" path-entry "`.")
-        {:schema union-schema :k path-entry})))))
+        {:schema schema :k path-entry})))))
 
 (defn schema-at-path [schema path]
   (let [child (first path)]
     (if-not child
       schema
       (let [edn-schema (:edn-schema schema)
-            child-schema (case (u/get-avro-type edn-schema)
+            child-schema (case (u/avro-type-dispatch-lt edn-schema)
                            :record (u/child-schema schema child)
                            :map (u/child-schema schema)
                            :array (u/child-schema schema)
                            :union (->matching-union-child-schema
                                    schema edn-schema child)
+                           :logical-type (u/child-schema schema)
                            (throw
                             (ex-info
                              "Can't get schema at path for non container type."
