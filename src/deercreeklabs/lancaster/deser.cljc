@@ -129,8 +129,7 @@
     (ba/byte-array->utf8 (u/read-len-prefixed-bytes is))))
 
 (defmethod make-deserializer [:enum :enum]
-  [writer-edn-schema reader-edn-schema #_writer-name->edn-schema
-   #_reader-name->edn-schema *deserializers]
+  [writer-edn-schema reader-edn-schema *deserializers]
   (check-names writer-edn-schema reader-edn-schema)
   (let [writer-syms (:symbols writer-edn-schema)
         {:keys [symbols default name]} reader-edn-schema
@@ -159,9 +158,7 @@
     deserializer))
 
 (defmethod make-deserializer [:fixed :fixed]
-  [writer-edn-schema reader-edn-schema
-   #_writer-name->edn-schema #_reader-name->edn-schema
-   *deserializers]
+  [writer-edn-schema reader-edn-schema *deserializers]
   (check-names writer-edn-schema reader-edn-schema)
   (let [{writer-size :size} writer-edn-schema
         {reader-size :size} reader-edn-schema
@@ -189,17 +186,13 @@
                        s (range count)))))))
 
 (defmethod make-deserializer [:map :map]
-  [writer-edn-schema reader-edn-schema
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
+  [writer-edn-schema reader-edn-schema *deserializers]
   (if (and (= :null (:values writer-edn-schema))
            (= :null (:values reader-edn-schema)))
     deserialize-set
     (let [deserialize-value (make-deserializer
                              (:values writer-edn-schema)
                              (:values reader-edn-schema)
-                             #_writer-name->edn-schema
-                             #_reader-name->edn-schema
                              *deserializers)]
       (fn deserialize [is]
         (loop [m (transient {})]
@@ -214,9 +207,7 @@
                              m (range count))))))))))
 
 (defmethod make-deserializer :logical-type
-  [writer-edn-schema reader-edn-schema
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
+  [writer-edn-schema reader-edn-schema *deserializers]
   (let [{:keys [logical-type avro->lt]} reader-edn-schema
         _ (when-not avro->lt
             (throw (ex-info (str "Logical type `" logical-type "` is missing "
@@ -224,7 +215,7 @@
                             (u/sym-map logical-type reader-edn-schema))))
         deser (make-deserializer
                writer-edn-schema (u/strip-lt-attrs reader-edn-schema)
-               #_writer-name->edn-schema #_reader-name->edn-schema *deserializers)
+               *deserializers)
         deserializer (fn deserialize [is]
                        (avro->lt (deser is)))]
     (swap! *deserializers assoc [writer-edn-schema reader-edn-schema]
@@ -232,14 +223,10 @@
     deserializer))
 
 (defmethod make-deserializer [:array :array]
-  [writer-edn-schema reader-edn-schema
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
+  [writer-edn-schema reader-edn-schema *deserializers]
   (let [deserialize-item (make-deserializer
                           (:items writer-edn-schema)
                           (:items reader-edn-schema)
-                          #_writer-name->edn-schema
-                          #_reader-name->edn-schema
                           *deserializers)]
     (fn deserialize [is]
       (loop [a (transient [])]
@@ -263,39 +250,29 @@
      nil reader-fields)))
 
 (defn make-field-info
-  [reader-fields #_writer-name->edn-schema #_reader-name->edn-schema *deserializers
-   field]
+  [reader-fields *deserializers field]
   (let [{writer-field-name :name
          writer-field-type :type} field
         reader-field (get-reader-field reader-fields
                                        writer-field-name)
-        [reader-field-type #_reader-name-map] (if (:type reader-field)
-                                              [(:type reader-field)
-                                               #_reader-name->edn-schema]
-                                              [writer-field-type
-                                              #_ writer-name->edn-schema])
+        reader-field-type (if (:type reader-field)
+                            (:type reader-field)
+                            writer-field-type)
         deserialize (make-deserializer writer-field-type reader-field-type
-                                       #_writer-name->edn-schema #_reader-name-map
                                        *deserializers)
         reader-k (when reader-field
                    (:name reader-field))]
     (u/sym-map deserialize reader-k)))
 
 (defmethod make-deserializer [:record :record]
-  [writer-edn-schema reader-edn-schema
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
+  [writer-edn-schema reader-edn-schema *deserializers]
   (check-names writer-edn-schema reader-edn-schema)
   (binding [u/**enclosing-namespace** (namespace (:name writer-edn-schema))]
     (let [{writer-fields :fields} writer-edn-schema
           {reader-fields :fields} reader-edn-schema
           ;; Use mapv, not map, below since map doesn't preserve
           ;; the u/**enclosing-namespace** binding due to laziness
-          wfis (mapv #(make-field-info reader-fields
-                                       ; writer-name->edn-schema
-                                       ; reader-name->edn-schema
-                                       *deserializers
-                                       %)
+          wfis (mapv #(make-field-info reader-fields *deserializers %)
                      writer-fields)
           norm-writer-field-names (->> writer-fields
                                        (map #(-> % :name u/fix-field-name))
@@ -322,16 +299,12 @@
       deserializer)))
 
 (defmethod make-deserializer [:other :union]
-  [writer-edn-schema reader-edn-schema
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
+  [writer-edn-schema reader-edn-schema *deserializers]
   (loop [branch 0]
     (let [reader-item-schema (reader-edn-schema branch)
           deser (try
                   (make-deserializer writer-edn-schema
                                      reader-item-schema
-                                     ; writer-name->edn-schema
-                                     ; reader-name->edn-schema
                                      *deserializers)
                   (catch #?(:clj Exception :cljs js/Error) e
                     (when-not (u/match-exception? e)
@@ -345,14 +318,11 @@
                         (u/sym-map writer-edn-schema reader-edn-schema)))))))))
 
 (defn make-deserializer-union-writer
-  [writer-edn-schema reader-edn-schema
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
+  [writer-edn-schema reader-edn-schema *deserializers]
   (let [mk-des (fn [writer-item-schema]
                  (try
                    (make-deserializer
                     writer-item-schema reader-edn-schema
-                    ; writer-name->edn-schema reader-name->edn-schema
                     *deserializers)
                    (catch #?(:clj Exception :cljs js/Error) e
                      (if-not (u/match-exception? e)
@@ -369,82 +339,55 @@
         (deserializer is)))))
 
 (defmethod make-deserializer [:union :other]
-  [writer-edn-schema reader-edn-schema
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
+  [writer-edn-schema reader-edn-schema *deserializers]
   (make-deserializer-union-writer writer-edn-schema
                                   reader-edn-schema
-                                  ; writer-name->edn-schema
-                                  ; reader-name->edn-schema
                                   *deserializers))
 
 (defmethod make-deserializer [:union :union]
-  [writer-edn-schema reader-edn-schema
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
+  [writer-edn-schema reader-edn-schema *deserializers]
   (make-deserializer-union-writer writer-edn-schema reader-edn-schema
-                                  ; writer-name->edn-schema
-                                  ; reader-name->edn-schema
                                   *deserializers))
 
 (defn make-recursive-deserializer
-  [writer-edn-schema reader-edn-schema
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
-  (if-not (u/edn-schemas-match? writer-edn-schema reader-edn-schema
-                                ; writer-name->edn-schema reader-name->edn-schema
-                                )
+  [writer-edn-schema reader-edn-schema *deserializers]
+  (if-not (u/edn-schemas-match? writer-edn-schema reader-edn-schema)
     (throw (ex-info "Reader and writer schemas do not match."
                     (u/sym-map writer-edn-schema reader-edn-schema)))
     (fn deserialize [is]
       (let [k [writer-edn-schema reader-edn-schema]]
         (if-let [deser (@*deserializers k)]
           (deser is)
-          (let [deser* (make-deserializer writer-edn-schema reader-edn-schema
-                                          ; writer-name->edn-schema
-                                          ; reader-name->edn-schema
+          (let [deser* (make-deserializer writer-edn-schema
+                                          reader-edn-schema
                                           *deserializers)]
             (swap! *deserializers assoc k deser*)
             (deser* is)))))))
 
-(defn kw->edn-schema [kw #_name->edn-schema]
+(defn kw->edn-schema [kw]
   (let [fqname (u/qualify-name-kw kw)]
-    (or #_(name->edn-schema fqname)
-        (-> @u/*__INTERNAL__name->schema fqname :edn-schema)
-        (let [schema-names (keys @u/*__INTERNAL__name->schema #_name->edn-schema)]
+    (or (-> @u/*__INTERNAL__name->schema fqname :edn-schema)
+        (let [schema-names (keys @u/*__INTERNAL__name->schema)]
           (throw
            (ex-info
             (str "Could not find named schema `" fqname "`.")
-            (u/sym-map fqname kw schema-names #_name->edn-schema)))))))
+            (u/sym-map fqname kw schema-names)))))))
 
 (defmethod make-deserializer [:name-keyword :other]
-  [writer-name-kw reader-edn-schema
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
-  (let [writer-edn-schema (kw->edn-schema writer-name-kw
-                                          #_writer-name->edn-schema)]
+  [writer-name-kw reader-edn-schema *deserializers]
+  (let [writer-edn-schema (kw->edn-schema writer-name-kw)]
     (make-recursive-deserializer writer-edn-schema reader-edn-schema
-                                 ; writer-name->edn-schema reader-name->edn-schema
                                  *deserializers)))
 
 (defmethod make-deserializer [:other :name-keyword]
-  [writer-edn-schema reader-name-kw
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
-  (let [reader-edn-schema (kw->edn-schema reader-name-kw
-                                          #_reader-name->edn-schema)]
+  [writer-edn-schema reader-name-kw *deserializers]
+  (let [reader-edn-schema (kw->edn-schema reader-name-kw)]
     (make-recursive-deserializer writer-edn-schema reader-edn-schema
-                                 ; writer-name->edn-schema reader-name->edn-schema
                                  *deserializers)))
 
 (defmethod make-deserializer [:name-keyword :name-keyword]
-  [writer-name-kw reader-name-kw
-   ; writer-name->edn-schema reader-name->edn-schema
-   *deserializers]
-  (let [writer-edn-schema (kw->edn-schema writer-name-kw
-                                          #_writer-name->edn-schema)
-        reader-edn-schema (kw->edn-schema reader-name-kw
-                                          #_reader-name->edn-schema)]
+  [writer-name-kw reader-name-kw *deserializers]
+  (let [writer-edn-schema (kw->edn-schema writer-name-kw)
+        reader-edn-schema (kw->edn-schema reader-name-kw)]
     (make-recursive-deserializer writer-edn-schema reader-edn-schema
-                                 ; writer-name->edn-schema reader-name->edn-schema
                                  *deserializers)))

@@ -20,9 +20,9 @@
                                (s/protocol u/ILancasterSchema)))
 
 (defrecord LancasterSchema
-    [edn-schema #_name->edn-schema json-schema parsing-canonical-form
-     fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
-     default-data-size #_*name->serializer *writer-fp->deserializer child-info]
+    [edn-schema json-schema parsing-canonical-form fingerprint64 fingerprint128
+     fingerprint256 plumatic-schema serializer default-data-size
+     *writer-fp->deserializer child-info]
   u/ILancasterSchema
   (serialize [this data]
     (let [os (impl/output-stream default-data-size)]
@@ -38,8 +38,6 @@
                       (let [deser* (deser/make-deserializer
                                     (u/edn-schema writer-schema)
                                     edn-schema
-                                    ; (:name->edn-schema writer-schema)
-                                    ; name->edn-schema
                                     (atom {}))]
                         (swap! *writer-fp->deserializer assoc writer-fp deser*)
                         deser*))]
@@ -353,9 +351,7 @@
      (throw (ex-info (str "Can't construct schema from name keyword: `"
                           edn-schema* "`. Must supply a full edn schema.")
                      {:given-edn-schema edn-schema*})))
-   (let [;name->edn-schema (u/make-name->edn-schema edn-schema*)
-         edn-schema (u/ensure-defaults (fix-repeated-schemas edn-schema*)
-                                       #_name->edn-schema)
+   (let [edn-schema (u/ensure-defaults (fix-repeated-schemas edn-schema*))
          avro-schema (if (u/avro-primitive-types edn-schema)
                        (name edn-schema)
                        (u/edn-schema->avro-schema edn-schema))
@@ -364,26 +360,17 @@
          fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
          fingerprint128 (fingerprint/fingerprint128 parsing-canonical-form)
          fingerprint256 (fingerprint/fingerprint256 parsing-canonical-form)
-         plumatic-schema (u/edn-schema->plumatic-schema edn-schema
-                                                        #_name->edn-schema)
-         ; *name->serializer (u/make-initial-*name->f
-         ;                    #(u/make-serializer %1 name->edn-schema %2))
+         plumatic-schema (u/edn-schema->plumatic-schema edn-schema)
          *writer-fp->deserializer (atom {})
-         serializer (u/make-serializer edn-schema #_name->edn-schema
-                                       #_*name->serializer)
-         default-data-size (u/make-default-data-size edn-schema
-                                                     #_name->edn-schema)
-         ; _ (println edn-schema (keys @*name->serializer))
+         serializer (u/make-serializer edn-schema)
+         default-data-size (u/make-default-data-size edn-schema)
          child-info (->child-info edn-schema)
          lancaster-schema (->LancasterSchema
-                           edn-schema #_name->edn-schema json-schema
-                           parsing-canonical-form fingerprint64
-                           fingerprint128 fingerprint256 plumatic-schema
-                           serializer default-data-size #_*name->serializer
+                           edn-schema json-schema parsing-canonical-form
+                           fingerprint64 fingerprint128 fingerprint256
+                           plumatic-schema serializer default-data-size
                            *writer-fp->deserializer child-info)]
      (when-let [name-kw (u/edn-schema->named-or-primitive-kw edn-schema)]
-       (println (u/edn-schema->named-or-primitive-kw edn-schema))
-       (when (= :sub-foo-record name-kw) (println edn-schema))
        (when-not (name-kw @u/*__INTERNAL__name->schema)
          (swap! u/*__INTERNAL__name->schema assoc
                 name-kw lancaster-schema)))
@@ -501,7 +488,7 @@
   (try
     (deser/make-deserializer (u/edn-schema writer-schema)
                              (u/edn-schema reader-schema)
-                             #_{} #_{} (atom {}))
+                             (atom {}))
     true
     (catch #?(:clj Exception :cljs js/Error) e
       (if-not (u/match-exception? e)

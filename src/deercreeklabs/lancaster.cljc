@@ -345,7 +345,6 @@
         [docstring fields] (if (string? (first args))
                              [(first args) (rest args)]
                              [nil args])]
-    (println "start" name-kw)
     `(def ~clj-name
        (schemas/schema :record ~name-kw ~docstring (vector ~@fields)))))
 

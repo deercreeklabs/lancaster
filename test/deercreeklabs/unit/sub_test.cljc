@@ -34,7 +34,6 @@
   [:name l/string-schema]
   [:age l/int-schema]
   [:children (l/array-schema ::person)])
-; (spit "out.edn" (u/pprint-str person-schema))
 
 (def mary
   {:name "Mary"
@@ -168,13 +167,6 @@
   (let [schema (l/schema-at-path person-schema
                                  [:children 0 :children 1 :children])]
     (is (lt/round-trip? schema [ralph]))))
-
-; (lt/round-trip?
-;  (l/schema-at-path person-schema [:children 0 :children 1 :children])
-;  [ralph])
-; (println *e)
-
-; (println (keys (deref (:*name->serializer (:deercreeklabs.unit.sub-test/person @u/*__INTERNAL__name->schema)))))
 
 (l/def-record-schema z-schema
   [:z l/string-schema])
