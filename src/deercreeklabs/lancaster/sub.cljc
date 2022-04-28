@@ -14,24 +14,23 @@
 
 (defn ->matching-union-child-schema [schema edn-schema path-entry]
   (let [path-type (path-type* path-entry)
-        ret (some
-                (fn [[i sub]]
-                  (let [avro-type (u/avro-type-dispatch-lt sub)]
-                    (case [avro-type path-type]
-                      [:record :keyword] (-> (u/child-schema schema i)
-                                             (u/child-schema path-entry))
-                      [:map :string] (-> (u/child-schema schema i)
-                                         (u/child-schema))
-                      [:array :int] (-> (u/child-schema schema i)
-                                        (u/child-schema))
-                      ;; Can't be union as per Avro spec disallowing
-                      ;; immediately nested unions.
-                      (if (= :logical-type avro-type)
-                        (when-let [->ces (:k->child-edn-schema edn-schema)]
-                          (-> (u/child-schema schema i)
-                              (u/child-schema)))
-                        nil))))
-                (map-indexed vector edn-schema))]
+        ret (some (fn [[i sub]]
+                    (let [avro-type (u/avro-type-dispatch-lt sub)]
+                      (case [avro-type path-type]
+                        [:record :keyword] (-> (u/child-schema schema i)
+                                               (u/child-schema path-entry))
+                        [:map :string] (-> (u/child-schema schema i)
+                                           (u/child-schema))
+                        [:array :int] (-> (u/child-schema schema i)
+                                          (u/child-schema))
+                        ;; Can't be union as per Avro spec disallowing
+                        ;; immediately nested unions.
+                        (if (= :logical-type avro-type)
+                          (when-let [->ces (:k->child-edn-schema edn-schema)]
+                            (-> (u/child-schema schema i)
+                                (u/child-schema)))
+                          nil))))
+                  (map-indexed vector edn-schema))]
     (if ret
       ret
       (throw

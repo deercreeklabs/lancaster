@@ -70,15 +70,47 @@
     plumatic-schema)
   (child-schema [this]
     ;; TODO: throw if not map or array?
+    (when-not (#{:map :array :logical-type}
+               (u/avro-type-dispatch-lt edn-schema))
+      (throw (ex-info
+              (str "Schema must be map, array, or logical-type to call this
+                    arity.")
+              (u/sym-map edn-schema))))
     (if (keyword? child-info)
       (child-info @u/*__INTERNAL__name->schema)
       child-info))
   (child-schema [this field-or-branch]
     ;; TODO: throw if not record or union?
-    (let [schema (get child-info field-or-branch)]
-      (if (keyword? schema)
-        (schema @u/*__INTERNAL__name->schema)
-        schema))))
+    (let [avro-type (u/avro-type-dispatch-lt edn-schema)
+          _ (when-not (#{:record :union}
+                       (u/avro-type-dispatch-lt edn-schema))
+              (throw (ex-info
+                      "Schema must be record or union to call thish arity."
+                      (u/sym-map edn-schema))))
+          schema (get child-info field-or-branch)
+          lookup (fn []
+                   (println "lookup" field-or-branch)
+                   (let [schema (get child-info field-or-branch)]
+                     (if (keyword? schema)
+                       (schema @u/*__INTERNAL__name->schema)
+                       schema)))
+          search (fn []
+                   (println "search" field-or-branch (count child-info) child-info)
+                   (some (fn [sub]
+                           (let [sub* (if-not (keyword? sub)
+                                        sub
+                                        (sub @u/*__INTERNAL__name->schema))]
+                             (println "sub edn" (:edn-schema sub*))
+                             (println "get from sub" (get (:child-info sub*) field-or-branch))
+                             (get (:child-info sub*) field-or-branch)))
+                         child-info))]
+      (case avro-type
+        :record (lookup)
+        :union (if (int? field-or-branch)
+                 (lookup)
+                 (search))))))
+
+
 
 (defmulti validate-schema-args u/first-arg-dispatch)
 (defmulti make-edn-schema u/first-arg-dispatch)

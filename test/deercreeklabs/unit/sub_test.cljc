@@ -209,3 +209,27 @@
         encoded (l/serialize tree-schema tree)
         decoded (l/deserialize-same tree-schema encoded)]
     (is (= tree decoded))))
+
+(l/def-enum-schema the-enum-schema :a :b)
+
+(l/def-record-schema record-enum-schema
+  [:choice the-enum-schema])
+
+(l/def-record-schema enclosing-schema
+  [:enclosed record-enum-schema])
+
+(l/def-record-schema wrapping-schema
+  [:wrapped enclosing-schema])
+
+(deftest test-path-navigation
+  ;; You may choose to have l/schema-a-path do the path navigation.
+  (is (lt/round-trip? (l/schema-at-path wrapping-schema [:wrapped :enclosed])
+                      {:choice :a}))
+  ;; Or you may choose to do it yourself this way,
+  (is (lt/round-trip? (-> (l/schema-at-path wrapping-schema [:wrapped])
+                          (l/schema-at-path [:enclosed]))
+                      {:choice :a}))
+  ;; or this way.
+  (is (lt/round-trip? (-> (u/child-schema wrapping-schema :wrapped)
+                          (u/child-schema :enclosed))
+                      {:choice :a})))
