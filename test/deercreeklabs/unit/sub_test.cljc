@@ -238,6 +238,12 @@
        (-> (u/child-schema wrapping-record-schema :wrapped)
            (u/child-schema :enclosed))
        {:choice :a}))
+  ;; Or if you happen to know the union branches and are under the hood.
+  (is (lt/round-trip?
+       (-> (u/child-schema wrapping-record-schema :wrapped)
+           (u/child-schema 1)
+           (u/child-schema :enclosed))
+       {:choice :a}))
   ;; And with maps as well
   (is (lt/round-trip?
        (l/schema-at-path wrapping-map-schema ["wrapped" :enclosed])
