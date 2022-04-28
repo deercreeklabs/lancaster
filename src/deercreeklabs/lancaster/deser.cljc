@@ -408,7 +408,7 @@
             (deser* is)))))))
 
 (defn kw->edn-schema [kw #_name->edn-schema]
-  (let [{fqname :name-kw} (u/qualify-name-kw kw)]
+  (let [fqname (u/qualify-name-kw kw)]
     (or #_(name->edn-schema fqname)
         (-> @u/*__INTERNAL__name->schema fqname :edn-schema)
         (let [schema-names (keys @u/*__INTERNAL__name->schema #_name->edn-schema)]

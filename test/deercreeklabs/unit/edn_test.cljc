@@ -91,7 +91,6 @@
                    (l/edn))
         expected {:default :hearts
                   :name :deercreeklabs.unit.edn-test/suits
-                  :namespace :deercreeklabs.unit.edn-test
                   :symbols [:hearts :diamonds :spades :clubs]
                   :type :enum}]
     (is (= expected orig-edn))
@@ -109,7 +108,6 @@
                             :default nil
                             :type [:null :string]}]
                   :name :deercreeklabs.unit.edn-test/user
-                  :namespace :deercreeklabs.unit.edn-test
                   :type :record}]
     (is (= expected orig-edn))
     (is (= expected rt-edn))))
@@ -129,13 +127,11 @@
                                               :name :nickname
                                               :type [:null :string]}],
                                     :name :deercreeklabs.unit.edn-test/user,
-                                    :namespace :deercreeklabs.unit.edn-test,
                                     :type :record}]}
                            {:name :text
                             :default nil
                             :type [:null :string]}]
                   :name :deercreeklabs.unit.edn-test/msg
-                  :namespace :deercreeklabs.unit.edn-test
                   :type :record}]
     (is (= expected orig-edn))
     (is (= expected rt-edn))))

@@ -147,13 +147,12 @@
 (defn qualify-name-kw [name-kw]
   (cond
     (qualified-keyword? name-kw)
-    {:namespace-kw (namespace name-kw) :name-kw name-kw}
+    name-kw
 
     (simple-keyword? name-kw)
     (if **enclosing-namespace**
-      {:namespace-kw **enclosing-namespace**
-       :name-kw (keyword (name **enclosing-namespace**) (name name-kw))}
-      {:namespace-kw nil :name-kw name-kw})
+      (keyword (name **enclosing-namespace**) (name name-kw))
+      name-kw)
 
     :else
     (throw (ex-info (str "Argument to qualify-name-kw (" name-kw
@@ -209,7 +208,8 @@
                           {:arg kw}))))
 
 (defn named-type->name [edn-schema]
-  (if-let [schema-ns (:namespace edn-schema)]
+  (if-let [schema-ns (-> (:namespace edn-schema)
+                         (java-namespace->clj-namespace))]
     (keyword (name schema-ns) (name (:name edn-schema)))
     (:name edn-schema)))
 
@@ -1037,7 +1037,7 @@
 
 (defmethod make-serializer :name-keyword
   [name-kw #_name->edn-schema #_*name->serializer]
-  (let [{qualified-name-kw :name-kw} (qualify-name-kw name-kw)]
+  (let [qualified-name-kw (qualify-name-kw name-kw)]
     (fn serialize [os data path]
       (if-let [serializer (-> @*__INTERNAL__name->schema
                               qualified-name-kw
@@ -1408,22 +1408,19 @@
     (csk/->kebab-case-keyword name-str)))
 
 (defn avro-name->edn-name [schema]
+  (println "avro-name->edn-name" (:namespace schema) (:name schema))
   (let [schema-name-str (:name schema)]
     (if-not (fullname? schema-name-str)
       (let [schema-ns (-> (:namespace schema)
                           (java-namespace->clj-namespace))
             schema-name (-> schema-name-str
                             (csk/->kebab-case))]
-        (assoc schema
-               :name (keyword schema-ns schema-name)
-               :namespace (keyword schema-ns)))
+        (assoc schema :name (keyword schema-ns schema-name)))
       (let [schema-ns (-> (fullname->ns schema-name-str)
                           (java-namespace->clj-namespace))
             schema-name (-> (fullname->name schema-name-str)
                             (csk/->kebab-case))]
-        (assoc schema
-               :name (keyword schema-ns schema-name)
-               :namespace (keyword schema-ns))))))
+        (assoc schema :name (keyword schema-ns schema-name))))))
 
 (defmulti ensure-defaults avro-type-dispatch)
 
@@ -1500,16 +1497,22 @@
   (-> (avro-name->edn-name avro-schema)
       (update :type keyword)))
 
-(defn avro-field->edn-field [field]
+(defn avro-field->edn-field [parent-namespace field]
+  (println "avro-field->edn-field" parent-namespace (:namespace field) (:name field))
   (-> field
+      (assoc :namespace (or (:namespace field) parent-namespace))
       (avro-name->edn-name)
-      (update :type avro-schema->edn-schema)))
+      (update :type (fn [t]
+                      ;inject parent namespace into all applicable
+                      avro-schema->edn-schema))))
 
 (defmethod avro-schema->edn-schema :record
   [avro-schema]
-  (-> (avro-name->edn-name avro-schema)
-      (update :type keyword)
-      (update :fields #(mapv avro-field->edn-field %))))
+  (println "avro-schema->edn-schema" (:namespace avro-schema) (:name avro-schema))
+  (as-> (avro-name->edn-name avro-schema) $
+    (update $ :type keyword)
+    (update $ :fields #(mapv (partial avro-field->edn-field (:namespace $))
+                             %))))
 
 (defmethod avro-schema->edn-schema :union
   [avro-union-schema]

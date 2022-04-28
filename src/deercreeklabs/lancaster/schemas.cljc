@@ -200,8 +200,7 @@
                            (u/edn-schema field-schema*)
                            field-schema*)]
 
-    (cond-> {:namespace (namespace field-name)
-             :name field-name
+    (cond-> {:name field-name
              :type field-edn-schema
              :default (u/default-data field-edn-schema default)}
       doc (assoc :doc doc))))
@@ -223,12 +222,11 @@
    (when-not (sequential? fields)
      (throw (ex-info "`fields` parameter be a sequence of field definintions"
                      {:given-fields fields})))
-   (let [{:keys [namespace-kw name-kw]} (u/qualify-name-kw name-kw)
+   (let [name-kw (u/qualify-name-kw name-kw)
          fields* (binding [u/**enclosing-namespace** (namespace name-kw)]
                    (mapv make-record-field fields))]
      (check-field-dups fields*)
-     (cond-> {:namespace namespace-kw
-              :name name-kw
+     (cond-> {:name name-kw
               :type :record
               :fields fields*}
        docstring (assoc :doc docstring)))))
@@ -237,9 +235,8 @@
   ([schema-type name-kw fields]
    (make-edn-schema schema-type name-kw nil fields))
   ([schema-type name-kw docstring symbols]
-   (let [{:keys [namespace-kw name-kw]} (u/qualify-name-kw name-kw)]
-     (cond-> {:namespace namespace-kw
-              :name name-kw
+   (let [name-kw (u/qualify-name-kw name-kw)]
+     (cond-> {:name name-kw
               :type :enum
               :symbols symbols
               :default (first symbols)}
@@ -247,9 +244,8 @@
 
 (defmethod make-edn-schema :fixed
   [schema-type name-kw size]
-  (let [{:keys [namespace-kw name-kw]} (u/qualify-name-kw name-kw)]
-    {:namespace namespace-kw
-     :name name-kw
+  (let [name-kw (u/qualify-name-kw name-kw)]
+    {:name name-kw
      :type :fixed
      :size size}))
 
@@ -386,6 +382,8 @@
                            serializer default-data-size #_*name->serializer
                            *writer-fp->deserializer child-info)]
      (when-let [name-kw (u/edn-schema->named-or-primitive-kw edn-schema)]
+       (println (u/edn-schema->named-or-primitive-kw edn-schema))
+       (when (= :sub-foo-record name-kw) (println edn-schema))
        (when-not (name-kw @u/*__INTERNAL__name->schema)
          (swap! u/*__INTERNAL__name->schema assoc
                 name-kw lancaster-schema)))
@@ -395,8 +393,6 @@
   (let [edn-schema (-> json-schema
                        (u/json-schema->avro-schema)
                        (u/avro-schema->edn-schema))]
-    (println)
-    (println edn-schema)
     (edn-schema->lancaster-schema edn-schema json-schema)))
 
 (defn schema
