@@ -1499,12 +1499,24 @@
 
 (defn avro-field->edn-field [parent-namespace field]
   (println "avro-field->edn-field" parent-namespace (:namespace field) (:name field))
-  (-> field
-      (assoc :namespace (or (:namespace field) parent-namespace))
-      (avro-name->edn-name)
-      (update :type (fn [t]
+  (let [ns* (or (:namespace field) parent-namespace)]
+    (-> (if ns* (assoc field :namespace ns*) field)
+        (avro-name->edn-name)
+        (update :type
+                (fn [t]
+                  (if ns*
+                    (let [t* (cond
+                              (map? t) (assoc t :namespace
+                                              (or (:namespace t) ns*))
+                              (seqable? t) (map #(if (map? %)
+                                                   (assoc % :namespace
+                                                          (or (:namespace %)
+                                                              ns*))
+                                                   %) t)
+                              :else t)]
                       ;inject parent namespace into all applicable
-                      avro-schema->edn-schema))))
+                      (avro-schema->edn-schema t*))
+                    (avro-schema->edn-schema t)))))))
 
 (defmethod avro-schema->edn-schema :record
   [avro-schema]

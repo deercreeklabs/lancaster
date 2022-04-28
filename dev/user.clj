@@ -9,6 +9,7 @@
 (println l/string-schema)
 (println (keys @u/*__INTERNAL__name->schema))
 (println (:com.company.foo-bar/foo-record @u/*__INTERNAL__name->schema))
+(println (:com.company.foo-bar/sub-foo-record @u/*__INTERNAL__name->schema))
 (println (l/map-schema l/string-schema))
 (println (l/map-schema l/int-schema))
 (println (s/schema :map nil l/string-schema))
