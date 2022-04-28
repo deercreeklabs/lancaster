@@ -30,10 +30,10 @@
                  :type {:type :array
                         :items values-edn-schema}
                  :default []}]
-        kn->es (u/make-name->edn-schema key-edn-schema)
-        vn->es (u/make-name->edn-schema values-edn-schema)
-        kp-schema (u/edn-schema->plumatic-schema key-edn-schema kn->es)
-        vp-schema (u/edn-schema->plumatic-schema values-edn-schema vn->es)
+        kn->es (fn [n] (-> @u/*__INTERNAL__name->schema n :edn-schema)) #_(u/make-name->edn-schema key-edn-schema)
+        vn->es (fn [n] (-> @u/*__INTERNAL__name->schema n :edn-schema)) #_(u/make-name->edn-schema values-edn-schema)
+        kp-schema (u/edn-schema->plumatic-schema key-edn-schema #_kn->es)
+        vp-schema (u/edn-schema->plumatic-schema values-edn-schema #_vn->es)
         edn-schema {:name name-kw
                     :type :record
                     :fields fields

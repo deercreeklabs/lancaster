@@ -20,9 +20,9 @@
                                (s/protocol u/ILancasterSchema)))
 
 (defrecord LancasterSchema
-    [edn-schema name->edn-schema json-schema parsing-canonical-form
+    [edn-schema #_name->edn-schema json-schema parsing-canonical-form
      fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
-     default-data-size *name->serializer *writer-fp->deserializer child-info]
+     default-data-size #_*name->serializer *writer-fp->deserializer child-info]
   u/ILancasterSchema
   (serialize [this data]
     (let [os (impl/output-stream default-data-size)]
@@ -38,8 +38,8 @@
                       (let [deser* (deser/make-deserializer
                                     (u/edn-schema writer-schema)
                                     edn-schema
-                                    (:name->edn-schema writer-schema)
-                                    name->edn-schema
+                                    ; (:name->edn-schema writer-schema)
+                                    ; name->edn-schema
                                     (atom {}))]
                         (swap! *writer-fp->deserializer assoc writer-fp deser*)
                         deser*))]
@@ -75,10 +75,10 @@
       child-info))
   (child-schema [this field-or-branch]
     ;; TODO: throw if not record or union?
-    (let [schema (get child-info field-or-branch)]
-      (if (keyword? schema)
-        (schema @u/*__INTERNAL__name->schema)
-        schema))))
+    (let [schema* (get child-info field-or-branch)]
+      (if (keyword? schema*)
+        (schema* @u/*__INTERNAL__name->schema)
+        schema*))))
 
 (defmulti validate-schema-args u/first-arg-dispatch)
 (defmulti make-edn-schema u/first-arg-dispatch)
@@ -200,7 +200,8 @@
                            (u/edn-schema field-schema*)
                            field-schema*)]
 
-    (cond-> {:name field-name
+    (cond-> {:namespace (namespace field-name)
+             :name field-name
              :type field-edn-schema
              :default (u/default-data field-edn-schema default)}
       doc (assoc :doc doc))))
@@ -222,11 +223,12 @@
    (when-not (sequential? fields)
      (throw (ex-info "`fields` parameter be a sequence of field definintions"
                      {:given-fields fields})))
-   (let [name-kw (u/qualify-name-kw name-kw)
+   (let [{:keys [namespace-kw name-kw]} (u/qualify-name-kw name-kw)
          fields* (binding [u/**enclosing-namespace** (namespace name-kw)]
                    (mapv make-record-field fields))]
      (check-field-dups fields*)
-     (cond-> {:name name-kw
+     (cond-> {:namespace namespace-kw
+              :name name-kw
               :type :record
               :fields fields*}
        docstring (assoc :doc docstring)))))
@@ -235,8 +237,9 @@
   ([schema-type name-kw fields]
    (make-edn-schema schema-type name-kw nil fields))
   ([schema-type name-kw docstring symbols]
-   (let [name-kw (u/qualify-name-kw name-kw)]
-     (cond-> {:name name-kw
+   (let [{:keys [namespace-kw name-kw]} (u/qualify-name-kw name-kw)]
+     (cond-> {:namespace namespace-kw
+              :name name-kw
               :type :enum
               :symbols symbols
               :default (first symbols)}
@@ -244,8 +247,9 @@
 
 (defmethod make-edn-schema :fixed
   [schema-type name-kw size]
-  (let [name-kw (u/qualify-name-kw name-kw)]
-    {:name name-kw
+  (let [{:keys [namespace-kw name-kw]} (u/qualify-name-kw name-kw)]
+    {:namespace namespace-kw
+     :name name-kw
      :type :fixed
      :size size}))
 
@@ -353,9 +357,9 @@
      (throw (ex-info (str "Can't construct schema from name keyword: `"
                           edn-schema* "`. Must supply a full edn schema.")
                      {:given-edn-schema edn-schema*})))
-   (let [name->edn-schema (u/make-name->edn-schema edn-schema*)
+   (let [;name->edn-schema (u/make-name->edn-schema edn-schema*)
          edn-schema (u/ensure-defaults (fix-repeated-schemas edn-schema*)
-                                       name->edn-schema)
+                                       #_name->edn-schema)
          avro-schema (if (u/avro-primitive-types edn-schema)
                        (name edn-schema)
                        (u/edn-schema->avro-schema edn-schema))
@@ -365,31 +369,34 @@
          fingerprint128 (fingerprint/fingerprint128 parsing-canonical-form)
          fingerprint256 (fingerprint/fingerprint256 parsing-canonical-form)
          plumatic-schema (u/edn-schema->plumatic-schema edn-schema
-                                                        name->edn-schema)
-         *name->serializer (u/make-initial-*name->f
-                            #(u/make-serializer %1 name->edn-schema %2))
+                                                        #_name->edn-schema)
+         ; *name->serializer (u/make-initial-*name->f
+         ;                    #(u/make-serializer %1 name->edn-schema %2))
          *writer-fp->deserializer (atom {})
-         serializer (u/make-serializer edn-schema name->edn-schema
-                                       *name->serializer)
+         serializer (u/make-serializer edn-schema #_name->edn-schema
+                                       #_*name->serializer)
          default-data-size (u/make-default-data-size edn-schema
-                                                     name->edn-schema)
+                                                     #_name->edn-schema)
+         ; _ (println edn-schema (keys @*name->serializer))
          child-info (->child-info edn-schema)
          lancaster-schema (->LancasterSchema
-                           edn-schema name->edn-schema json-schema
-                           parsing-canonical-form fingerprint64 fingerprint128
-                           fingerprint256 plumatic-schema serializer
-                           default-data-size *name->serializer
+                           edn-schema #_name->edn-schema json-schema
+                           parsing-canonical-form fingerprint64
+                           fingerprint128 fingerprint256 plumatic-schema
+                           serializer default-data-size #_*name->serializer
                            *writer-fp->deserializer child-info)]
-     (when-let [named-name-kw (u/edn-schema->named-name-kw edn-schema)]
-       (when-not (named-name-kw @u/*__INTERNAL__name->schema)
+     (when-let [name-kw (u/edn-schema->named-or-primitive-kw edn-schema)]
+       (when-not (name-kw @u/*__INTERNAL__name->schema)
          (swap! u/*__INTERNAL__name->schema assoc
-                named-name-kw lancaster-schema)))
+                name-kw lancaster-schema)))
      lancaster-schema)))
 
 (defn json-schema->lancaster-schema [json-schema]
   (let [edn-schema (-> json-schema
                        (u/json-schema->avro-schema)
                        (u/avro-schema->edn-schema))]
+    (println)
+    (println edn-schema)
     (edn-schema->lancaster-schema edn-schema json-schema)))
 
 (defn schema
@@ -498,7 +505,7 @@
   (try
     (deser/make-deserializer (u/edn-schema writer-schema)
                              (u/edn-schema reader-schema)
-                             {} {} (atom {}))
+                             #_{} #_{} (atom {}))
     true
     (catch #?(:clj Exception :cljs js/Error) e
       (if-not (u/match-exception? e)

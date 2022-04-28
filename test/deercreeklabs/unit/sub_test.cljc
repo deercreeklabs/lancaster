@@ -34,6 +34,7 @@
   [:name l/string-schema]
   [:age l/int-schema]
   [:children (l/array-schema ::person)])
+; (spit "out.edn" (u/pprint-str person-schema))
 
 (def mary
   {:name "Mary"
@@ -103,6 +104,15 @@
                 (u/edn-schema->name-kw))]
     (is (= :union ret))))
 
+(comment
+ (l/schema-at-path lt/rec-w-map-schema [:name-to-age "Bo"])
+ (let [path [:name-to-age "Bo"]
+        ret (-> (l/schema-at-path lt/rec-w-map-schema path)
+                (u/edn-schema)
+                (u/edn-schema->name-kw))]
+    (= :int ret))
+ )
+
 (deftest test-schema-at-path-map-in-rec-2
   (let [path [:name-to-age "Bo"]
         ret (-> (l/schema-at-path lt/rec-w-map-schema path)
@@ -150,7 +160,7 @@
                 (l/edn))]
     (is (= (l/edn foo-foos-schema) ret))))
 
-(deftest ^:this test-schema-at-path-recursive
+(deftest test-schema-at-path-recursive
   (let [schema (l/schema-at-path person-schema [:children])]
     (is (lt/round-trip? schema [ralph]))))
 
@@ -158,6 +168,13 @@
   (let [schema (l/schema-at-path person-schema
                                  [:children 0 :children 1 :children])]
     (is (lt/round-trip? schema [ralph]))))
+
+; (lt/round-trip?
+;  (l/schema-at-path person-schema [:children 0 :children 1 :children])
+;  [ralph])
+; (println *e)
+
+; (println (keys (deref (:*name->serializer (:deercreeklabs.unit.sub-test/person @u/*__INTERNAL__name->schema)))))
 
 (l/def-record-schema z-schema
   [:z l/string-schema])

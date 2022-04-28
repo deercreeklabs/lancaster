@@ -2,13 +2,23 @@
   (:require
    [deercreeklabs.lancaster :as l]
    [deercreeklabs.lancaster.utils :as u]
+   [deercreeklabs.lancaster.schemas :as s]
    ))
+
+(reset! u/*__INTERNAL__name->schema {})
+(println l/string-schema)
+(println (keys @u/*__INTERNAL__name->schema))
+(println (:com.company.foo-bar/foo-record @u/*__INTERNAL__name->schema))
+(println (l/map-schema l/string-schema))
+(println (l/map-schema l/int-schema))
+(println (s/schema :map nil l/string-schema))
+
+(u/edn-schema->name-kw (:edn-schema (l/map-schema l/int-schema)))
 
 (l/def-record-schema a-schema
   [:a l/string-schema])
-(println *e)
 
-(println a-schema)
+(println (l/edn a-schema))
 
 (l/def-record-schema b-schema
   [:b a-schema]

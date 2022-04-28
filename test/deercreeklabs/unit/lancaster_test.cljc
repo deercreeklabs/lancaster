@@ -771,7 +771,7 @@
          (u/long->str (l/fingerprint64 tree-schema)))))
 
 (deftest test-edn-schemas-match?-recursive-schema
-  (is (u/edn-schemas-match? (l/edn tree-schema) (l/edn tree-schema) {} {})))
+  (is (u/edn-schemas-match? (l/edn tree-schema) (l/edn tree-schema) #_{} #_{})))
 
 (deftest test-recursive-schema-serdes
   (let [data {:value 5
