@@ -1030,16 +1030,9 @@
     (fn serialize [os data path]
       (if-let [serializer (@*name->serializer qualified-name-kw)]
         (serializer os data path)
-        (if-let [{:keys [serializer edn-schema]} (@*__INTERNAL__name->schema
-                                                  qualified-name-kw)]
-          (do
-           (swap-named-value! *name->serializer edn-schema serializer)
-           (serializer os data path))
-          (throw (ex-info "Failed to find serializer for named type."
-                          {:qualified-name qualified-name-kw
-                           :name->serializer-keys (keys @*name->serializer)
-                           :__INTERNAL__name->schema-keys
-                           (keys @*__INTERNAL__name->schema)})))))))
+        (throw (ex-info "Failed to find serializer for named type."
+                        {:qualified-name qualified-name-kw
+                         :name->serializer-keys (keys @*name->serializer)}))))))
 
 (defmethod edn-schema->plumatic-schema :null
   [edn-schema name->edn-schema]

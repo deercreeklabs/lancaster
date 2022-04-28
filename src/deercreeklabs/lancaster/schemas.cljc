@@ -315,32 +315,47 @@
 
 (declare edn-schema->lancaster-schema)
 
-(defn child-edn-schema->child-schema [child-edn-schema]
+(defn ->child-schema* [{child-edn-schema :edn-schema
+                        :keys [name->edn-schema *name->serializer]
+                        :as arg}]
+  (let [child-schema (-> child-edn-schema
+                         (edn-schema->lancaster-schema)
+                         (update :name->edn-schema
+                                 (fn [childs]
+                                   (merge name->edn-schema
+                                          childs))))]
+    (swap! (:*name->serializer child-schema)
+           (fn [childs] (merge @*name->serializer childs)))
+    child-schema))
+
+(defn ->child-schema [{child-edn-schema :edn-schema :as arg}]
   (let [named-name-kw (u/edn-schema->named-name-kw child-edn-schema)]
     (cond
-      (contains? @u/*__INTERNAL__name->schema named-name-kw)
-      named-name-kw
+     (contains? @u/*__INTERNAL__name->schema named-name-kw)
+     named-name-kw
 
-      (= child-edn-schema named-name-kw)
-      named-name-kw
+     (= child-edn-schema named-name-kw)
+     named-name-kw
 
-      named-name-kw
-      (swap! u/*__INTERNAL__name->schema assoc
-             named-name-kw (edn-schema->lancaster-schema child-edn-schema))
+     named-name-kw
+     (swap! u/*__INTERNAL__name->schema assoc named-name-kw
+            (->child-schema* arg))
 
-      :else (edn-schema->lancaster-schema child-edn-schema))))
+     :else (->child-schema* arg))))
 
-(defn ->child-info [edn-schema]
+(defn ->child-info [{:keys [edn-schema] :as arg}]
   (case (u/avro-type-dispatch-lt edn-schema)
-    :record (reduce (fn [acc field]
-                      (assoc acc (:name field)
-                             (child-edn-schema->child-schema (:type field))))
-                    {} (:fields edn-schema))
-    :map (child-edn-schema->child-schema (:values edn-schema))
-    :array (child-edn-schema->child-schema (:items edn-schema))
-    :union (mapv child-edn-schema->child-schema edn-schema)
+    :record (reduce
+             (fn [acc field]
+               (assoc acc
+                      (:name field)
+                      (->child-schema (assoc arg :edn-schema (:type field)))))
+             {} (:fields edn-schema))
+    :map (->child-schema (assoc arg :edn-schema (:values edn-schema)))
+    :array (->child-schema (assoc arg :edn-schema (:items edn-schema)))
+    :union (mapv #(->child-schema (assoc arg :edn-schema %)) edn-schema)
     :logical-type (if-let [->ces (:k->child-edn-schema edn-schema)]
-                    (child-edn-schema->child-schema (->ces))
+                    (->child-schema (assoc arg :edn-schema (->ces)))
                     :lancaster/no-children)
     :lancaster/no-children))
 
@@ -373,7 +388,8 @@
                                        *name->serializer)
          default-data-size (u/make-default-data-size edn-schema
                                                      name->edn-schema)
-         child-info (->child-info edn-schema)
+         child-info (->child-info
+                     (u/sym-map edn-schema name->edn-schema *name->serializer))
          lancaster-schema (->LancasterSchema
                            edn-schema name->edn-schema json-schema
                            parsing-canonical-form fingerprint64 fingerprint128
