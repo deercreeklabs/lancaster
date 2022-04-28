@@ -409,6 +409,7 @@
 (defn kw->edn-schema [kw name->edn-schema]
   (let [fqname (u/qualify-name-kw kw)]
     (or (name->edn-schema fqname)
+        (-> @u/*__INTERNAL__name->schema fqname :edn-schema)
         (let [schema-names (keys name->edn-schema)]
           (throw
            (ex-info
