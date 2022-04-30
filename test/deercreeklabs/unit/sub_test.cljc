@@ -150,7 +150,7 @@
                 (l/edn))]
     (is (= (l/edn foo-foos-schema) ret))))
 
-(deftest test-schema-at-path-recursive
+(deftest ^:this test-schema-at-path-recursive
   (let [schema (l/schema-at-path person-schema [:children])]
     (is (lt/round-trip? schema [ralph]))))
 
@@ -185,7 +185,7 @@
 
 (deftest test-schema-at-path-evolution
   (is (nil? (l/schema-at-path sys-state-schema [:new-state-field])))
-  (is (nil? (l/schema-at-path sys-state-schema [::msgs 0 :new-msg-field]))))
+  (is (nil? (l/schema-at-path sys-state-schema [:msgs 0 :new-msg-field]))))
 
 (deftest test-member-schemas-recursive
   (let [field-schema (l/schema-at-path tree-schema [:right])
@@ -209,3 +209,50 @@
         encoded (l/serialize tree-schema tree)
         decoded (l/deserialize-same tree-schema encoded)]
     (is (= tree decoded))))
+
+(l/def-enum-schema the-enum-schema :a :b)
+
+(l/def-record-schema record-enum-schema
+  [:choice the-enum-schema])
+
+(l/def-record-schema enclosing-schema
+  [:enclosed record-enum-schema])
+
+(l/def-record-schema wrapping-record-schema
+  [:wrapped enclosing-schema])
+
+(l/def-map-schema wrapping-map-schema enclosing-schema)
+
+(deftest test-path-navigation
+  ;; You may choose to have l/schema-a-path do the path navigation.
+  (is (lt/round-trip?
+       (l/schema-at-path wrapping-record-schema [:wrapped :enclosed])
+       {:choice :a}))
+  ;; Or you may choose to do it yourself this way,
+  (is (lt/round-trip?
+       (-> (l/schema-at-path wrapping-record-schema [:wrapped])
+           (l/schema-at-path [:enclosed]))
+       {:choice :a}))
+  ;; or this way.
+  (is (lt/round-trip?
+       (-> (u/child-schema wrapping-record-schema :wrapped)
+           (u/child-schema :enclosed))
+       {:choice :a}))
+  ;; Or if you happen to know the union branches and are under the hood.
+  (is (lt/round-trip?
+       (-> (u/child-schema wrapping-record-schema :wrapped)
+           (u/child-schema 1)
+           (u/child-schema :enclosed))
+       {:choice :a}))
+  ;; And with maps as well
+  (is (lt/round-trip?
+       (l/schema-at-path wrapping-map-schema ["wrapped" :enclosed])
+       {:choice :a}))
+  (is (lt/round-trip?
+       (-> (l/schema-at-path wrapping-map-schema ["wrapped"])
+           (l/schema-at-path [:enclosed]))
+       {:choice :a}))
+  (is (lt/round-trip?
+       (-> (u/child-schema wrapping-map-schema)
+           (u/child-schema :enclosed))
+       {:choice :a})))

@@ -25,6 +25,8 @@
 
 #?(:clj (pm/use-primitive-operators))
 
+(defonce *__INTERNAL__name->schema (atom {}))
+
 (declare default-data edn-schemas-match?)
 
 (defmacro sym-map
@@ -46,7 +48,8 @@
   (fingerprint64 [this])
   (fingerprint128 [this])
   (fingerprint256 [this])
-  (plumatic-schema [this]))
+  (plumatic-schema [this])
+  (child-schema [this] [this field-name-kw]))
 
 (defprotocol IOutputStream
   (write-byte [this b])
@@ -178,19 +181,19 @@
 (s/defn get-avro-type :- s/Keyword
   [edn-schema]
   (cond
-    (sequential? edn-schema) :union
-    (map? edn-schema) (:type edn-schema)
-    (avro-primitive-types edn-schema) edn-schema
-    (keyword? edn-schema) :name-keyword
-    (string? edn-schema) :name-string ;; For Avro schemas
-    (nil? edn-schema) (throw
-                       (ex-info "Schema argument to get-avro-type is nil."
-                                {:type :illegal-schema
-                                 :subtype :schema-is-nil
-                                 :schema edn-schema}))
-    :else (throw (ex-info (str "Failed to get avro type for schema: "
-                               edn-schema)
-                          (sym-map edn-schema)))))
+   (map? edn-schema) (:type edn-schema)
+   (sequential? edn-schema) :union
+   (avro-primitive-types edn-schema) edn-schema
+   (keyword? edn-schema) :name-keyword
+   (string? edn-schema) :name-string ;; For Avro schemas
+   (nil? edn-schema) (throw
+                      (ex-info "Schema argument to get-avro-type is nil."
+                               {:type :illegal-schema
+                                :subtype :schema-is-nil
+                                :schema edn-schema}))
+   :else (throw (ex-info (str "Failed to get avro type for schema: "
+                              edn-schema)
+                         (sym-map edn-schema)))))
 
 (defn strip-lt-attrs [edn-schema]
   (dissoc edn-schema :logical-type :lt->avro :avro->lt :lt? :default-data
@@ -204,13 +207,26 @@
     :else (throw (ex-info (str "Argument (" kw ") is not a keyword.")
                           {:arg kw}))))
 
+(defn named-type->name [edn-schema]
+  (if-let [schema-ns (:namespace edn-schema)]
+    (keyword (name schema-ns) (name (:name edn-schema)))
+    (:name edn-schema)))
+
+(defn edn-schema->named-name-kw [edn-schema]
+  (cond
+    (avro-named-types (:type edn-schema))
+    (named-type->name edn-schema)
+
+    (and (keyword? edn-schema) (not (avro-primitive-types edn-schema)))
+    edn-schema
+
+    :else nil))
+
 (s/defn edn-schema->name-kw :- s/Keyword
   [edn-schema]
   (cond
     (avro-named-types (:type edn-schema))
-    (if-let [schema-ns (:namespace edn-schema)]
-      (keyword (name schema-ns) (name (:name edn-schema)))
-      (:name edn-schema))
+    (named-type->name edn-schema)
 
     (map? edn-schema)
     (:type edn-schema)

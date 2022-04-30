@@ -123,11 +123,15 @@
                 (u/edn-schema->name-kw))]
     (is (= :int ret))))
 
-(deftest test-schema-at-path-int-map-bad-key
-  (is (thrown-with-msg?
-       #?(:clj ExceptionInfo :cljs js/Error)
-       #"Key `a` is not a valid key for logical type `int-map`"
-       (l/schema-at-path sku-to-qty-schema ["a"]))))
+;; The new child-schema based schema at path doesn't use a key when getting
+;; the child schema for an array or map (or logical-type semantic equevalent)
+;; since all the values have the same type. So when you have a path for
+;; schema-at-path you can put literally anything in that position of the path.
+; (deftest test-schema-at-path-int-map-bad-key
+;   (is (thrown-with-msg?
+;        #?(:clj ExceptionInfo :cljs js/Error)
+;        #"Key `a` is not a valid key for logical type `int-map`"
+;        (l/schema-at-path sku-to-qty-schema ["a"]))))
 
 (deftest test-schema-at-path-int-map-empty-path
   (let [path []
