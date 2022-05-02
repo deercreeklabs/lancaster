@@ -69,7 +69,6 @@
   (plumatic-schema [this]
     plumatic-schema)
   (child-schema [this]
-    ;; TODO: throw if not map or array?
     (when-not (#{:map :array :logical-type}
                (u/avro-type-dispatch-lt edn-schema))
       (throw (ex-info
@@ -80,7 +79,6 @@
       (child-info @u/*__INTERNAL__name->schema)
       child-info))
   (child-schema [this field-or-branch]
-    ;; TODO: throw if not record or union?
     (let [avro-type (u/avro-type-dispatch-lt edn-schema)
           _ (when-not (#{:record :union}
                        (u/avro-type-dispatch-lt edn-schema))
