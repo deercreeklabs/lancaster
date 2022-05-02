@@ -48,8 +48,10 @@
                            :record (u/child-schema schema child)
                            :map (u/child-schema schema)
                            :array (u/child-schema schema)
-                           :union (->matching-union-child-schema
-                                   schema edn-schema child)
+                           :union (if (int? child)
+                                    (u/child-schema schema child)
+                                    (->matching-union-child-schema
+                                     schema edn-schema child))
                            :logical-type (u/child-schema schema)
                            (throw
                             (ex-info

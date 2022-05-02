@@ -256,3 +256,11 @@
        (-> (u/child-schema wrapping-map-schema)
            (u/child-schema :enclosed))
        {:choice :a})))
+
+(deftest test-union-path-navigation
+  (is (lt/round-trip?
+       (l/schema-at-path wrapping-record-schema [:wrapped 1 :enclosed])
+       {:choice :a}))
+  (is (lt/round-trip?
+       (l/schema-at-path wrapping-record-schema [:wrapped :enclosed])
+       {:choice :a})))
