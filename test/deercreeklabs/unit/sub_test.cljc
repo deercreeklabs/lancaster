@@ -1,9 +1,14 @@
 (ns deercreeklabs.unit.sub-test
   (:require
-   [clojure.test :refer [are deftest is]]
+   [clojure.test :refer [deftest is use-fixtures]]
+   [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
    [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.unit.lancaster-test :as lt]))
+   [deercreeklabs.unit.lancaster-test :as lt]
+   [schema.core :as s :include-macros true])
+  #?(:clj
+     (:import
+      (clojure.lang ExceptionInfo))))
 
 (l/def-record-schema user-schema
   [:name l/string-schema]
@@ -258,9 +263,23 @@
        {:choice :a})))
 
 (deftest test-union-path-navigation
-  (is (lt/round-trip?
-       (l/schema-at-path wrapping-record-schema [:wrapped 1 :enclosed])
-       {:choice :a}))
+  ;; schema-at-path doesn't support union branch navigation by default.
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"No matching schema in union for key `1`"
+       (lt/round-trip?
+        (l/schema-at-path wrapping-record-schema [:wrapped 1 :enclosed])
+        {:choice :a})))
+  ;; instead it assumes you want to find the matching schema in a union and it
+  ;; does so.
   (is (lt/round-trip?
        (l/schema-at-path wrapping-record-schema [:wrapped :enclosed])
+       {:choice :a}))
+  ;; but you can have it assume that when you have a union schema and an
+  ;; integer in the corresponding path index you mean for it to take it as a
+  ;; union branch
+  (is (lt/round-trip?
+       (l/schema-at-path wrapping-record-schema
+                         [:wrapped 1 :enclosed]
+                         {:branches? true})
        {:choice :a})))

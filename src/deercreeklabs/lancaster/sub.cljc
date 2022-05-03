@@ -39,25 +39,27 @@
              "key `" path-entry "`.")
         {:schema schema :k path-entry})))))
 
-(defn schema-at-path [schema path]
-  (let [child (first path)]
-    (if-not child
-      schema
-      (let [edn-schema (:edn-schema schema)
-            child-schema (case (u/avro-type-dispatch-lt edn-schema)
-                           :record (u/child-schema schema child)
-                           :map (u/child-schema schema)
-                           :array (u/child-schema schema)
-                           :union (if (int? child)
-                                    (u/child-schema schema child)
-                                    (->matching-union-child-schema
-                                     schema edn-schema child))
-                           :logical-type (u/child-schema schema)
-                           (throw
-                            (ex-info
-                             "Can't get schema at path for non container type."
-                             (u/sym-map schema path))))]
-        (recur child-schema (rest path))))))
+(defn schema-at-path
+  ([schema path] (schema-at-path schema path nil))
+  ([schema path {:keys [branches?] :as opts}]
+   (let [child (first path)]
+     (if-not child
+       schema
+       (let [edn-schema (:edn-schema schema)
+             child-schema (case (u/avro-type-dispatch-lt edn-schema)
+                            :record (u/child-schema schema child)
+                            :map (u/child-schema schema)
+                            :array (u/child-schema schema)
+                            :union (if (and branches? (int? child))
+                                     (u/child-schema schema child)
+                                     (->matching-union-child-schema
+                                      schema edn-schema child))
+                            :logical-type (u/child-schema schema)
+                            (throw
+                             (ex-info
+                              "Can't get schema at path for non container type."
+                              (u/sym-map schema path))))]
+         (recur child-schema (rest path) opts))))))
 
 (defn member-schemas [schema]
   (let [{:keys [edn-schema name->edn-schema]} schema
