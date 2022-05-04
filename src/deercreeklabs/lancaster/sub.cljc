@@ -57,7 +57,7 @@
                             :logical-type (u/child-schema schema)
                             (throw
                              (ex-info
-                              "Can't get schema at path for non container type."
+                              "Can't get schema at path for non-container type."
                               (u/sym-map schema path))))]
          (recur child-schema (rest path) opts))))))
 
