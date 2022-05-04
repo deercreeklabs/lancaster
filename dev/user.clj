@@ -4,9 +4,12 @@
    [deercreeklabs.lancaster.utils :as u]
    ))
 
+(l/def-record-schema recur-schema
+  [:field (l/array-schema :recur)])
+(println *e)
+
 (l/def-record-schema a-schema
   [:a l/string-schema])
-(println *e)
 
 (println a-schema)
 

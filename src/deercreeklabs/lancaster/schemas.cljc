@@ -344,10 +344,10 @@
     (if (@*expanded-names schema-name)
       schema-name
       (do
-        (swap! *expanded-names conj schema-name)
-        (if (keyword? edn-schema)
-          (name->edn-schema edn-schema)
-          edn-schema)))))
+       (if (keyword? edn-schema)
+         (or (name->edn-schema schema-name)
+             (name->edn-schema edn-schema))
+         edn-schema)))))
 
 (defn ensure-valid-edn-schema
   "Ensure that named schemas are expanded exactly once"
@@ -372,14 +372,19 @@
 (defn ->child-schema* [{child-edn-schema :edn-schema
                         :keys [name->edn-schema *name->serializer]
                         :as arg}]
-  (let [child-schema (-> child-edn-schema
-                         (edn-schema->lancaster-schema)
-                         (update :name->edn-schema
-                                 (fn [childs]
-                                   (merge name->edn-schema
-                                          childs))))]
-    (swap! (:*name->serializer child-schema)
-           (fn [childs] (merge @*name->serializer childs)))
+  (let [named-name-kw (u/edn-schema->named-name-kw child-edn-schema)
+        child-schema (if named-name-kw
+                       named-name-kw
+                       (-> child-edn-schema
+                           (edn-schema->lancaster-schema)
+                           (update :name->edn-schema
+                                   (fn [childs]
+                                     (merge name->edn-schema
+                                            childs)))))]
+
+    (when-not named-name-kw
+      (swap! (:*name->serializer child-schema)
+             (fn [childs] (merge @*name->serializer childs))))
     child-schema))
 
 (defn ->child-schema [{child-edn-schema :edn-schema :as arg}]
@@ -399,17 +404,15 @@
 
 (defn ->child-info [{:keys [edn-schema] :as arg}]
   (case (u/avro-type-dispatch-lt edn-schema)
-    :record (reduce
-             (fn [acc field]
-               (assoc acc
-                      (:name field)
-                      (->child-schema
-                       (assoc arg :edn-schema
-                              (ensure-valid-edn-schema
-                               (assoc arg
-                                      :*expanded-names (atom #{})
-                                      :edn-schema (:type field)))))))
-             {} (:fields edn-schema))
+    :record (reduce (fn [acc field]
+                      (assoc acc (:name field)
+                             (->child-schema
+                              (assoc arg :edn-schema
+                                     (ensure-valid-edn-schema
+                                      (assoc arg
+                                             :edn-schema (:type field)
+                                             :*expanded-names (atom #{})))))))
+                    {} (:fields edn-schema))
     :map (->child-schema (assoc arg :edn-schema (:values edn-schema)))
     :array (->child-schema (assoc arg :edn-schema (:items edn-schema)))
     :union (mapv #(->child-schema (assoc arg :edn-schema %)) edn-schema)

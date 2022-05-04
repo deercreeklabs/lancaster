@@ -612,12 +612,12 @@
    name->edn-schema. Adds the bare name as a keyword and the namespaced
    keyword if it exists."
   [*atom edn-schema value]
-  (let [name (:name edn-schema)]
-    (swap! *atom assoc (:name edn-schema) value)
+  (let [name* (:name edn-schema)]
+    (swap! *atom assoc (keyword (name name*)) value)
     (when-let [ns (java-namespace->clj-namespace (or (:namespace edn-schema)
-                                                     (namespace name)
+                                                     (namespace name*)
                                                      **enclosing-namespace**))]
-      (swap! *atom assoc (keyword ns (clojure.core/name name)) value))))
+      (swap! *atom assoc (keyword ns (name name*)) value))))
 
 (defmethod make-serializer :null
   [edn-schema name->edn-schema *name->serializer]
