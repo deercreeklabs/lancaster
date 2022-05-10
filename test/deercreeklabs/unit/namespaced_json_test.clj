@@ -24,29 +24,23 @@
              :double
              :com.company/test-namespaced-records
              :int
-             :sub-foo-record
              :float
              :com.company.foo-bar/foo-record
              :string
              :null
-             :test-namespaced-records
              :com.company.foo-bar/sub-foo-record
              :bytes
-             :foo-record
              :boolean} (set (keys (get-in schema [:name->edn-schema])))))
     (is (= #{:long
              :double
              :com.company/test-namespaced-records
              :int
-             :sub-foo-record
              :float
              :com.company.foo-bar/foo-record
              :string
              :null
-             :test-namespaced-records
              :com.company.foo-bar/sub-foo-record
              :bytes
-             :foo-record
              :boolean} (set (keys @(get-in schema [:*name->serializer])))))
     (is (= '(2 2 16 97 32 115 116 114 105 110 103 2 2 2 2 2 4 2 0 0 0)
            (map int (l/serialize schema obj))))

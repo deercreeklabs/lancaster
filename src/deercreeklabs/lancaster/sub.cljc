@@ -62,16 +62,17 @@
          (recur child-schema (rest path) opts))))))
 
 (defn member-schemas [schema]
-  (let [{:keys [edn-schema name->edn-schema]} schema
+  (let [{:keys [child-info edn-schema]} schema
         avro-type (u/get-avro-type edn-schema)
         _ (when-not (= :union avro-type)
             (throw (ex-info (str "The argument to `member-schemas` must be "
                                  "a union schema. Got type `" avro-type "`.")
                             (u/sym-map schema avro-type))))]
-    (map (fn [sub] (if (keyword? sub)
-                     (sub @u/*__INTERNAL__name->schema)
-                     sub))
-         (:child-info schema))))
+    (mapv (fn [sub]
+            (if (keyword? sub)
+              (sub @u/*__INTERNAL__name->schema)
+              sub))
+          child-info)))
 
 (defn member-schema-at-branch [schema branch-index]
   (let [{:keys [edn-schema name->edn-schema]} schema
