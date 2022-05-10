@@ -25,7 +25,7 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-(defonce *__INTERNAL__name->schema (atom {}))
+(def *__INTERNAL__name->schema (atom {}))
 
 (declare default-data edn-schemas-match?)
 
@@ -133,16 +133,14 @@
   (str/includes? s "."))
 
 (defn fullname->ns [fullname]
-  (if-not (fullname? fullname)
-    nil ;; no namespace
-    (let [parts (str/split fullname #"\.")]
-      (str/join "." (butlast parts)))))
+  (let [parts (str/split fullname #"\.")
+        ns (str/join "." (butlast parts))]
+    (when-not (empty? ns)
+      ns)))
 
 (defn fullname->name [fullname]
-  (if-not (fullname? fullname)
-    nil ;; no namespace
-    (let [parts (str/split fullname #"\.")]
-      (last parts))))
+  (-> (str/split fullname #"\.")
+      (last)))
 
 (defn qualify-name-kw [name-kw]
   (cond
@@ -207,18 +205,39 @@
     :else (throw (ex-info (str "Argument (" kw ") is not a keyword.")
                           {:arg kw}))))
 
-(defn named-type->name [edn-schema]
-  (if-let [schema-ns (:namespace edn-schema)]
-    (keyword (name schema-ns) (name (:name edn-schema)))
-    (:name edn-schema)))
+(defn named-type->name-kw [edn-schema]
+  ;; https://avro.apache.org/docs/current/spec.html#names
+  (let [{ns* :namespace
+         name* :name} edn-schema
+        name-ns (namespace name*)
+        name-name (name name*)]
+    (when-not name*
+      (throw (ex-info (str "No `:name` attribute found.")
+                      (sym-map edn-schema))))
+    (cond
+      name-ns
+      name*
 
-(defn edn-schema->named-name-kw [edn-schema]
+      (not (str/blank? ns*))
+      (keyword ns* name-name)
+
+      :else
+      ;; Unqualified name given; we need to qualify it
+      (keyword **enclosing-namespace** name-name))))
+
+(defn named-edn-schema->name-kw [edn-schema]
   (cond
     (avro-named-types (:type edn-schema))
-    (named-type->name edn-schema)
+    (named-type->name-kw edn-schema)
 
-    (and (keyword? edn-schema) (not (avro-primitive-types edn-schema)))
+    (avro-primitive-types edn-schema)
     edn-schema
+
+    (qualified-keyword? edn-schema)
+    edn-schema
+
+    (keyword? edn-schema)
+    (keyword **enclosing-namespace** (name edn-schema))
 
     :else nil))
 
@@ -226,7 +245,7 @@
   [edn-schema]
   (cond
     (avro-named-types (:type edn-schema))
-    (named-type->name edn-schema)
+    (named-type->name-kw edn-schema)
 
     (map? edn-schema)
     (:type edn-schema)
@@ -608,16 +627,9 @@
      :cljs (js->clj (js/JSON.parse json-str) :keywordize-keys true)))
 
 (defn swap-named-value!
-  "Add a thing to a named atom map. Used for *name->serializer and
-   name->edn-schema. Adds the bare name as a keyword and the namespaced
-   keyword if it exists."
   [*atom edn-schema value]
-  (let [name (:name edn-schema)]
-    (swap! *atom assoc (:name edn-schema) value)
-    (when-let [ns (java-namespace->clj-namespace (or (:namespace edn-schema)
-                                                     (namespace name)
-                                                     **enclosing-namespace**))]
-      (swap! *atom assoc (keyword ns (clojure.core/name name)) value))))
+  (let [name-kw (named-edn-schema->name-kw edn-schema)]
+    (swap! *atom assoc name-kw value)))
 
 (defmethod make-serializer :null
   [edn-schema name->edn-schema *name->serializer]
@@ -747,11 +759,8 @@
 (defmethod make-serializer :map
   [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [values]} edn-schema
-        serialize-value (binding [**enclosing-namespace**
-                                  (or (:namespace edn-schema)
-                                      **enclosing-namespace**)]
-                          (make-serializer values name->edn-schema
-                                           *name->serializer))]
+        serialize-value (make-serializer values name->edn-schema
+                                         *name->serializer)]
     (if (= :null values)
       (make-serialize-set edn-schema)
       (fn serialize [os data path]
@@ -785,11 +794,8 @@
 (defmethod make-serializer :array
   [edn-schema name->edn-schema *name->serializer]
   (let [{:keys [items]} edn-schema
-        serialize-item (binding [**enclosing-namespace**
-                                 (or (:namespace edn-schema)
-                                     **enclosing-namespace**)]
-                         (make-serializer items name->edn-schema
-                                          *name->serializer))]
+        serialize-item (make-serializer items name->edn-schema
+                                        *name->serializer)]
     (fn serialize [os data path]
       (when-not (sequential? data)
         (throw-invalid-data-error edn-schema data path))
@@ -1394,15 +1400,18 @@
       (keyword ns name))
     (csk/->kebab-case-keyword name-str)))
 
+
 (defn avro-name->edn-name [schema]
-  (let [schema-name-str (:name schema)]
+  (let [schema-name-str (:name schema)
+        schema* (cond-> schema
+                  (:namespace schema) (update :namespace csk/->kebab-case))]
     (if-not (fullname? schema-name-str)
-      (assoc schema :name (csk/->kebab-case-keyword schema-name-str))
+      (assoc schema* :name (csk/->kebab-case-keyword schema-name-str))
       (let [schema-ns (-> (fullname->ns schema-name-str)
                           (java-namespace->clj-namespace))
             schema-name (-> (fullname->name schema-name-str)
                             (csk/->kebab-case))]
-        (assoc schema :name (keyword schema-ns schema-name))))))
+        (assoc schema* :name (keyword schema-ns schema-name))))))
 
 (defmulti ensure-defaults avro-type-dispatch)
 

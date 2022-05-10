@@ -268,23 +268,36 @@
    (u/child-schema schema field-kw-or-branch-i)))
 
 (s/defn schema-at-path :- (s/maybe LancasterSchema)
-  [schema :- LancasterSchema
+  ([schema :- LancasterSchema
    path :- [s/Any]]
-  (when-not (satisfies? u/ILancasterSchema schema)
-    (throw
-     (ex-info (str "First argument to schema-at-path must be a schema object. "
-                   "Got `" schema "`.")
-              {:given-arg schema})))
-  (if (nil? path)
-    schema
-    (when-not (u/path? path)
-      (throw
-       (ex-info
-        (str "Second argument to schema-at-path must be nil or a sequence of "
-             "path keys, which must be keywords, strings, or integers. Got: `"
-             path "`.")
-        {:given-path path}))))
-  (sub/schema-at-path schema path))
+   (schema-at-path schema path {}))
+  ([schema :- LancasterSchema
+    path :- [s/Any]
+    {:keys [branches?] :as opts} :- {(s/optional-key :branches?) s/Bool
+             s/Keyword s/Any}]
+   (when-not (satisfies? u/ILancasterSchema schema)
+     (throw
+      (ex-info (str "First argument to schema-at-path must be a schema object. "
+                    "Got `" schema "`.")
+               {:given-arg schema})))
+   (if (nil? path)
+     schema
+     (when-not (u/path? path)
+       (throw
+        (ex-info
+         (str "Second argument to schema-at-path must be nil or a sequence of "
+              "path keys, which must be keywords, strings, or integers. Got: `"
+              path "`.")
+         {:given-path path}))))
+   (when (and (not (nil? branches?)) (not (boolean? branches?)))
+     (throw
+      (ex-info
+       (str "`branches?` option, when provided, must be a boolean. When true "
+            "it causes integers in the path to be interpreted as branches in "
+            "union if the corresponding schema is a union rather than causing "
+            "a search in the union for an array. Got: `" branches? "`.")
+       {:given-opts opts})))
+  (sub/schema-at-path schema path opts)))
 
 (s/defn member-schemas :- [LancasterSchema]
   "Returns the member schemas of the given union schema."
