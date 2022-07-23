@@ -58,7 +58,7 @@
                             (throw
                              (ex-info
                               "Can't get schema at path for non-container type."
-                              (u/sym-map schema path))))]
+                              (u/sym-map edn-schema path))))]
          (recur child-schema (rest path) opts))))))
 
 (defn member-schemas [schema]

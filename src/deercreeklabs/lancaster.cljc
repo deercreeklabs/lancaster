@@ -312,7 +312,7 @@
   (sub/member-schemas union-schema))
 
 (s/defn member-schema-at-branch :- LancasterSchema
-  "Returns the member schema at the given union schema."
+  "Returns the member schema at the given union schema branch index."
   [union-schema :- LancasterSchema
    branch-index :- s/Int]
   (when-not (satisfies? u/ILancasterSchema union-schema)

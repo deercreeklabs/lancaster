@@ -10,6 +10,8 @@
      (:import
       (goog.math Long))))
 
+#?(:clj (set! *warn-on-reflection* true))
+
 (s/defn make-long :- Long
   [x :- s/Any]
   (when-not (nil? x)
@@ -17,7 +19,6 @@
        :cljs (if (u/long? x)
                x
                (Long.fromNumber x)))))
-
 
 ;; Based on
 ;; http://avro.apache.org/docs/current/spec.html#schema_fingerprints
@@ -53,10 +54,8 @@
             (conj fp-table (calc-fp i)))]
     (reduce f [] (range 256))))
 
-(s/defn fingerprint64 :- Long
-  [s :- s/Str]
-  (let [ba (ba/utf8->byte-array s)
-        f (fn [acc b]
+(defn ba->fp64 [ba]
+  (let [f (fn [acc b]
             (let [b (make-long b)
                   acc (make-long acc)]
               (bit-xor (unsigned-bit-shift-right acc 8)
@@ -70,6 +69,11 @@
         (let [b (aget #^bytes ba i)]
           (recur (f acc b)
                  (inc i)))))))
+
+(s/defn fingerprint64 :- Long
+  [s :- s/Str]
+  (->  (ba/utf8->byte-array s)
+       (ba->fp64)))
 
 (s/defn fingerprint128 :- ba/ByteArray
   [s :- s/Str]
