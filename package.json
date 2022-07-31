@@ -1,7 +1,7 @@
 {
     "devDependencies": {
         "@cljs-oss/module-deps": "1.1.1",
-        "shadow-cljs": "2.18.0",
+        "shadow-cljs": "2.19.8",
         "source-map-support": "0.5.21"
     }
 }
