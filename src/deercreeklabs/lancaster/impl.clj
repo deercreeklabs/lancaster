@@ -9,6 +9,7 @@
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.math BigInteger)))
 
+(set! *warn-on-reflection* true)
 (clj-commons.primitive-math/use-primitive-operators)
 
 (defrecord OutputStream [baos ledos]
