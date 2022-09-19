@@ -8,7 +8,7 @@
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
    #?(:cljs [goog.math :as gm])
-   #?(:clj [primitive-math :as pm])
+   #?(:clj [clj-commons.primitive-math :as pm])
    #?(:clj [puget.printer :refer [cprint-str]])
    [schema.core :as s])
   #?(:cljs
