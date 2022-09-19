@@ -8,7 +8,7 @@
    [deercreeklabs.lancaster.impl :as impl]
    [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
    [deercreeklabs.lancaster.utils :as u]
-   #?(:clj [primitive-math :as pm])
+   #?(:clj [clj-commons.primitive-math :as pm])
    [schema.core :as s :include-macros true]))
 
 #?(:clj (pm/use-primitive-operators))

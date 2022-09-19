@@ -9,7 +9,7 @@
    (java.io ByteArrayInputStream ByteArrayOutputStream)
    (java.math BigInteger)))
 
-(primitive-math/use-primitive-operators)
+(clj-commons.primitive-math/use-primitive-operators)
 
 (defrecord OutputStream [baos ledos]
   u/IOutputStream
