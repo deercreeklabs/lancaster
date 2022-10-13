@@ -18,10 +18,9 @@
                                (s/protocol u/ILancasterSchema)))
 
 (defrecord LancasterSchema
-    [edn-schema name->edn-schema json-schema parsing-canonical-form
+    [edn-schema name->edn-schema name->schema json-schema parsing-canonical-form
      fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
-     default-data-size *name->serializer *writer-fp->deserializer child-info
-     name->schema]
+     default-data-size *name->serializer *writer-fp->deserializer child-info]
   u/ILancasterSchema
   (serialize [this data]
     (let [os (impl/output-stream default-data-size)]
@@ -436,6 +435,10 @@
                      {:given-edn-schema edn-schema*})))
    (check-edn-schema edn-schema*)
    (let [name->edn-schema (u/make-name->edn-schema edn-schema*)
+         name->schema (reduce (fn [acc [n s]]
+                                (assoc acc n (edn-schema->lancaster-schema s)))
+                              {}
+                              name->edn-schema)
          edn-schema (u/ensure-defaults (fix-repeated-schemas edn-schema*)
                                        name->edn-schema)
          avro-schema (if (u/avro-primitive-types edn-schema)
@@ -458,14 +461,11 @@
          child-info (->child-info
                      (u/sym-map edn-schema name->edn-schema *name->serializer))
          lancaster-schema (->LancasterSchema
-                           edn-schema name->edn-schema json-schema
+                           edn-schema name->edn-schema name->schema json-schema
                            parsing-canonical-form fingerprint64 fingerprint128
                            fingerprint256 plumatic-schema serializer
                            default-data-size *name->serializer
                            *writer-fp->deserializer child-info)]
-     (when-let [name-kw (u/named-edn-schema->name-kw edn-schema)]
-       (when-not (name-kw @u/*__INTERNAL__name->schema)
-         (swap! u/*__INTERNAL__name->schema assoc name-kw lancaster-schema)))
      lancaster-schema)))
 
 (defn json-schema->lancaster-schema [json-schema]
