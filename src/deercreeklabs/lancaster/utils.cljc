@@ -25,8 +25,6 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-(def *__INTERNAL__name->schema (atom {}))
-
 (declare default-data edn-schemas-match?)
 
 (defmacro sym-map

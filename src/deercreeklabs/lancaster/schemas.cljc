@@ -20,7 +20,8 @@
 (defrecord LancasterSchema
     [edn-schema name->edn-schema json-schema parsing-canonical-form
      fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
-     default-data-size *name->serializer *writer-fp->deserializer child-info]
+     default-data-size *name->serializer *writer-fp->deserializer child-info
+     name->schema]
   u/ILancasterSchema
   (serialize [this data]
     (let [os (impl/output-stream default-data-size)]
@@ -74,7 +75,7 @@
                     arity.")
               (u/sym-map edn-schema))))
     (if (keyword? child-info)
-      (@u/*__INTERNAL__name->schema child-info)
+      (name->schema child-info)
       child-info))
   (child-schema [this field-or-branch]
     (let [avro-type (u/avro-type-dispatch-lt edn-schema)
@@ -87,12 +88,12 @@
           lookup (fn []
                    (let [schema (get child-info field-or-branch)]
                      (if (keyword? schema)
-                       (@u/*__INTERNAL__name->schema schema)
+                       (name->schema schema)
                        schema)))
           search (fn []
                    (some (fn [sub]
                            (let [sub* (if (keyword? sub)
-                                        (@u/*__INTERNAL__name->schema sub)
+                                        (name->schema sub)
                                         sub)]
                              (get (:child-info sub*) field-or-branch)))
                          child-info))]
