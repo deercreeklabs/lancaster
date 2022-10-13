@@ -435,10 +435,6 @@
                      {:given-edn-schema edn-schema*})))
    (check-edn-schema edn-schema*)
    (let [name->edn-schema (u/make-name->edn-schema edn-schema*)
-         name->schema (reduce (fn [acc [n s]]
-                                (assoc acc n (edn-schema->lancaster-schema s)))
-                              {}
-                              name->edn-schema)
          edn-schema (u/ensure-defaults (fix-repeated-schemas edn-schema*)
                                        name->edn-schema)
          avro-schema (if (u/avro-primitive-types edn-schema)
