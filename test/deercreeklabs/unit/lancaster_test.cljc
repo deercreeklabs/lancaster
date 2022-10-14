@@ -105,6 +105,8 @@
   [:data :required a-fixed-schema (ba/byte-array [77 88])]
   [:other-data l/bytes-schema])
 
+(u/child-schema add-to-cart-rsp-schema :req)
+
 (l/def-array-schema simple-array-schema
   l/string-schema)
 

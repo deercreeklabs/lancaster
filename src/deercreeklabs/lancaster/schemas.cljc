@@ -18,7 +18,7 @@
                                (s/protocol u/ILancasterSchema)))
 
 (defrecord LancasterSchema
-    [edn-schema name->edn-schema name->schema json-schema parsing-canonical-form
+    [edn-schema name->edn-schema *name->schema json-schema parsing-canonical-form
      fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
      default-data-size *name->serializer *writer-fp->deserializer child-info]
   u/ILancasterSchema
@@ -74,7 +74,9 @@
                     arity.")
               (u/sym-map edn-schema))))
     (if (keyword? child-info)
-      (name->schema child-info)
+      (do
+        (println "here")
+        (@*name->schema child-info))
       child-info))
   (child-schema [this field-or-branch]
     (let [avro-type (u/avro-type-dispatch-lt edn-schema)
@@ -87,12 +89,12 @@
           lookup (fn []
                    (let [schema (get child-info field-or-branch)]
                      (if (keyword? schema)
-                       (name->schema schema)
+                       (@*name->schema schema)
                        schema)))
           search (fn []
                    (some (fn [sub]
                            (let [sub* (if (keyword? sub)
-                                        (name->schema sub)
+                                        (@*name->schema sub)
                                         sub)]
                              (get (:child-info sub*) field-or-branch)))
                          child-info))]
@@ -456,12 +458,16 @@
                                                      name->edn-schema)
          child-info (->child-info
                      (u/sym-map edn-schema name->edn-schema *name->serializer))
+         *name->schema (atom {})
          lancaster-schema (->LancasterSchema
-                           edn-schema name->edn-schema name->schema json-schema
+                           edn-schema name->edn-schema *name->schema json-schema
                            parsing-canonical-form fingerprint64 fingerprint128
                            fingerprint256 plumatic-schema serializer
                            default-data-size *name->serializer
                            *writer-fp->deserializer child-info)]
+     (when-let [name-kw (u/named-edn-schema->name-kw edn-schema)]
+       (when-not (name-kw @*name->schema)
+         (swap! *name->schema assoc name-kw lancaster-schema)))
      lancaster-schema)))
 
 (defn json-schema->lancaster-schema [json-schema]

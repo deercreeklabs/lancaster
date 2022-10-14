@@ -62,7 +62,7 @@
          (recur child-schema (rest path) opts))))))
 
 (defn member-schemas [schema]
-  (let [{:keys [child-info edn-schema name->schema]} schema
+  (let [{:keys [child-info edn-schema *name->schema]} schema
         avro-type (u/get-avro-type edn-schema)
         _ (when-not (= :union avro-type)
             (throw (ex-info (str "The argument to `member-schemas` must be "
@@ -70,7 +70,7 @@
                             (u/sym-map schema avro-type))))]
     (mapv (fn [sub]
             (if (keyword? sub)
-              (name->schema sub)
+              (@*name->schema sub)
               sub))
           child-info)))
 
