@@ -7,10 +7,10 @@
 
 (defn path-type* [path-entry]
   (cond
-   (keyword? path-entry) :keyword
-   (string? path-entry) :string
-   (int? path-entry) :int
-   :else nil))
+    (keyword? path-entry) :keyword
+    (string? path-entry) :string
+    (int? path-entry) :int
+    :else nil))
 
 (defn ->matching-union-child-schema [schema edn-schema path-entry]
   (let [path-type (path-type* path-entry)
@@ -62,17 +62,13 @@
          (recur child-schema (rest path) opts))))))
 
 (defn member-schemas [schema]
-  (let [{:keys [child-info edn-schema]} schema
-        avro-type (u/get-avro-type edn-schema)
-        _ (when-not (= :union avro-type)
-            (throw (ex-info (str "The argument to `member-schemas` must be "
-                                 "a union schema. Got type `" avro-type "`.")
-                            (u/sym-map schema avro-type))))]
-    (mapv (fn [sub]
-            (if (keyword? sub)
-              (sub @u/*__INTERNAL__name->schema)
-              sub))
-          child-info)))
+  (when-not (= :union
+               (-> schema :child-info :lancaster/schema-type))
+    (throw (ex-info (str "The argument to `member-schemas` must be "
+                         "a union schema.")
+                    {:edn-schema (:edn-schema schema)})))
+  (mapv #(@u/*__INTERNAL__edn-schema->schema %)
+        (-> schema :child-info :lancaster/branch->child-edn-schema)))
 
 (defn member-schema-at-branch [schema branch-index]
   (let [{:keys [edn-schema name->edn-schema]} schema
