@@ -407,7 +407,7 @@
             (deser* is)))))))
 
 (defn kw->edn-schema [kw name->edn-schema]
-  (let [fqname (u/qualify-name-kw kw)]
+  (let [fqname (u/qualify-name-kw kw (name->edn-schema kw))]
     (or (name->edn-schema fqname)
         (let [schema-names (keys name->edn-schema)]
           (throw

@@ -35,10 +35,17 @@
 (l/def-map-schema map-of-fbs-schema
   (l/union-schema [foo-schema bar-schema]))
 
-(l/def-record-schema person-schema
-  [:name l/string-schema]
-  [:age l/int-schema]
-  [:children (l/array-schema ::person)])
+(def person-schema
+  (l/edn->schema
+   {:type :record
+    :name ::person
+    :fields [{:name :name
+              :type :string}
+             {:name :age
+              :type :int}
+             {:name :children
+              :type {:type :array
+                     :items ::person}}]}))
 
 (def mary
   {:name "Mary"
@@ -229,7 +236,7 @@
 (l/def-map-schema wrapping-map-schema enclosing-schema)
 
 (deftest test-path-navigation
-  ;; You may choose to have l/schema-a-path do the path navigation.
+  ;; You may choose to have l/schema-at-path do the path navigation.
   (is (lt/round-trip?
        (l/schema-at-path wrapping-record-schema [:wrapped :enclosed])
        {:choice :a}))

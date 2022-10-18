@@ -25,7 +25,7 @@
 
 #?(:clj (pm/use-primitive-operators))
 
-(def *__INTERNAL__name->schema (atom {}))
+(defonce *__INTERNAL__edn-schema->schema (atom {}))
 
 (declare default-data edn-schemas-match?)
 
@@ -142,20 +142,25 @@
   (-> (str/split fullname #"\.")
       (last)))
 
-(defn qualify-name-kw [name-kw]
-  (cond
-    (qualified-keyword? name-kw)
-    name-kw
+(defn qualify-name-kw [name-kw edn-schema]
+  (let [{:keys [namespace]} edn-schema]
+    (cond
+      (qualified-keyword? name-kw)
+      name-kw
 
-    (simple-keyword? name-kw)
-    (if **enclosing-namespace**
+      (not (keyword? name-kw))
+      (throw (ex-info (str "Argument to qualify-name-kw (" name-kw
+                           ") is not a keyword")
+                      (sym-map name-kw)))
+
+      namespace
+      (keyword (name namespace) (name name-kw))
+
+      **enclosing-namespace**
       (keyword (name **enclosing-namespace**) (name name-kw))
-      name-kw)
 
-    :else
-    (throw (ex-info (str "Argument to qualify-name-kw (" name-kw
-                         ") is not a keyword")
-                    (sym-map name-kw)))))
+      :else
+      name-kw)))
 
 (defn name-keyword? [x]
   (and (keyword? x)
@@ -179,19 +184,19 @@
 (s/defn get-avro-type :- s/Keyword
   [edn-schema]
   (cond
-   (map? edn-schema) (:type edn-schema)
-   (sequential? edn-schema) :union
-   (avro-primitive-types edn-schema) edn-schema
-   (keyword? edn-schema) :name-keyword
-   (string? edn-schema) :name-string ;; For Avro schemas
-   (nil? edn-schema) (throw
-                      (ex-info "Schema argument to get-avro-type is nil."
-                               {:type :illegal-schema
-                                :subtype :schema-is-nil
-                                :schema edn-schema}))
-   :else (throw (ex-info (str "Failed to get avro type for schema: "
-                              edn-schema)
-                         (sym-map edn-schema)))))
+    (map? edn-schema) (:type edn-schema)
+    (sequential? edn-schema) :union
+    (avro-primitive-types edn-schema) edn-schema
+    (keyword? edn-schema) :name-keyword
+    (string? edn-schema) :name-string ;; For Avro schemas
+    (nil? edn-schema) (throw
+                       (ex-info "Schema argument to get-avro-type is nil."
+                                {:type :illegal-schema
+                                 :subtype :schema-is-nil
+                                 :schema edn-schema}))
+    :else (throw (ex-info (str "Failed to get avro type for schema: "
+                               edn-schema)
+                          (sym-map edn-schema)))))
 
 (defn strip-lt-attrs [edn-schema]
   (dissoc edn-schema :logical-type :lt->avro :avro->lt :lt? :default-data
@@ -237,7 +242,9 @@
     edn-schema
 
     (keyword? edn-schema)
-    (keyword **enclosing-namespace** (name edn-schema))
+    (let [ns (or (:namespace edn-schema)
+                 **enclosing-namespace**)]
+      (keyword (name ns) (name edn-schema)))
 
     :else nil))
 
@@ -1032,7 +1039,8 @@
 
 (defmethod make-serializer :name-keyword
   [name-kw name->edn-schema *name->serializer]
-  (let [qualified-name-kw (qualify-name-kw name-kw)]
+  (let [edn-schema (name->edn-schema name-kw)
+        qualified-name-kw (qualify-name-kw name-kw edn-schema)]
     (fn serialize [os data path]
       (if-let [serializer (@*name->serializer qualified-name-kw)]
         (serializer os data path)
@@ -1166,6 +1174,8 @@
       (binding [**enclosing-namespace** (or (:namespace edn-schema)
                                             **enclosing-namespace**)]
         (doseq [child-schema child-schemas]
+          (binding [**enclosing-namespace** (or (:namespace child-schema)
+                                                **enclosing-namespace**)])
           (get-schemas! child-schema *name->edn-schema))))))
 
 (defn make-name->edn-schema [edn-schema]
@@ -1399,7 +1409,6 @@
           name (csk/->kebab-case (fullname->name name-str))]
       (keyword ns name))
     (csk/->kebab-case-keyword name-str)))
-
 
 (defn avro-name->edn-name [schema]
   (let [schema-name-str (:name schema)
