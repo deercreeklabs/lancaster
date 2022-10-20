@@ -45,7 +45,8 @@
                        (u/sym-map edn-schema schema-type))))
      (cond
        (= :record schema-type)
-       (let [field (if (qualified-keyword? field-or-branch)
+       (let [field (if (or (qualified-keyword? field-or-branch)
+                           (not child-namespace))
                      field-or-branch
                      (keyword (name child-namespace) (name field-or-branch)))
              child-edn (field->child-edn-schema field)]

@@ -1135,3 +1135,10 @@
          #?(:clj ExceptionInfo :cljs js/Error)
          #"does not match any schema in the union schema"
          (l/serialize sch v)))))
+
+(deftest test-child-schema-rec-w-no-namespace
+  (let [sch (l/record-schema :test-schema ; note no namespace
+                             [[:a l/boolean-schema]])
+        child-edn (-> (l/child-schema sch :a)
+                      (l/edn))]
+    (is (= [:null :boolean] child-edn))))
