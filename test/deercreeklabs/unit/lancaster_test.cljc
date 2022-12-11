@@ -129,21 +129,21 @@
   l/int-schema add-to-cart-req-schema a-fixed-schema)
 
 (l/def-record-schema person-schema
-  [:person/name :required l/string-schema "No name"]
-  [:person/age :required l/int-schema 0])
+  [:person-name :required l/string-schema "No name"]
+  [:age :required l/int-schema 0])
 
 (l/def-record-schema dog-schema
-  [:dog/name l/string-schema]
-  [:dog/owner l/string-schema])
+  [:name l/string-schema]
+  [:owner l/string-schema])
 
 (def dog-v2-schema
   (l/record-schema ::dog
-                   [[:dog/name l/string-schema]
-                    [:dog/owner l/string-schema]
-                    [:dog/tag-number l/int-schema]]))
+                   [[:name l/string-schema]
+                    [:owner l/string-schema]
+                    [:tag-number l/int-schema]]))
 
 (l/def-record-schema fish-schema
-  [:fish/name l/string-schema]
+  [:fish-name l/string-schema]
   [:tank-num l/int-schema])
 
 (l/def-union-schema person-or-dog-schema
@@ -214,7 +214,7 @@
 (deftest test-def-record-schema-mixed-ns
   (is (= {:name :deercreeklabs.unit.lancaster-test/fish
           :type :record
-          :fields [{:name :fish/name
+          :fields [{:name :fish-name
                     :type [:null :string]
                     :default nil}
                    {:name :tank-num
@@ -653,26 +653,26 @@
   (is (= [{:name :deercreeklabs.unit.lancaster-test/person
            :type :record
            :fields
-           [{:name :person/name :type :string :default "No name"}
-            {:name :person/age :type :int :default 0}]}
+           [{:name :person-name :type :string :default "No name"}
+            {:name :age :type :int :default 0}]}
           {:name :deercreeklabs.unit.lancaster-test/dog
            :type :record
            :fields
-           [{:name :dog/name :type [:null :string] :default nil}
-            {:name :dog/owner :type [:null :string] :default nil}]}]
+           [{:name :name :type [:null :string] :default nil}
+            {:name :owner :type [:null :string] :default nil}]}]
          (l/edn person-or-dog-schema)))
-  (is (= "-5174754347720548939"
+  (is (= "4086940842367520063"
          (u/long->str (l/fingerprint64 person-or-dog-schema)))))
 
 (deftest test-multi-record-union-schema-serdes
-  (let [data #:dog{:name "Fido" :owner "Zach"}
+  (let [data {:name "Fido" :owner "Zach"}
         encoded (l/serialize person-or-dog-schema data)
         decoded (l/deserialize-same person-or-dog-schema encoded)
         _ (is (ba/equivalent-byte-arrays?
                (ba/byte-array [2 2 8 70 105 100 111 2 8 90 97 99 104])
                encoded))
         _ (is (= data decoded))
-        data #:person{:name "Bill" :age 50}
+        data {:person-name "Bill" :age 50}
         encoded (l/serialize person-or-dog-schema data)
         decoded (l/deserialize-same person-or-dog-schema encoded)]
     (is (ba/equivalent-byte-arrays?
@@ -717,23 +717,23 @@
   (is (= [{:type :map :values :int}
           {:name :deercreeklabs.unit.lancaster-test/person
            :type :record
-           :fields [{:name :person/name
+           :fields [{:name :person-name
                      :type :string
                      :default "No name"}
-                    {:name :person/age
+                    {:name :age
                      :type :int
                      :default 0}]}
           {:name :deercreeklabs.unit.lancaster-test/dog
            :type :record
-           :fields [{:name :dog/name
+           :fields [{:name :name
                      :type [:null :string]
                      :default nil}
-                    {:name :dog/owner
+                    {:name :owner
                      :type [:null :string]
                      :default nil}]}
           {:type :array :items :string}]
          (l/edn mopodoa-schema)))
-  (is (= "-2196893583124300899"
+  (is (= "6581003250645933229"
          (u/long->str (l/fingerprint64 mopodoa-schema)))))
 
 (deftest test-mopodoa-schema-serdes
@@ -971,9 +971,9 @@
 (deftest test-good-union
   (let [sch1 (l/record-schema ::sch1 [[:a l/int-schema]
                                       [:b l/string-schema]])
-        sch2 (l/record-schema ::sch2 [[:different-ns/b l/string-schema]])
+        sch2 (l/record-schema ::sch2 [[:different-b l/string-schema]])
         sch3 (l/union-schema [sch1 sch2])]
-    (is (round-trip? sch3 {:different-ns/b "hi"}))
+    (is (round-trip? sch3 {:different-b "hi"}))
     (is (round-trip? sch3 {:a 1 :b "hi"}))))
 
 (deftest test-bad-union
@@ -1015,13 +1015,13 @@
 (deftest test-serialize-empty-map-multi-rec-union
   (is (thrown-with-msg?
        #?(:clj ExceptionInfo :cljs js/Error)
-       #"Record data is missing key `:person/name`"
+       #"Record data is missing key `:person-name`"
        (l/serialize person-or-dog-schema {}))))
 
 (deftest test-map-and-rec-union
   (let [schema (l/union-schema [(l/map-schema l/int-schema) person-schema])]
     (is (round-trip? schema {"foo" 1}))
-    (is (round-trip? schema #:person{:name "Chad" :age 18}))))
+    (is (round-trip? schema {:person-name "Chad" :age 18}))))
 
 (deftest test-ns-enum
   (is (round-trip? suit-schema :suit/spades))
@@ -1142,3 +1142,12 @@
         child-edn (-> (l/child-schema sch :a)
                       (l/edn))]
     (is (= [:null :boolean] child-edn))))
+
+(deftest test-namespaced-field-name
+  ;; Namespaces are not allowed on field names as per
+  ;; https://avro.apache.org/docs/1.11.1/specification/#names
+  ;; "Record fields and enum symbols have names as well (but no namespace)."
+  (is (thrown-with-msg?
+       ExceptionInfo
+       #"Field name keywords must not be namespaced"
+       (l/record-schema ::example [[::id l/int-schema]]))))

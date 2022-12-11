@@ -63,7 +63,7 @@
            decoded))))
 
 (deftest test-schema-evolution-union-add-member
-  (let [data #:dog{:name "Rover" :owner "Zeus"}
+  (let [data {:name "Rover" :owner "Zeus"}
         writer-schema lt/person-or-dog-schema
         reader-schema lt/fish-or-person-or-dog-v2-schema
         encoded (l/serialize writer-schema data)
@@ -71,7 +71,7 @@
     (is (= data decoded))))
 
 (deftest test-schema-evolution-union-to-non-union
-  (let [data #:dog{:name "Rover" :owner "Zeus"}
+  (let [data {:name "Rover" :owner "Zeus"}
         writer-schema lt/person-or-dog-schema
         reader-schema lt/dog-v2-schema
         encoded (l/serialize writer-schema data)
@@ -79,32 +79,32 @@
     (is (= data decoded))))
 
 (deftest test-schema-evolution-non-union-to-union
-  (let [data #:dog{:name "Rover" :owner "Zeus" :tag-number 123}
+  (let [data {:name "Rover" :owner "Zeus" :tag-number 123}
         writer-schema lt/dog-v2-schema
         reader-schema lt/person-or-dog-schema
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (dissoc data :dog/tag-number)]
+        expected (dissoc data :tag-number)]
     (is (= expected decoded))))
 
 (deftest test-schema-evolution-union-remove-member-success
-  (let [data #:dog{:name "Runner" :owner "Tommy" :tag-number 134}
+  (let [data {:name "Runner" :owner "Tommy" :tag-number 134}
         writer-schema lt/fish-or-person-or-dog-v2-schema
         reader-schema lt/person-or-dog-schema
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)
-        expected (dissoc data :dog/tag-number)]
+        expected (dissoc data :tag-number)]
     (is (= expected decoded))))
 
 (deftest test-schema-evolution-union-remove-member-failure
-  (let [data {:fish/name "Swimmy" :tank-num 24}
+  (let [data {:fish-name "Swimmy" :tank-num 24}
         writer-schema lt/fish-or-person-or-dog-v2-schema
         reader-schema lt/person-or-dog-schema
         encoded (l/serialize writer-schema data)]
     (is (thrown-with-msg?
-          #?(:clj ExceptionInfo :cljs js/Error)
-          #"do not match."
-          (l/deserialize reader-schema writer-schema encoded)))))
+         #?(:clj ExceptionInfo :cljs js/Error)
+         #"do not match."
+         (l/deserialize reader-schema writer-schema encoded)))))
 
 (deftest test-schema-evolution-no-match
   (let [data {:sku 123
@@ -118,31 +118,31 @@
          (l/deserialize reader-schema writer-schema encoded)))))
 
 (deftest test-schema-evolution-named-ref
-  (let [data {:game/players [{:name/first "Chad" :name/last "Harrington"}]
-              :game/judges [{:name/first "Chibuzor" :name/last "Okonkwo"}]}
+  (let [data {:players [{:name-first "Chad" :name-last "Harrington"}]
+              :judges [{:name-first "Chibuzor" :name-last "Okonkwo"}]}
         name-schema (l/record-schema
                      ::lt/name
-                     [[:name/first l/string-schema]
-                      [:name/last l/string-schema]])
+                     [[:name-first l/string-schema]
+                      [:name-last l/string-schema]])
         writer-schema (l/record-schema
                        ::lt/game
-                       [[:game/players (l/array-schema name-schema)]
-                        [:game/judges (l/array-schema name-schema)]])
+                       [[:players (l/array-schema name-schema)]
+                        [:judges (l/array-schema name-schema)]])
         reader-schema (l/record-schema
                        ::lt/game
-                       [[:game/players (l/array-schema name-schema)]
-                        [:game/judges (l/array-schema name-schema)]
-                        [:game/audience (l/array-schema name-schema)]])
+                       [[:players (l/array-schema name-schema)]
+                        [:judges (l/array-schema name-schema)]
+                        [:audience (l/array-schema name-schema)]])
         encoded (l/serialize writer-schema data)
         decoded (l/deserialize reader-schema writer-schema encoded)]
     (is (= (str
             "{\"name\":\"deercreeklabs.unit.lancaster_test.Game\",\"type\":"
-            "\"record\",\"fields\":[{\"name\":\"gamePlayers\",\"type\":"
+            "\"record\",\"fields\":[{\"name\":\"players\",\"type\":"
             "[\"null\",{\"type\":\"array\",\"items\":{\"name\":\"deercreeklabs"
             ".unit.lancaster_test.Name\",\"type\":\"record\",\"fields\":"
             "[{\"name\":\"nameFirst\",\"type\":[\"null\",\"string\"]},{\"name\""
             ":\"nameLast\",\"type\":[\"null\",\"string\"]}]}}]},{\"name\":"
-            "\"gameJudges\",\"type\":[\"null\",{\"type\":\"array\",\"items\":"
+            "\"judges\",\"type\":[\"null\",{\"type\":\"array\",\"items\":"
             "\"deercreeklabs.unit.lancaster_test.Name\"}]}]}")
            (l/pcf writer-schema)))
     (is (= data decoded))))
@@ -278,24 +278,24 @@
     (is (= :a decoded))))
 
 (deftest test-record-evolution-ns-added-field
-  (let [w-schema (l/record-schema ::test [[:user/name l/string-schema]])
-        r-schema (l/record-schema ::test [[:user/name l/string-schema]
-                                          [:user/age l/int-schema]])
-        data {:user/name "Alice"}
+  (let [w-schema (l/record-schema ::test [[:name l/string-schema]])
+        r-schema (l/record-schema ::test [[:name l/string-schema]
+                                          [:age l/int-schema]])
+        data {:name "Alice"}
         encoded (l/serialize w-schema data)
         decoded (l/deserialize r-schema w-schema encoded)
-        expected {:user/name "Alice"}]
+        expected {:name "Alice"}]
     (is (= expected decoded))))
 
 (deftest test-record-evolution-ns-deleted-field
-  (let [w-schema (l/record-schema ::test [[:user/name l/string-schema]
-                                          [:user/age l/int-schema]])
-        r-schema (l/record-schema ::test [[:user/name l/string-schema]])
-        data {:user/name "Alice"
-              :user/age 40}
+  (let [w-schema (l/record-schema ::test [[:name l/string-schema]
+                                          [:age l/int-schema]])
+        r-schema (l/record-schema ::test [[:name l/string-schema]])
+        data {:name "Alice"
+              :age 40}
         encoded (l/serialize w-schema data)
         decoded (l/deserialize r-schema w-schema encoded)
-        expected {:user/name "Alice"}]
+        expected {:name "Alice"}]
     (is (= expected decoded))))
 
 (deftest test-nested-kw-evolution

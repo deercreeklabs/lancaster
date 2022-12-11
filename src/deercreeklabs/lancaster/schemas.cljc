@@ -226,14 +226,21 @@
         {:keys [field-name doc required? field-schema default]} params
         _ (when-not (keyword? field-name)
             (throw (ex-info (str "Field names must be keywords. Bad field "
-                                 "name: " field-name)
-                            (u/sym-map field-name field-schema default
-                                       params field))))
+                                 "name: " field-name doc required?)
+                            (u/sym-map field-name))))
+        _ (when (qualified-keyword? field-name)
+            (throw (ex-info (str "Field name keywords must not be namespaced. "
+                                 "Bad field name: " field-name)
+                            (u/sym-map field-name doc required?))))
+        _ (when (u/fullname? field-name)
+            (throw (ex-info (str "Field names must not contain dots. "
+                                 "Bad field name: " field-name)
+                            (u/sym-map field-name doc required?))))
         _ (when (and default (not required?))
             (throw (ex-info (str "Only :required fields may have a default. "
                                  "Field `" field-name "` has a default "
                                  "but is not :required.")
-                            (u/sym-map field-name field default required?))))
+                            (u/sym-map field-name doc required?))))
         field-edn-schema (if (keyword? field-schema)
                            field-schema
                            (:edn-schema field-schema))

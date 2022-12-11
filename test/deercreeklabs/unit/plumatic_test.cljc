@@ -40,8 +40,8 @@
 
 (deftest test-plumatic-union-mult-rec
   (let [pl-sch (l/plumatic-schema lt/person-or-dog-schema)
-        data #:person{:name "Apollo" :age 30}
-        bad-data #:person{:name "Apollo" :age "not an integer"}]
+        data {:person-name "Apollo" :age 30}
+        bad-data {:person-name "Apollo" :age "not an integer"}]
     (is (= nil (s/check pl-sch data)))
     (is (not= nil (s/check pl-sch bad-data)))))
 

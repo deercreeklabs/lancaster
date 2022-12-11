@@ -23,10 +23,10 @@
   [:users (l/array-schema user-schema)])
 
 (l/def-record-schema foo-schema
-  [:foo/a :required l/int-schema])
+  [:foo-a :required l/int-schema])
 
 (l/def-record-schema bar-schema
-  [:bar/a :required l/string-schema])
+  [:bar-a :required l/string-schema])
 
 (l/def-record-schema foo-foos-schema
   [:foo foo-schema]
@@ -137,14 +137,14 @@
     (is (= :union ret))))
 
 (deftest test-schema-at-path-union-two-args-int
-  (let [path ["a" :foo/a]
+  (let [path ["a" :foo-a]
         ret (-> (l/schema-at-path map-of-fbs-schema path)
                 (u/edn-schema)
                 (u/edn-schema->name-kw))]
     (is (= :int ret))))
 
 (deftest test-schema-at-path-union-two-args-str
-  (let [path ["a" :bar/a]
+  (let [path ["a" :bar-a]
         ret (-> (l/schema-at-path map-of-fbs-schema path)
                 (u/edn-schema)
                 (u/edn-schema->name-kw))]

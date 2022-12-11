@@ -173,10 +173,10 @@
 
 (deftest test-name-kw-lt
   (let [sch (l/record-schema ::sch
-                             [[:foo/a l/keyword-schema]
-                              [:bar/b l/keyword-schema]])
-        data1 {:foo/a :a
-               :bar/b :an-ns/b}]
+                             [[:foo-a l/keyword-schema]
+                              [:bar-b l/keyword-schema]])
+        data1 {:foo-a :a
+               :bar-b :an-ns/b}]
     (is (lt/round-trip? sch data1))))
 
 (deftest test-default-data-lt

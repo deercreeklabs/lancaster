@@ -129,8 +129,10 @@
       (str/split #"-schema")
       (first)))
 
-(defn fullname? [s]
-  (str/includes? s "."))
+(defn fullname? [x]
+  (cond
+    (string? x) (str/includes? x ".")
+    (keyword? x) (fullname? (name x))))
 
 (defn fullname->ns [fullname]
   (let [parts (str/split fullname #"\.")

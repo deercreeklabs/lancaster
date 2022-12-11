@@ -3,8 +3,10 @@
    [clojure.test :refer [deftest is]]
    [cheshire.core :as json]
    [deercreeklabs.lancaster :as l])
-  (:import org.apache.avro.Schema$Parser
-           org.apache.avro.SchemaNormalization))
+  (:import
+   (clojure.lang ExceptionInfo)
+   (org.apache.avro Schema$Parser
+                    SchemaNormalization)))
 
 (deftest test-namespaced-enums-from-json
   (let [schema (l/json->schema (slurp "test/namespaced_enums.json"))

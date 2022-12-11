@@ -24,8 +24,8 @@
 
 (l/def-record-schema invoice-schema
   "A schema representing invoices"
-  [:invoice/id "The unique id" :required l/string-schema]
-  [:customer/id :required l/string-schema]
+  [:invoice-id "The unique id" :required l/string-schema]
+  [:customer-id :required l/string-schema]
   [:date-ms "The date in UTC" l/long-schema]
   [:tax-type :required tax-type-schema :taxable]
   [:item-ids (l/array-schema l/string-schema)])
@@ -33,8 +33,8 @@
 (def invoice2-schema
   (l/record-schema ::invoice-schema
                    "This schema doesn't have tax-type"
-                   [[:invoice/id "The unique id" :required l/string-schema]
-                    [:customer/id :required l/string-schema]
+                   [[:invoice-id "The unique id" :required l/string-schema]
+                    [:customer-id :required l/string-schema]
                     [:date-ms l/long-schema]
                     [:item-ids (l/array-schema l/string-schema)]]))
 
@@ -59,11 +59,11 @@
   (is (= {:type :record
           :name :deercreeklabs.unit.schema-construction-test/invoice
           :doc "A schema representing invoices"
-          :fields [{:name :invoice/id
+          :fields [{:name :invoice-id
                     :doc "The unique id"
                     :type :string
                     :default ""}
-                   {:name :customer/id
+                   {:name :customer-id
                     :type :string
                     :default ""}
                    {:name :date-ms
@@ -111,8 +111,8 @@
   #?(:clj (is (ltest/fp-matches? invoice-schema))))
 
 (deftest test-round-trip-invoice
-  (let [data {:invoice/id "id001"
-              :customer/id "cust007"
+  (let [data {:invoice-id "id001"
+              :customer-id "cust007"
               ;; No date provided
               :tax-type :taxable
               :item-ids ["item43" "item689"]}
