@@ -191,11 +191,11 @@ Avro Type | Acceptable Clojure / ClojureScript Types
 `bytes` | `byte-array`, `java.lang.String`, `js/Int8Array`, `js/String`
 `string` | `byte-array`, `java.lang.String`, `js/Int8Array`, `js/String`
 `fixed` | `byte-array`, `js/Int8Array`. Byte array length must equal the size declared in the creation of the Lancaster `fixed` schema.
-`enum` | `keyword`
+`enum` | Simple (non-namespaced) `keyword`
 `array` | Any data that passes `(sequential? data)`
-`map` | Any data that passes `(map? data)`, if all keys are strings. Clojure(Script) records *DO NOT* qualify, since their keys are keywords.
+`map` | Any data that passes `(map? data)`, if all keys are strings. Clojure(Script) records *DO NOT* qualify, since their keys are keywords, not strings.
 `map` (w/ `null` values schema) | If the `values` in the map schema is `null`, the schema is interpreted to represent a Clojure(Script) set, and the data must be a set of strings. Only strings can be elements of this set.
-`record` | Any data that passes `(map? data)`, if all keys are Clojure(Script) keywords. Clojure(Script) records *DO* qualify, since their keys are keywords.
+`record` | Any data that passes `(map? data)`, if all keys are Clojure(Script) simple (non-namespaced) keywords. Clojure(Script) records *DO* qualify, since their keys are keywords.
 `union` | Any data that matches one of the member schemas declared in the creation of the Lancaster `union` schema. Note that there are some restrictions on what schemas may be in a union schema, as explained in [Notes About Union Data Types](#notes-about-union-data-types) below.
 
 **Deserialization**
@@ -208,7 +208,7 @@ Avro Type | Clojure Type | ClojureScript Type
 `null` | `nil` | `nil`
 `boolean` | `boolean` | `boolean`
 `int` | `java.lang.Integer` | `js/Number`
-`long` | `java.lang.Long` | `js/Number`
+`long` | `java.lang.Long` | `goog.Long`
 `float` | `java.lang.Float` | `js/Number`
 `double` | `java.lang.Double` | `js/Number`
 `bytes` | `byte-array` | `js/Int8Array`
@@ -327,7 +327,7 @@ only contain letters, numbers, or hyphens.
 * `fields`: Field definitions. All fields are optional unless marked `:required`.
 Field definitions are sequences of the form
             ```[field-name-kw <docstring> <:required> field-schema <default-value>]```
-    * `field-name-kw`: A keyword naming this field. The keyword may have a namespace.
+    * `field-name-kw`: A simple (non-namespaced) keyword naming this field.
     * `docstring`: Optional. A documentation string.
     * `:required`: Optional. Indicates a required field.
     * `field-schema`: A Lancaster schema object representing the field's schema.
@@ -364,8 +364,7 @@ is also derived from this symbol. See
 schema names. The name-symbol must start with a letter and subsequently
 only contain letters, numbers, or hyphens.
 * `docstring`: Optional. A documentation string
-* `symbol-keywords`: Keywords representing the symbols in the enum. The
-keywords may have namespaces.
+* `symbol-keywords`: Simple (non-namespaced) keywords representing the symbols in the enum.
 
 #### Return Value
 The defined var
@@ -536,7 +535,7 @@ concise way to declare a record schema, see
 * `fields`: Field definitions. All fields are optional unless marked `:required`.
 Field definitions are sequences of the form
             ```[field-name-kw <docstring> <:required> field-schema <default-value>]```
-    * `field-name-kw`: A keyword naming this field. The keyword may have a namespace.
+    * `field-name-kw`: A simple (non-namespaced) keyword naming this field.
     * `docstring`: Optional. A documentation string.
     * `:required`: Optional. Indicates a required field.
     * `field-schema`: A Lancaster schema object representing the field's schema.
@@ -574,8 +573,8 @@ concise way to declare an enum schema, see
              namespaced. The name-kw must start with a letter and subsequently
              only contain letters, numbers, or hyphens.
 * `docstring`: Optional. A documentation string
-* `symbol-keywords`: A sequence of keywords, representing the symbols in
-             the enum.
+* `symbol-keywords`: A sequence of simple (non-namespaced) keywords,
+                     representing the symbols in the enum.
 
 #### Return Value
 The new Lancaster enum schema
