@@ -15,20 +15,20 @@ Using Leiningen / Clojars:
 [![Clojars Project](http://clojars.org/deercreeklabs/lancaster/latest-version.svg)](http://clojars.org/deercreeklabs/lancaster)
 
 # About
-Lancaster is an [Apache Avro](http://avro.apache.org/docs/current/)
+Lancaster is an [Apache Avro](http://avro.apache.org/)
 library for Clojure and ClojureScript. It aims to be fully compliant
-with the [Avro Specification](http://avro.apache.org/docs/current/spec.html).
+with the [Avro Specification](https://avro.apache.org/docs/1.11.1/specification/).
 It is assumed that the reader of this documentation is familiar with
 Avro and Avro terminology. If this is your first exposure to Avro,
-please read the [Avro Overview](http://avro.apache.org/docs/current/index.html)
-and the [Avro Specification](http://avro.apache.org/docs/current/spec.html)
+please read the [Avro Overview](https://avro.apache.org/docs/1.11.1/)
+and the [Avro Specification](https://avro.apache.org/docs/1.11.1/specification/)
 before proceeding.
 
 Lancaster provides for:
 * Easy schema creation
 * Serialization of arbitrarily-complex data structures to a byte array
 * Deserialization from a byte array, including
-[schema resolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution)
+[schema resolution](https://avro.apache.org/docs/1.11.1/specification/#schema-resolution)
 * Conversion from Lancaster schemas to
 [Plumatic schemas](https://github.com/plumatic/schema) (spec support is
 planned).
@@ -104,7 +104,7 @@ ways, as explained below.
 
 ## Primitive Schemas
 Lancaster provides predefined schema objects for all the
-[Avro primitives](http://avro.apache.org/docs/current/spec.html#schema_primitive).
+[Avro primitives](https://avro.apache.org/docs/1.11.1/specification/#primitive-types).
 The following vars are defined in the `deercreeklabs.lancaster` namespace:
 * `null-schema`: Represents an Avro `null`
 * `boolean-schema`: Represents an Avro `boolean`
@@ -121,7 +121,7 @@ These schema objects can be used directly or combined into complex schemas.
 
 ## Complex Schemas
 Most non-trivial Lancaster use cases will involve
-[complex Avro schemas](http://avro.apache.org/docs/current/spec.html#schema_complex).
+[complex Avro schemas](https://avro.apache.org/docs/1.11.1/specification/#complex-types).
 The easiest and most concise way to create complex
 schemas is by using the [Schema Creation Macros](#schema-creation-macros).
 For situations where macros do not work well,
@@ -134,7 +134,6 @@ available.
 * [def-fixed-schema](#def-fixed-schema): Defines a var w/ a fixed schema.
 * [def-map-schema](#def-map-schema): Defines a var w/ a map schema. Keys must be strings.
 * [def-record-schema](#def-record-schema): Defines a var w/ a record schema.
-* [def-merged-record-schema](#def-merged-record-schema): Defines a var w/ a record schema which contains all the fields of all record schemas passed in.
 * [def-union-schema](#def-union-schema): Defines a var w/ a union schema.
 * [def-maybe-schema](#def-maybe-schema): Defines a var w/ a nillable schema.
 
@@ -144,7 +143,6 @@ available.
 * [fixed-schema](#fixed-schema): Creates a fixed schema.
 * [map-schema](#map-schema): Creates a map schema. Keys must be strings.
 * [record-schema](#record-schema): Creates a record schema.
-* [merged-record-schema](#merged-record-schema): Creates a record schema which contains all the fields of all record schemas passed in.
 * [union-schema](#union-schema): Creates a union schema.
 * [maybe](#schema): Creates a nillable schema.
 
@@ -153,23 +151,23 @@ All of these functions take a Lancaster schema object as the first argument:
 * [serialize](#serialize): Serializes data to a byte array.
 * [deserialize](#deserialize): Deserializes data from a byte array, using separate reader and writer schemas. **This is the recommended deserialization function**.
 * [deserialize-same](#deserialize-same): Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
-resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution).
+resolution / evolution](https://avro.apache.org/docs/1.11.1/specification/#schema-resolution).
 * [edn](#edn): Returns the EDN representation of the schema.
 * [json](#json): Returns the JSON representation of the schema.
 * [pcf](#pcf): Returns a JSON string containing the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 * [fingerprint64](#fingerprint64): Returns the 64-bit
 [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 * [fingerprint128](#fingerprint128): Returns the 128-bit
 [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 * [fingerprint256](#fingerprint256): Returns the 256-bit
 [SHA-256 Hash](https://en.wikipedia.org/wiki/SHA-2) of the [
-Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 * [schema?](#schema): Is the argument a Lancaster schema?
 * [plumatic-schema](#plumatic-schema): Returns a [Plumatic schema](https://github.com/plumatic/schema) for the schema.
@@ -225,7 +223,7 @@ Avro Type | Clojure Type | ClojureScript Type
 
 ## Notes About Union Data Types
 
-To quote the [Avro spec](http://avro.apache.org/docs/current/spec.html#Unions):
+To quote the [Avro spec](https://avro.apache.org/docs/1.11.1/specification/#unions):
 
 *Unions may not contain more than one schema with the same type, except for the named types record, fixed and enum. For example, unions containing two array types or two map types are not permitted, but two types with different names are permitted.*
 
@@ -235,16 +233,13 @@ In additon to the above, Lancaster disallows unions with:
 * `record`s which share any keys
 * `enum`s which share any values.
 
-Namespacing the record keys or enum values are easy ways to overcome the
-last two disallowed unions.
-
 At union schema creation time, Lancaster will throw an exception if the
 the schema is disallowed.
 
 # Names and Namespaces
 Named Avro schemas (`records`, `enums`, `fixeds`)
 contain a name part and, optionally, a namespace part. The
-[Names section of the Avro spec](http://avro.apache.org/docs/current/spec.html#names)
+[Names section of the Avro spec](https://avro.apache.org/docs/1.11.1/specification/#names)
 describes this in detail. Lancaster fully supports the spec, allowing
 both names and namespaces. These are combined into a single fullname,
 including both the namespace (if any) and the name.
@@ -264,8 +259,8 @@ the `*-schema` function. If the keyword is namespaced, the keyword's namespace
 is used as the schema's namespace. If the keyword does not have
 a namespace, the schema will not have a namespace.
 Only the functions for creating named schemas
-([enum-schema](#enum-schema), [fixed-schema](#fixed-schema),
-[record-schema](#record-schema), and [merged-record-schema](#merged-record-schema)) have a `name-kw` parameter.
+([enum-schema](#enum-schema), [fixed-schema](#fixed-schema), and
+[record-schema](#record-schema)) have a `name-kw` parameter.
 
 In the EDN representation of a named schema, the :name attribute
 contains the name of the schema, including the namespace, if any.
@@ -318,7 +313,7 @@ details that may change.
 (def-record-schema name-symbol & fields)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```record```](http://avro.apache.org/docs/current/spec.html#schema_record).
+[```record```](https://avro.apache.org/docs/1.11.1/specification/#schema-record)
 For cases where a macro is not appropriate, use the
 [record-schema](#record-schema) function instead.
 
@@ -353,52 +348,12 @@ The defined var
 * [record-schema](#record-schema): Creates a record schema.
 
 -------------------------------------------------------------------------------
-### def-merged-record-schema
-```clojure
-(def-merged-record-schema name-symbol & record-schemas)
-```
-Defines a var whose value is a Lancaster schema object representing an Avro
-[```record```](http://avro.apache.org/docs/current/spec.html#schema_record).
-The record schema contains all the fields of all record schemas passed in.
-For cases where a macro is not appropriate, use the
-[merged-record-schema](#merged-record-schema) function instead.
-
-#### Parameters
-* `name-symbol`: The symbol naming this schema object. The Avro schema name
-is also derived from this symbol. See
-[Names and Namespaces](#names-and-namespaces) for more information about
-schema names. The name-symbol must start with a letter and subsequently
-only contain letters, numbers, or hyphens.
-* `record-schemas`: Lancaster schema record objects to be merged.
-
-#### Return Value
-The defined var
-
-#### Example
-```clojure
-(l/def-record-schema person-schema
-  [:name l/string-schema]
-  [:age l/int-schema])
-
-(l/def-record-schema location-schema
-  [:latitude l/double-schema]
-  [:longitude l/double-schema])
-
-(l/def-merged-record-schema person-w-lat-long-schema
-  person-schema location-schema)
-```
-
-#### See Also
-* [merged-record-schema](#merged-record-schema): Creates a record schema which contains all the fields of all record schemas passed in.
-* [record-schema](#record-schema): Creates a record schema.
-
--------------------------------------------------------------------------------
 ### def-enum-schema
 ```clojure
 (def-enum-schema name-symbol & symbol-keywords)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```enum```](http://avro.apache.org/docs/current/spec.html#Enums).
+[```enum```](https://avro.apache.org/docs/1.11.1/specification/#enums).
 For cases where a macro is not appropriate, use the
 [enum-schema](#enum-schema) function instead.
 
@@ -430,7 +385,7 @@ The defined var
 (def-fixed-schema name-symbol size)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```fixed```](http://avro.apache.org/docs/current/spec.html#Fixed).
+[```fixed```](https://avro.apache.org/docs/1.11.1/specification/#fixed).
 For cases where a macro is not appropriate, use the
 [fixed-schema](#fixed-schema) function instead.
 
@@ -460,7 +415,7 @@ The defined var
 (def-array-schema name-symbol items-schema)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```array```](http://avro.apache.org/docs/current/spec.html#Arrays).
+[```array```](https://avro.apache.org/docs/1.11.1/specification/#arrays).
 For cases where a macro is not appropriate, use the
 [array-schema](#array-schema) function instead.
 
@@ -486,7 +441,7 @@ The defined var
 (def-map-schema name-symbol values-schema)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```map```](http://avro.apache.org/docs/current/spec.html#Maps).
+[```map```](https://avro.apache.org/docs/1.11.1/specification/#maps).
 For cases where a macro is not appropriate, use the
 [map-schema](#map-schema) function instead.
 
@@ -513,7 +468,7 @@ The defined var
 (def-union-schema name-symbol & member-schemas)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```union```](http://avro.apache.org/docs/current/spec.html#Unions).
+[```union```](https://avro.apache.org/docs/1.11.1/specification/#unions).
 For cases where a macro is not appropriate, use the
 [union-schema](#union-schema) function instead.
 
@@ -540,7 +495,7 @@ The defined var
 (def-maybe-schema name-symbol schemas)
 ```
 Defines a var whose value is a Lancaster schema object representing an Avro
-[```union```](http://avro.apache.org/docs/current/spec.html#Unions). The
+[```union```](https://avro.apache.org/docs/1.11.1/specification/#unions). The
 members of the union are null-schema and the given schema. Makes a
 schema nillable. For cases where a macro is not appropriate, use the
 [maybe](#maybe) function instead.
@@ -568,7 +523,7 @@ The defined var
 (record-schema name-kw fields)
 ```
 Creates a Lancaster schema object representing an Avro
-[```record```](http://avro.apache.org/docs/current/spec.html#schema_record),
+[```record```](https://avro.apache.org/docs/1.11.1/specification/#schema-record),
 with the given name keyword and field definitions. For a more
 concise way to declare a record schema, see
 [def-record-schema](#def-record-schema).
@@ -609,7 +564,7 @@ The new Lancaster record schema
 (enum-schema name-kw symbol-keywords)
 ```
 Creates a Lancaster schema object representing an Avro
-[```enum```](http://avro.apache.org/docs/current/spec.html#Enums),
+[```enum```](https://avro.apache.org/docs/1.11.1/specification/#enums),
 with the given name and keyword symbols. For a more
 concise way to declare an enum schema, see
 [def-enum-schema](#def-enum-schema).
@@ -640,7 +595,7 @@ The new Lancaster enum schema
 (fixed-schema name-kw size)
 ```
 Creates a Lancaster schema object representing an Avro
- [```fixed```](http://avro.apache.org/docs/current/spec.html#Fixed),
+ [```fixed```](https://avro.apache.org/docs/1.11.1/specification/#fixed),
    with the given name and size. For a more
    concise way to declare a fixed schema, see [[def-fixed-schema]].
 
@@ -668,7 +623,7 @@ The new Lancaster fixed schema
 (array-schema items-schema)
 ```
 Creates a Lancaster schema object representing an Avro
-[```array```](http://avro.apache.org/docs/current/spec.html#Arrays)
+[```array```](https://avro.apache.org/docs/1.11.1/specification/#arrays)
 with the given items schema.
 
 #### Parameters
@@ -691,7 +646,7 @@ The new Lancaster array schema
 (map-schema values-schema)
 ```
 Creates a Lancaster schema object representing an Avro
-[```map```](http://avro.apache.org/docs/current/spec.html#Maps)
+[```map```](https://avro.apache.org/docs/1.11.1/specification/#maps)
 with the given values schema.
 
 #### Parameters
@@ -715,7 +670,7 @@ The new Lancaster map schema
 (union-schema member-schemas)
 ```
 Creates a Lancaster schema object representing an Avro
-[```union```](http://avro.apache.org/docs/current/spec.html#Unions)
+[```union```](https://avro.apache.org/docs/1.11.1/specification/#unions)
 with the given member schemas.
 
 #### Parameters
@@ -733,41 +688,6 @@ The new Lancaster union schema
 
 #### See Also
 * [def-union-schema](#def-union-schema): Defines a var w/ a union schema.
-
--------------------------------------------------------------------------------
-### merged-record-schema
-```clojure
-(merged-record-schema name-kw schemas)
-```
-Creates a Lancaster record schema which contains all the fields
-of all record schemas passed in.
-
-#### Parameters
-* `name-kw`: A keyword naming the new combined record schema. May or may not be
-             namespaced. The name-kw must start with a letter and subsequently
-             only contain letters, numbers, or hyphens.
-* `schemas`: A sequence of Lancaster schema record objects to be merged.
-
-#### Return Value
-The new Lancaster record schema
-
-#### Example
-```clojure
-(l/def-record-schema person-schema
-  [:name l/string-schema]
-  [:age l/int-schema])
-
-(l/def-record-schema location-schema
-  [:latitude l/double-schema]
-  [:longitude l/double-schema])
-
-(def person-w-lat-long-schema
-  (l/merged-record-schema [person-schema location-schema]))
-```
-
-#### See Also
-* [def-merged-record-schema](#def-merged-record-schema): Defines a var w/ a record schema which contains all the fields of all record schemas passed in.
-* [record-schema](#record-schema): Creates a record schema.
 
 -------------------------------------------------------------------------------
 ### maybe
@@ -825,7 +745,7 @@ A byte array containing the Avro-encoded data
 ```
 Deserializes Avro-encoded data from a byte array, using the given reader and
 writer schemas. The writer schema must be resolvable to the reader schema. See
-[Avro Schema Resolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution).
+[Avro Schema Resolution](https://avro.apache.org/docs/1.11.1/specification/#schema-resolution).
 If the reader schema contains
 record fields that are not in the writer's schema, the fields' default values
 will be used. If no default was explicitly specified in the schema, Lancaster
@@ -872,7 +792,7 @@ The deserialized data
 #### See Also
 * [serialize](#serialize): Serializes data to a byte array.
 * [deserialize-same](#deserialize-same): Deserializes data from a byte array, using the same reader and writer schema. **This is not recommended**, as it does not allow for [schema
-resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution).
+resolution / evolution](https://avro.apache.org/docs/1.11.1/specification/#schema-resolution).
 
 -------------------------------------------------------------------------------
 ### deserialize-same
@@ -883,9 +803,9 @@ Deserializes Avro-encoded data from a byte array, using the given schema
 as both the reader and writer schema.
 
 **Note that this is not recommended**, since it does not allow for [schema
-resolution / evolution](http://avro.apache.org/docs/current/spec.html#Schema+Resolution). The original writer's schema
+resolution / evolution](https://avro.apache.org/docs/1.11.1/specification/#schema-resolution). The original writer's schema
 should always be used to deserialize. The writer's schema
-(in [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas))
+(in [Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas))
 should always be stored or transmitted with encoded data. If the schema specified
 in this function does not match the schema with which the data was encoded,
 the function will fail, possibly in strange ways. You should generally use
@@ -925,7 +845,7 @@ Creates a Lancaster schema object from an Avro schema in JSON format.
 #### Parameters
 * `json`: A JSON string representing the Avro schema. The JSON string
 must comply with the
-[Avro Specification](http://avro.apache.org/docs/current/spec.html).
+[Avro Specification](https://avro.apache.org/docs/1.11.1/specification/).
 
 #### Return Value
 The new Lancaster schema
@@ -1018,7 +938,7 @@ A Plumatic schema that matches the Lancaster schema
 (pcf schema)
 ```
 Returns a JSON string containing the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 for the given Lancaster schema.
 
 #### Parameters
@@ -1039,14 +959,14 @@ A JSON string
 ```
 
 #### See Also
-* [fingerprint64](#fingerprint64): Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas) of the schema.
+* [fingerprint64](#fingerprint64): Returns the 64-bit [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the [Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas) of the schema.
 * [fingerprint128](#fingerprint128): Returns the 128-bit
 [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 * [fingerprint256](#fingerprint256): Returns the 256-bit
 [SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 
 -------------------------------------------------------------------------------
@@ -1056,7 +976,7 @@ of the schema.
 ```
 Returns the 64-bit
 [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 for the given Lancaster schema.
 
 #### Parameters
@@ -1077,15 +997,15 @@ java.lang.Long. For ClojureScript, it is a goog.math.Long.
 
 #### See Also
 * [pcf](#pcf): Returns a JSON string containing the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema
 * [fingerprint128](#fingerprint128): Returns the 128-bit
 [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 * [fingerprint256](#fingerprint256): Returns the 256-bit
 [SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 
 -------------------------------------------------------------------------------
@@ -1094,7 +1014,7 @@ of the schema.
 (fingerprint128 schema)
 ```
 Returns the 128-bit [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 for the given Lancaster schema.
 
 #### Parameters
@@ -1114,15 +1034,15 @@ A byte array of 16 bytes (128 bits) representing the fingerprint.
 
 #### See Also
 * [pcf](#pcf): Returns a JSON string containing the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema
 * [fingerprint64](#fingerprint64): Returns the 64-bit
 [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 * [fingerprint256](#fingerprint256): Returns the 256-bit
 [SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 
 -------------------------------------------------------------------------------
@@ -1132,7 +1052,7 @@ of the schema.
 ```
 Returns the 256-bit
 [SHA-256 hash](https://en.wikipedia.org/wiki/SHA-2) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 for the given Lancaster schema.
 
 #### Parameters
@@ -1154,15 +1074,15 @@ A byte array of 32 bytes (256 its) representing the fingerprint.
 
 #### See Also
 * [pcf](#pcf): Returns a JSON string containing the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema
 * [fingerprint64](#fingerprint64): Returns the 64-bit
 [Rabin fingerprint](http://en.wikipedia.org/wiki/Rabin_fingerprint) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 * [fingerprint128](#fingerprint128): Returns the 128-bit
 [MD5 Digest](https://en.wikipedia.org/wiki/MD5) of the
-[Parsing Canonical Form](http://avro.apache.org/docs/current/spec.html#Parsing+Canonical+Form+for+Schemas)
+[Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 
 -------------------------------------------------------------------------------
