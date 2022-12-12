@@ -291,9 +291,14 @@
        docstring (assoc :doc docstring)))))
 
 (defmethod make-edn-schema :enum
-  ([schema-type name-kw fields]
-   (make-edn-schema schema-type name-kw nil fields))
+  ([schema-type name-kw symbols]
+   (make-edn-schema schema-type name-kw nil symbols))
   ([schema-type name-kw docstring symbols]
+   (doseq [symbol symbols]
+     (when (qualified-keyword? symbol)
+       (throw (ex-info (str "Enum symbol keywords must not be namespaced. "
+                            "Bad symbol keyword: " symbol)
+                       (u/sym-map symbol symbols docstring)))))
    (let [name-kw (u/qualify-name-kw name-kw {})]
      (cond-> {:name name-kw
               :type :enum

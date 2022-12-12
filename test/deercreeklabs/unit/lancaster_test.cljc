@@ -81,7 +81,7 @@
   :all :stock :limit)
 
 (l/def-enum-schema suit-schema
-  :suit/hearts :suit/clubs :suit/spades :suit/diamonds)
+  :hearts :clubs :spades :diamonds)
 
 (l/def-fixed-schema a-fixed-schema
   2)
@@ -1024,11 +1024,11 @@
     (is (round-trip? schema {:person-name "Chad" :age 18}))))
 
 (deftest test-ns-enum
-  (is (round-trip? suit-schema :suit/spades))
+  (is (round-trip? suit-schema :spades))
   (is (= {:name :deercreeklabs.unit.lancaster-test/suit
           :type :enum
-          :symbols [:suit/hearts :suit/clubs :suit/spades :suit/diamonds]
-          :default :suit/hearts}
+          :symbols [:hearts :clubs :spades :diamonds]
+          :default :hearts}
          (l/edn suit-schema)))
   (is (= (str "{\"name\":\"deercreeklabs.unit.lancaster_test.Suit\",\"type\":"
               "\"enum\",\"symbols\":[\"HEARTS\",\"CLUBS\",\"SPADES\","
@@ -1151,3 +1151,12 @@
        ExceptionInfo
        #"Field name keywords must not be namespaced"
        (l/record-schema ::example [[::id l/int-schema]]))))
+
+(deftest test-namespaced-enum-symbol
+  ;; Namespaces are not allowed on enum symbols as per
+  ;; https://avro.apache.org/docs/1.11.1/specification/#names
+  ;; "Record fields and enum symbols have names as well (but no namespace)."
+  (is (thrown-with-msg?
+       ExceptionInfo
+       #"Enum symbol keywords must not be namespaced"
+       (l/enum-schema ::my-enum [:my-ns/sym-1 :my-ns/sym-2]))))
