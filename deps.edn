@@ -2,7 +2,7 @@
  {camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.3"}
   cheshire/cheshire {:mvn/version "5.11.0"}
   deercreeklabs/baracus {:mvn/version "0.3.4"}
-  mvxcvi/puget {:mvn/version "1.3.2"}
+  mvxcvi/puget {:mvn/version "1.3.4"}
   org.clj-commons/primitive-math {:mvn/version "1.0.0"}
   ;; Do not upgrade. Later versions cause problems.
   prismatic/schema {:mvn/version "1.2.1"}}
@@ -19,7 +19,7 @@
                ["-m" "nrepl.cmdline" "--middleware"
                 "[cider.nrepl/cider-middleware,cider.piggieback/wrap-cljs-repl]"]}
 
-  :cider-nrepl {:extra-deps {cider/cider-nrepl {:mvn/version "0.28.6"}}}
+  :cider-nrepl {:extra-deps {cider/cider-nrepl {:mvn/version "0.29.0"}}}
 
   :clj {:extra-deps {org.clojure/clojure {:mvn/version "1.11.1"}}}
 
@@ -34,7 +34,7 @@
          :main-opts ["-m"]}
 
   :test-clj {:extra-paths ["test"]
-             :extra-deps {lambdaisland/kaocha {:mvn/version "1.70.1086"}}}
+             :extra-deps {lambdaisland/kaocha {:mvn/version "1.71.1119"}}}
 
   :test-cljs {:extra-paths ["test"]
-              :extra-deps {thheller/shadow-cljs {:mvn/version "2.20.5"}}}}}
+              :extra-deps {thheller/shadow-cljs {:mvn/version "2.20.15"}}}}}
