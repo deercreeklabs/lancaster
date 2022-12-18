@@ -4,7 +4,7 @@
   <groupId>deercreeklabs</groupId>
   <artifactId>lancaster</artifactId>
   <packaging>jar</packaging>
-  <version>0.9.22</version>
+  <version>0.10.0</version>
   <name>lancaster</name>
   <description>Tools for working with Apache Avro</description>
   <url>https://github.com/deercreeklabs/lancaster</url>
@@ -35,7 +35,7 @@
     <dependency>
       <groupId>mvxcvi</groupId>
       <artifactId>puget</artifactId>
-      <version>1.3.2</version>
+      <version>1.3.4</version>
     </dependency>
     <dependency>
       <groupId>org.clj-commons</groupId>
