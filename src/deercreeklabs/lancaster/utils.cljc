@@ -1186,12 +1186,6 @@
     (get-schemas! edn-schema *name->edn-schema)
     @*name->edn-schema))
 
-(defn make-initial-*name->f [make-f]
-  (reduce (fn [*acc edn-schema]
-            (swap! *acc assoc edn-schema (make-f edn-schema *acc))
-            *acc)
-          (atom {}) avro-primitive-types))
-
 (defn fix-name [edn-schema]
   (update edn-schema :name edn-name-kw->avro-name))
 

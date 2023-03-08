@@ -45,7 +45,10 @@
                     :k->child-edn-schema (constantly values-edn-schema)
                     :plumatic-schema {kp-schema vp-schema}
                     :default-data {}}]
-    (schemas/edn-schema->lancaster-schema edn-schema)))
+    (schemas/edn-schema->lancaster-schema
+     {:*name->serializer (atom {})
+      :edn-schema edn-schema
+      :name->edn-schema (u/make-name->edn-schema edn-schema)})))
 
 (def keyword-schema
   (let [fields [{:name :namespace
@@ -63,4 +66,7 @@
                     :avro->lt #(keyword (:namespace %) (:name %))
                     :lt? keyword?
                     :plumatic-schema s/Keyword}]
-    (schemas/edn-schema->lancaster-schema edn-schema)))
+    (schemas/edn-schema->lancaster-schema
+     {:*name->serializer (atom {})
+      :edn-schema edn-schema
+      :name->edn-schema (u/make-name->edn-schema edn-schema)})))

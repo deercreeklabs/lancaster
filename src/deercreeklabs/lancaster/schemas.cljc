@@ -391,12 +391,14 @@
         (if-not (keyword? edn-schema)
           edn-schema
           (or (name->edn-schema schema-name)
-              (throw (ex-info
-                      (str "No edn-schema found for name `"
-                           schema-name "`.")
-                      {:schema-name schema-name
-                       :known-schema-names (keys name->edn-schema)
-                       :edn-schema edn-schema}))))))))
+              (let [known-schema-names (sort (keys name->edn-schema))]
+                (throw (ex-info
+                        (str "No edn-schema found for name `"
+                             schema-name "`.")
+                        {:schema-name schema-name
+                         :known-schema-names known-schema-names
+                         :num-known-schema-names (count known-schema-names)
+                         :edn-schema edn-schema})))))))))
 
 (defn ensure-valid-edn-schema
   "Ensure that named schemas are expanded exactly once"
@@ -434,7 +436,8 @@
     (case (u/avro-type-dispatch-lt edn-schema)
       :record
       {:lancaster/schema-type :record
-       :lancaster/field->child-edn-schema (make-field->edn-schema arg)
+       :lancaster/field->child-edn-schema (make-field->edn-schema
+                                           (assoc arg :edn-schema edn-schema))
        :lancaster/child-namespace (or (namespace name-kw)
                                       (:namespace edn-schema)
                                       u/**enclosing-namespace**)}
@@ -486,88 +489,91 @@
                       {:name name*
                        :edn-schema edn-schema})))))
 
-(defn register-edn-schema! [edn-schema]
+(defn register-edn-schema! [{:keys [edn-schema] :as arg}]
+  ;; This are necessary to prevent infinite recursion
+  ;; They also prevent us from doing work that has already been done.
   (let [edn->schema @u/*__INTERNAL__edn-schema->schema]
     (when-not (edn->schema edn-schema)
-      (let [new-edn->schema (assoc edn->schema edn-schema true)
-            proceed? (compare-and-set! u/*__INTERNAL__edn-schema->schema
-                                       edn->schema
-                                       new-edn->schema)]
-        (when proceed?
-          (let [schema (edn-schema->lancaster-schema edn-schema)]
-            (swap! u/*__INTERNAL__edn-schema->schema
-                   (fn [m]
-                     (assoc m edn-schema schema)))))))))
+      (let [lancaster-schema (edn-schema->lancaster-schema edn-schema)]
+        (swap! u/*__INTERNAL__edn-schema->schema
+               assoc edn-schema lancaster-schema)))))
 
-(defn register-schemas! [{:keys [child-info edn-schema lancaster-schema]}]
+(defn register-schema!
+  [{:keys [child-info edn-schema lancaster-schema] :as arg}]
+  (swap! u/*__INTERNAL__edn-schema->schema
+         assoc edn-schema lancaster-schema)
   (let [{:lancaster/keys [branch->child-edn-schema
+                          child-edn-schema
                           field->child-edn-schema
-                          schema-type]} child-info]
-    (swap! u/*__INTERNAL__edn-schema->schema
-           (fn [m]
-             (assoc m edn-schema lancaster-schema)))
-    (cond
-      (= :record schema-type)
-      (doseq [[_ child-edn-schema] field->child-edn-schema]
-        (register-edn-schema! child-edn-schema))
+                          schema-type]} child-info
+        child-edns (cond
+                     (= :record schema-type)
+                     (vals field->child-edn-schema)
 
-      (= :union schema-type)
-      (doseq [child-edn-schema branch->child-edn-schema]
-        (register-edn-schema! child-edn-schema))
+                     (= :union schema-type)
+                     branch->child-edn-schema
 
-      (#{:array :map} schema-type)
-      (register-edn-schema! (:lancaster/child-edn-schema child-info)))))
+                     (#{:array :map} schema-type)
+                     [child-edn-schema])]
+    (doseq [child-edn child-edns]
+      (let [edn->schema @u/*__INTERNAL__edn-schema->schema]
+        (when-not (edn->schema child-edn)
+          (let [child-lancaster-schema (edn-schema->lancaster-schema
+                                        (assoc arg :edn-schema child-edn))]
+            (swap! u/*__INTERNAL__edn-schema->schema
+                   assoc child-edn child-lancaster-schema)))))))
+
+(defn atom? [x]
+  #?(:clj  (instance? clojure.lang.Atom x)
+     :cljs (satisfies? IAtom x)))
 
 (defn edn-schema->lancaster-schema
-  ([edn-schema*]
-   (edn-schema->lancaster-schema edn-schema* nil))
-  ([edn-schema* json-schema*]
-   (when (= :name-keyword (u/get-avro-type edn-schema*))
-     (throw (ex-info (str "Can't construct schema from name keyword: `"
-                          edn-schema* "`. Must supply a full edn schema.")
-                     {:given-edn-schema edn-schema*})))
-   (check-edn-schema edn-schema*)
-   (let [name->edn-schema (u/make-name->edn-schema edn-schema*)
-         edn-schema (u/ensure-defaults (fix-repeated-schemas edn-schema*)
+  [{:keys [*name->serializer edn-schema name->edn-schema json-schema] :as arg}]
+  (when-not (atom? *name->serializer)
+    (throw (ex-info (str "arg must contain a `:*name->serializer` atom.") {})))
+  (when-not edn-schema
+    (throw (ex-info (str "arg must contain an `:edn-schema`.") {})))
+  (when-not (map? name->edn-schema)
+    (throw (ex-info (str "arg must contain a `:name->edn-schema` map.") {})))
+  (when (= :name-keyword (u/get-avro-type edn-schema))
+    (throw (ex-info (str "Can't construct schema from name keyword: `"
+                         edn-schema "`. Must supply a full edn schema.")
+                    {:given-edn-schema edn-schema})))
+  (check-edn-schema edn-schema)
+  (let [edn-schema* (u/ensure-defaults (fix-repeated-schemas edn-schema)
                                        name->edn-schema)
-         name-kw (u/named-edn-schema->name-kw edn-schema)
-         avro-schema (if (u/avro-primitive-types edn-schema)
-                       (name edn-schema)
-                       (u/edn-schema->avro-schema edn-schema))
-         json-schema (or json-schema* (u/edn->json-string avro-schema))
-         parsing-canonical-form (pcf-utils/avro-schema->pcf avro-schema)
-         fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
-         fingerprint128 (fingerprint/fingerprint128 parsing-canonical-form)
-         fingerprint256 (fingerprint/fingerprint256 parsing-canonical-form)
-         fp-str (ba/byte-array->b64 fingerprint128)
-         plumatic-schema (u/edn-schema->plumatic-schema edn-schema
-                                                        name->edn-schema)
-         *name->serializer (u/make-initial-*name->f
-                            #(u/make-serializer %1 name->edn-schema %2))
-         *writer-fp->deserializer (atom {})
-         serializer (u/make-serializer edn-schema name->edn-schema
-                                       *name->serializer)
-         default-data-size (u/make-default-data-size edn-schema
-                                                     name->edn-schema)]
-     (binding [u/**enclosing-namespace** (or (when name-kw
-                                               (namespace name-kw))
-                                             u/**enclosing-namespace**)]
-       (let [child-info (->child-info
-                         (u/sym-map edn-schema name->edn-schema *name->serializer))
-             lancaster-schema (->LancasterSchema
-                               edn-schema name->edn-schema json-schema
-                               parsing-canonical-form fingerprint64 fingerprint128
-                               fingerprint256 plumatic-schema serializer
-                               default-data-size *name->serializer
-                               *writer-fp->deserializer child-info)]
-         (register-schemas! (u/sym-map child-info edn-schema lancaster-schema))
-         lancaster-schema)))))
-
-(defn json-schema->lancaster-schema [json-schema]
-  (let [edn-schema (-> json-schema
-                       (u/json-schema->avro-schema)
-                       (u/avro-schema->edn-schema))]
-    (edn-schema->lancaster-schema edn-schema json-schema)))
+        name-kw (u/named-edn-schema->name-kw edn-schema*)
+        avro-schema (if (u/avro-primitive-types edn-schema*)
+                      (name edn-schema*)
+                      (u/edn-schema->avro-schema edn-schema*))
+        json-schema* (or json-schema (u/edn->json-string avro-schema))
+        parsing-canonical-form (pcf-utils/avro-schema->pcf avro-schema)
+        fingerprint64 (fingerprint/fingerprint64 parsing-canonical-form)
+        fingerprint128 (fingerprint/fingerprint128 parsing-canonical-form)
+        fingerprint256 (fingerprint/fingerprint256 parsing-canonical-form)
+        fp-str (ba/byte-array->b64 fingerprint128)
+        plumatic-schema (u/edn-schema->plumatic-schema edn-schema*
+                                                       name->edn-schema)
+        *writer-fp->deserializer (atom {})
+        serializer (u/make-serializer edn-schema* name->edn-schema
+                                      *name->serializer)
+        default-data-size (u/make-default-data-size edn-schema*
+                                                    name->edn-schema)]
+    (binding [u/**enclosing-namespace** (or (when name-kw
+                                              (namespace name-kw))
+                                            u/**enclosing-namespace**)]
+      (let [child-info (->child-info (assoc arg :edn-schema edn-schema*))
+            lancaster-schema (->LancasterSchema
+                              edn-schema* name->edn-schema json-schema*
+                              parsing-canonical-form fingerprint64
+                              fingerprint128 fingerprint256 plumatic-schema
+                              serializer default-data-size *name->serializer
+                              *writer-fp->deserializer child-info)]
+        (register-schema! (assoc arg
+                                 :child-info child-info
+                                 :edn-schema edn-schema*
+                                 :lancaster-schema lancaster-schema))
+        lancaster-schema))))
 
 (defn schema
   ([schema-type name-kw args]
@@ -587,7 +593,10 @@
                       (if docstring
                         (make-edn-schema schema-type name-kw docstring args)
                         (make-edn-schema schema-type name-kw args)))]
-     (edn-schema->lancaster-schema edn-schema))))
+     (edn-schema->lancaster-schema
+      {:*name->serializer (atom {})
+       :edn-schema edn-schema
+       :name->edn-schema (u/make-name->edn-schema edn-schema)}))))
 
 (defn primitive-schema [schema-kw]
   (schema schema-kw nil nil))
@@ -690,8 +699,11 @@
         (if (= :union (u/get-avro-type edn-schema))
           (if (some #{:null} edn-schema)
             sch
-            (edn-schema->lancaster-schema
-             (vec (cons :null edn-schema))))
+            (let [edn-schema* (vec (cons :null edn-schema))]
+              (edn-schema->lancaster-schema
+               {:*name->serializer (atom {})
+                :edn-schema edn-schema*
+                :name->edn-schema (u/make-name->edn-schema edn-schema*)})))
           (if (= :null edn-schema)
             sch
             (schema-w-null sch)))))))
