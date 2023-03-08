@@ -29,7 +29,14 @@
                            "nil."
                            (str "`" json "`.")))
                     (u/sym-map json))))
-  (schemas/json-schema->lancaster-schema json))
+  (let [edn-schema (-> json
+                       (u/json-schema->avro-schema)
+                       (u/avro-schema->edn-schema))]
+    (schemas/edn-schema->lancaster-schema
+     {:*name->serializer (atom {})
+      :edn-schema edn-schema
+      :json-schema json
+      :name->edn-schema (u/make-name->edn-schema edn-schema)})))
 
 (def int-schema
   "Lancaster schema object representing an Avro int."
@@ -185,7 +192,10 @@
 
 (s/defn edn->schema :- LancasterSchema
   [edn :- s/Any]
-  (schemas/edn-schema->lancaster-schema edn))
+  (schemas/edn-schema->lancaster-schema
+   {:*name->serializer (atom {})
+    :edn-schema edn
+    :name->edn-schema (u/make-name->edn-schema edn)}))
 
 (s/defn json :- s/Str
   "Returns an Avro-compliant JSON representation of the given Lancaster schema."

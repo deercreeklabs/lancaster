@@ -4,7 +4,7 @@
   <groupId>deercreeklabs</groupId>
   <artifactId>lancaster</artifactId>
   <packaging>jar</packaging>
-  <version>0.10.0</version>
+  <version>0.10.1</version>
   <name>lancaster</name>
   <description>Tools for working with Apache Avro</description>
   <url>https://github.com/deercreeklabs/lancaster</url>
@@ -55,7 +55,7 @@
     <dependency>
       <groupId>deercreeklabs</groupId>
       <artifactId>baracus</artifactId>
-      <version>0.3.4</version>
+      <version>0.3.5</version>
     </dependency>
     <dependency>
       <groupId>camel-snake-kebab</groupId>
