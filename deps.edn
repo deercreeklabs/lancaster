@@ -25,7 +25,8 @@
 
   :cljs {:extra-deps {org.clojure/clojurescript {:mvn/version "1.11.60"}}}
 
-  :dev {:extra-deps {org.apache.avro/avro {:mvn/version "1.11.1"}
+  :dev {:extra-deps {com.taoensso/timbre {:mvn/version "5.2.1"}
+                     org.apache.avro/avro {:mvn/version "1.11.1"}
                      org.clojure/tools.namespace {:mvn/version "1.4.2"}}}
 
   :pack {:extra-deps {pack/pack.alpha
