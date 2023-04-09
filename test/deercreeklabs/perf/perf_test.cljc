@@ -70,5 +70,5 @@
     (println (str "JSON decode ops per sec:          " (floor json-dec-ops)))
     (println (str "Lancaster encoded size:           " (count encoded)))
     (println (str "JSON encoded size:                " (count json-encoded)))
-    (is (< #?(:cljs 20000 :clj 200000) enc-ops))
-    (is (< #?(:cljs 40000 :clj 300000) dec-ops))))
+    (is (< #?(:cljs 20000 :clj 500000) enc-ops))
+    (is (< #?(:cljs 50000 :clj 500000) dec-ops))))
