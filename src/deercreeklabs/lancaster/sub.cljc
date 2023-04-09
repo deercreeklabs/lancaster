@@ -15,7 +15,7 @@
 (defn ->matching-union-child-schema [schema edn-schema path-entry]
   (let [path-type (path-type* path-entry)
         ret (some (fn [[i sub]]
-                    (let [avro-type (u/avro-type-dispatch-lt sub)]
+                    (let [avro-type (u/avro-type-dispatch sub)]
                       (case [avro-type path-type]
                         [:record :keyword] (-> (u/child-schema schema i)
                                                (u/child-schema path-entry))
@@ -46,7 +46,7 @@
      (if-not child
        schema
        (let [edn-schema (:edn-schema schema)
-             child-schema (case (u/avro-type-dispatch-lt edn-schema)
+             child-schema (case (u/avro-type-dispatch edn-schema)
                             :record (u/child-schema schema child)
                             :map (u/child-schema schema)
                             :array (u/child-schema schema)

@@ -80,7 +80,7 @@
       (u/to-byte-array os)))
   (serialize [this os data]
     (serializer os data []))
-  (deserialize [this writer-schema is]
+  (deserialize [this writer-schema is opts]
     (try
       (let [writer-fp (-> (u/fingerprint256 writer-schema)
                           (ba/byte-array->b64))
@@ -93,7 +93,7 @@
                                     (atom {}))]
                         (swap! *writer-fp->deserializer assoc writer-fp deser*)
                         deser*))]
-        (deser is))
+        (deser is opts))
       (catch #?(:clj Exception :cljs js/Error) e
         (if-not (u/match-exception? e)
           (throw e)
@@ -433,7 +433,7 @@
 
 (defn ->child-info [{:keys [edn-schema] :as arg}]
   (let [name-kw (u/named-edn-schema->name-kw edn-schema)]
-    (case (u/avro-type-dispatch-lt edn-schema)
+    (case (u/avro-type-dispatch edn-schema)
       :record
       {:lancaster/schema-type :record
        :lancaster/field->child-edn-schema (make-field->edn-schema

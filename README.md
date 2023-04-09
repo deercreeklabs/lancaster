@@ -35,6 +35,7 @@ planned).
 
 Lancaster does not support:
 * Avro protocols
+* Avro logical types
 * Avro container files (may be supported in the future).
 
 ## Project Name
@@ -228,13 +229,36 @@ To quote the [Avro spec](https://avro.apache.org/docs/1.11.1/specification/#unio
 *Unions may not contain more than one schema with the same type, except for the named types record, fixed and enum. For example, unions containing two array types or two map types are not permitted, but two types with different names are permitted.*
 
 In additon to the above, Lancaster disallows unions with:
-* more than one numeric schema (int,float, long, or double)
-* more than one string-like schema (string, bytes, or fixed)
-* `record`s which share any keys
-* `enum`s which share any values.
+* more than one numeric schema (int, float, long, or double)
+* more than one byte-array schema (bytes or fixed)
+* `enum`s which share any symbols.
 
 At union schema creation time, Lancaster will throw an exception if the
 the schema is disallowed.
+
+### The `:lancaster/record-name` Attribute
+
+In Lancaster, Avro records are modeled as Clojure maps.  At serialization time,
+Lancaster will attempt to determine which record schema in a union applies to
+the given map. It does this by checking the keys of the given map against
+the keys of the records in the union schema. If there is no overlap in the keys
+of the records in the union schema, this can be done unambiguously. However, if
+there is any overlap in the keys of the records, the caller to
+[serialize](#serialize) must indicate which record schema is represented by the
+given map. This is done by adding a `:lancaster/record-name` key to the given
+map. The value of this key must be the name of the Avro record that the map
+represents. If this key required but missing, Lancaster will throw an exception
+at serialization time.
+
+At deserialization time, if a union has overlapping records, the deserialized record
+will include a `:lancaster/record-name key` in the map. Whether or not this key
+is added may be controlled by passing the
+`:add-record-name` option to [deserialize](#deserialize) or
+[deserialize-same](#deserialize-same). The values of this
+option may be:
+- `:always`
+- `:never`
+- `:when-ambiguous` (default)
 
 # Names and Namespaces
 Named Avro schemas (`records`, `enums`, `fixeds`)
@@ -741,6 +765,7 @@ A byte array containing the Avro-encoded data
 ### deserialize
 ```clojure
 (deserialize reader-schema writer-schema ba)
+(deserialize reader-schema writer-schema ba opts)
 ```
 Deserializes Avro-encoded data from a byte array, using the given reader and
 writer schemas. The writer schema must be resolvable to the reader schema. See
@@ -764,6 +789,11 @@ uses the following default values, depending on the field type:
 * `reader-schema`: The reader's Lancaster schema for the data
 * `writer-schema`: The writer's Lancaster schema for the data
 * `ba`: A byte array containing the encoded data
+* `opts`: An option map. Valid options are:
+    - `:add-record-name`. The values of this option may be:
+        - `:always`
+        - `:never`
+        - `:when-ambiguous` (default)
 
 #### Return Value
 The deserialized data
@@ -797,6 +827,7 @@ resolution / evolution](https://avro.apache.org/docs/1.11.1/specification/#schem
 ### deserialize-same
 ```clojure
 (deserialize-same schema ba)
+(deserialize-same schema ba opts)
 ```
 Deserializes Avro-encoded data from a byte array, using the given schema
 as both the reader and writer schema.
@@ -813,6 +844,12 @@ the [deserialize](#deserialize) function instead.
 #### Parameters
 * `schema`: The reader's and writer's Lancaster schema for the data
 * `ba`: A byte array containing the encoded data
+* `opts`: An option map. Valid options are:
+    - `:add-record-name`. The values of this option may be:
+        - `:always`
+        - `:never`
+        - `:when-ambiguous` (default)
+
 
 #### Return Value
 The deserialized data
