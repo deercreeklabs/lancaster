@@ -35,6 +35,7 @@ planned).
 
 Lancaster does not support:
 * Avro protocols
+* Avro logical types
 * Avro container files (may be supported in the future).
 
 ## Project Name
@@ -228,13 +229,14 @@ To quote the [Avro spec](https://avro.apache.org/docs/1.11.1/specification/#unio
 *Unions may not contain more than one schema with the same type, except for the named types record, fixed and enum. For example, unions containing two array types or two map types are not permitted, but two types with different names are permitted.*
 
 In additon to the above, Lancaster disallows unions with:
-* more than one numeric schema (int,float, long, or double)
-* more than one string-like schema (string, bytes, or fixed)
-* `record`s which share any keys
-* `enum`s which share any values.
+* more than one numeric schema (int, float, long, or double)
+* more than one byte-array schema (bytes or fixed)
+* `enum`s which share any symbols.
 
 At union schema creation time, Lancaster will throw an exception if the
 the schema is disallowed.
+
+**TODO: Add note about shared record keys and ::l/type**
 
 # Names and Namespaces
 Named Avro schemas (`records`, `enums`, `fixeds`)

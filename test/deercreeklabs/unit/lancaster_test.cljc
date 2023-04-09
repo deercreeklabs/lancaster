@@ -683,7 +683,7 @@
 (deftest test-multi-record-schema-serdes-non-existent
   (is (thrown-with-msg?
        #?(:clj ExceptionInfo :cljs js/Error)
-       #"does not match any schema in the union schema"
+       #"does not match any schema in the given union schema"
        (l/serialize person-or-dog-schema {:k 1}))))
 
 (deftest test-map-or-array-schema
@@ -976,20 +976,11 @@
     (is (round-trip? sch3 {:different-b "hi"}))
     (is (round-trip? sch3 {:a 1 :b "hi"}))))
 
-(deftest test-bad-union
-  (let [sch1 (l/record-schema ::sch1 [[:a l/int-schema]
-                                      [:b l/string-schema]])
-        sch2 (l/record-schema ::sch2 [[:b l/string-schema]])]
-    (is (thrown-with-msg?
-         #?(:clj ExceptionInfo :cljs js/Error)
-         #"Ambiguous union"
-         (l/union-schema [sch1 sch2])))))
-
 (deftest test-serialize-bad-union-member
   (let [schema (l/union-schema [l/null-schema l/int-schema])]
     (is (thrown-with-msg?
          #?(:clj ExceptionInfo :cljs js/Error)
-         #"does not match any schema in the union schema"
+         #"does not match any schema in the given union schema"
          (l/serialize schema :foo)))))
 
 (deftest test-maybe-w-union-arg
@@ -1015,7 +1006,7 @@
 (deftest test-serialize-empty-map-multi-rec-union
   (is (thrown-with-msg?
        #?(:clj ExceptionInfo :cljs js/Error)
-       #"Record data is missing key `:person-name`"
+       #"Can't serialize data `\{\}` because it matches multiple record schemas"
        (l/serialize person-or-dog-schema {}))))
 
 (deftest test-map-and-rec-union
@@ -1133,7 +1124,7 @@
         v {:items {0 "a"}}]
     (is (thrown-with-msg?
          #?(:clj ExceptionInfo :cljs js/Error)
-         #"does not match any schema in the union schema"
+         #"does not match any schema in the given union schema"
          (l/serialize sch v)))))
 
 (deftest test-child-schema-rec-w-no-namespace
@@ -1160,3 +1151,40 @@
        ExceptionInfo
        #"Enum symbol keywords must not be namespaced"
        (l/enum-schema ::my-enum [:my-ns/sym-1 :my-ns/sym-2]))))
+
+(deftest test-ambiguous-union
+  (let [a-sch (l/record-schema :a [[:x l/int-schema]
+                                   [:y l/string-schema]])
+        b-sch (l/record-schema :b [[:x l/int-schema]
+                                   [:z l/string-schema]])
+        union-sch (l/union-schema [a-sch b-sch])
+        data-a {::l/record-name :a
+                :y "Hi"}
+        encoded-a (l/serialize union-sch data-a)
+        decoded-a (l/deserialize-same union-sch encoded-a)
+        _ (is (= data-a decoded-a))
+        data-b {::l/record-name :b
+                :z "Hello"}
+        encoded-b (l/serialize union-sch data-b)
+        decoded-b (l/deserialize-same union-sch encoded-b)
+        _ (is (= data-b decoded-b))
+        data-c {::l/record-name :b
+                :x 45
+                :z "Hi"}
+        encoded-c (l/serialize union-sch data-c)
+        decoded-c (l/deserialize-same union-sch encoded-c
+                                      {:add-record-name :never})]
+    (is (= (dissoc data-c ::l/record-name)
+           decoded-c))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"Missing `:deercreeklabs.lancaster/record-name` value in record data"
+         (l/serialize union-sch {:x 42})))
+    (is (thrown-with-msg?
+         ExceptionInfo
+         #"The given record name `:not-real` is not a valid name for any"
+         (l/serialize union-sch {::l/record-name :not-real
+                                 :x 42})))))
+
+;; TODO: Test union of :null and :null. (multiples of any non-named type
+;; are illegal according to the avro spec)

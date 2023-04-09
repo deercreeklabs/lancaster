@@ -80,7 +80,7 @@
       (u/to-byte-array os)))
   (serialize [this os data]
     (serializer os data []))
-  (deserialize [this writer-schema is]
+  (deserialize [this writer-schema is opts]
     (try
       (let [writer-fp (-> (u/fingerprint256 writer-schema)
                           (ba/byte-array->b64))
@@ -93,7 +93,7 @@
                                     (atom {}))]
                         (swap! *writer-fp->deserializer assoc writer-fp deser*)
                         deser*))]
-        (deser is))
+        (deser is opts))
       (catch #?(:clj Exception :cljs js/Error) e
         (if-not (u/match-exception? e)
           (throw e)
