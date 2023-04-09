@@ -239,20 +239,23 @@ the schema is disallowed.
 ### The `:lancaster/record-name` Attribute
 
 In Lancaster, Avro records are modeled as Clojure maps.  At serialization time,
-Lancaster will attempt to determine which record schema in a union applies to the
-data to be serialized. It does this by checking the keys of the given map against
+Lancaster will attempt to determine which record schema in a union applies to
+the given map. It does this by checking the keys of the given map against
 the keys of the records in the union schema. If there is no overlap in the keys
 of the records in the union schema, this can be done unambiguously. However, if
-there is any overlap in the keys of the records, you must indicate which record
-schema is represented by the given map. You do this by adding a
-`:lancaster/record-name` key to the map. The value of this key must be the name
-of the Avro record that the map represents. If this key required but missing,
-Lancaster will throw an exception at serialization time.
+there is any overlap in the keys of the records, the caller to
+[serialize](#serialize) must indicate which record schema is represented by the
+given map. This is done by adding a `:lancaster/record-name` key to the given
+map. The value of this key must be the name of the Avro record that the map
+represents. If this key required but missing, Lancaster will throw an exception
+at serialization time.
 
 At deserialization time, if a union has overlapping records, the deserialized record
-will include a :lancaster/record-name key in the map. Whether or not this key
-is added to deserialized records in unions may be controlled by passing the
-`:add-record-name` option to `deserialize`. The values of this option may be:
+will include a `:lancaster/record-name key` in the map. Whether or not this key
+is added may be controlled by passing the
+`:add-record-name` option to [deserialize](#deserialize) or
+[deserialize-same](#deserialize-same). The values of this
+option may be:
 - `:always`
 - `:never`
 - `:when-ambiguous` (default)
