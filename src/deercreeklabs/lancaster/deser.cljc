@@ -223,7 +223,7 @@
                                  "a `avro->lt` attribute.")
                             (u/sym-map logical-type reader-edn-schema))))
         deser (make-deserializer
-               writer-edn-schema (u/strip-lt-attrs reader-edn-schema)
+               writer-edn-schema reader-edn-schema
                writer-name->edn-schema reader-name->edn-schema *deserializers)
         deserializer (fn deserialize [is opts]
                        (avro->lt (deser is opts)))]

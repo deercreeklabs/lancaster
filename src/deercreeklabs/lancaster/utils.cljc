@@ -209,10 +209,6 @@
          (get-avro-type es))
        at))))
 
-(defn strip-lt-attrs [edn-schema]
-  (dissoc edn-schema :logical-type :lt->avro :avro->lt :lt? :default-data
-          :valid-k? :k->child-edn-schema :edn-sub-schemas :plumatic-schema))
-
 (s/defn name-kw->name-str :- s/Str
   [kw :- s/Keyword]
   (cond
@@ -328,45 +324,37 @@
   ([edn-schema field-default]
    (default-data edn-schema field-default {}))
   ([edn-schema field-default name->edn-schema]
-   (if (:logical-type edn-schema)
-     (:default-data edn-schema)
-     (let [avro-type (get-avro-type edn-schema)]
-       (case avro-type
-         :record (make-default-record edn-schema field-default name->edn-schema)
-         :union (default-data (first edn-schema) field-default name->edn-schema)
-         :fixed (make-default-fixed-or-bytes (:size edn-schema) field-default)
-         :bytes (make-default-fixed-or-bytes 0 field-default)
-         :null nil
-         (or field-default
-             (case avro-type
-               :boolean false
-               :int (int -1)
-               :long -1
-               :float (float -1.0)
-               :double (double -1.0)
-               :string ""
-               :enum (first (:symbols edn-schema))
-               :array []
-               :map {}
-               :name-keyword (default-data (name->edn-schema edn-schema)
-                                           field-default
-                                           name->edn-schema))))))))
+   (let [avro-type (get-avro-type edn-schema)]
+     (case avro-type
+       :record (make-default-record edn-schema field-default name->edn-schema)
+       :union (default-data (first edn-schema) field-default name->edn-schema)
+       :fixed (make-default-fixed-or-bytes (:size edn-schema) field-default)
+       :bytes (make-default-fixed-or-bytes 0 field-default)
+       :null nil
+       (or field-default
+           (case avro-type
+             :boolean false
+             :int (int -1)
+             :long -1
+             :float (float -1.0)
+             :double (double -1.0)
+             :string ""
+             :enum (first (:symbols edn-schema))
+             :array []
+             :map {}
+             :name-keyword (default-data (name->edn-schema edn-schema)
+                                         field-default
+                                         name->edn-schema)))))))
 
 (defn first-arg-dispatch [first-arg & rest-of-args]
   first-arg)
 
-(defn avro-type-dispatch-lt [edn-schema & args]
-  (let [avro-type (get-avro-type edn-schema)]
-    (if (:logical-type edn-schema)
-      :logical-type
-      avro-type)))
-
 (defn avro-type-dispatch [edn-schema & args]
   (get-avro-type edn-schema))
 
-(defmulti make-serializer avro-type-dispatch-lt)
-(defmulti edn-schema->avro-schema avro-type-dispatch-lt)
-(defmulti edn-schema->plumatic-schema avro-type-dispatch-lt)
+(defmulti make-serializer avro-type-dispatch)
+(defmulti edn-schema->avro-schema avro-type-dispatch)
+(defmulti edn-schema->plumatic-schema avro-type-dispatch)
 (defmulti make-default-data-size avro-type-dispatch)
 
 (s/defn long? :- s/Bool
@@ -788,21 +776,6 @@
               (write-utf8-string os k)
               (serialize-value os v child-path))))
         (write-byte os 0)))))
-
-(defmethod make-serializer :logical-type
-  [edn-schema name->edn-schema *name->serializer]
-  (let [{:keys [lt->avro logical-type]} edn-schema
-        _ (when-not lt->avro
-            (throw (ex-info (str "Logical type `" logical-type "` is missing "
-                                 "a `lt->avro` attribute.")
-                            (sym-map logical-type edn-schema))))
-        non-lt-ser (make-serializer (strip-lt-attrs edn-schema)
-                                    name->edn-schema *name->serializer)
-        lt-ser (fn serialize [os data path]
-                 (non-lt-ser os (lt->avro data) path))]
-    ;; Store the lt serializer, overwriting the non-lt serializer
-    (swap-named-value! *name->serializer edn-schema lt-ser)
-    lt-ser))
 
 (defmethod make-serializer :array
   [edn-schema name->edn-schema *name->serializer]
@@ -1396,11 +1369,6 @@
   [edn-schema name->edn-schema]
   {s/Str (edn-schema->plumatic-schema (:values edn-schema) name->edn-schema)})
 
-(defmethod edn-schema->plumatic-schema :logical-type
-  [edn-schema name->edn-schema]
-  (let [{:keys [plumatic-schema]} edn-schema]
-    (or plumatic-schema s/Any)))
-
 (defmethod edn-schema->plumatic-schema :record
   [edn-schema name->edn-schema]
   (let [record-name-kw (:name edn-schema)]
@@ -1613,12 +1581,6 @@
 (defmethod edn-schema->avro-schema :default
   [edn-schema]
   edn-schema)
-
-(defmethod edn-schema->avro-schema :logical-type
-  [edn-schema]
-  (let [{:keys [logical-type]} edn-schema
-        avro-schema (edn-schema->avro-schema (strip-lt-attrs edn-schema))]
-    (assoc avro-schema :logicalType logical-type)))
 
 (defmethod make-default-data-size :null
   [edn-schema name->edn-schema]

@@ -433,7 +433,7 @@
 
 (defn ->child-info [{:keys [edn-schema] :as arg}]
   (let [name-kw (u/named-edn-schema->name-kw edn-schema)]
-    (case (u/avro-type-dispatch-lt edn-schema)
+    (case (u/avro-type-dispatch edn-schema)
       :record
       {:lancaster/schema-type :record
        :lancaster/field->child-edn-schema (make-field->edn-schema
