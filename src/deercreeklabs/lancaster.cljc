@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [deercreeklabs.baracus :as ba]
-   [deercreeklabs.lancaster.bilt :as bilt]
    [deercreeklabs.lancaster.impl :as impl]
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.sub :as sub]
@@ -19,6 +18,11 @@
 (def ^:no-doc LancasterSchemaOrNameKW (s/if keyword?
                                         s/Keyword
                                         LancasterSchema))
+
+(def ^:no-doc valid-add-record-name-values #{:always :never :when-ambiguous})
+(s/defschema ^:no-doc DeserOptions
+  {(s/optional-key :add-record-name)
+   (apply s/enum valid-add-record-name-values)})
 
 (s/defn json->schema :- LancasterSchema
   "Creates a Lancaster schema object from an Avro schema in JSON format."
@@ -142,38 +146,48 @@
                :schema-type (#?(:clj class :cljs type) writer-schema)})))
   (u/serialize writer-schema data))
 
+
 (s/defn deserialize :- s/Any
   "Deserializes Avro-encoded data from a byte array, using the given reader and
    writer schemas."
-  [reader-schema :- LancasterSchema
-   writer-schema :- LancasterSchema
-   ba :- ba/ByteArray]
-  (when-not (satisfies? u/ILancasterSchema reader-schema)
-    (throw
-     (ex-info (str "First argument to `deserialize` must be a schema "
-                   "object representing the reader's schema. The object "
-                   "must satisfy the ILancasterSchema protocol. Got: `"
-                   reader-schema "`.")
-              {:reader-schema (u/pprint-str reader-schema)
-               :reader-schema-type
-               (#?(:clj class :cljs type) reader-schema)})))
-  (when-not (satisfies? u/ILancasterSchema writer-schema)
-    (throw
-     (ex-info (str "Second argument to `deserialize` must be a schema "
-                   "object representing the writer's schema. The object "
-                   "must satisfy the ILancasterSchema protocol. Got `"
-                   writer-schema "`.")
-              {:writer-schema (u/pprint-str writer-schema)
-               :writer-schema-type
-               (#?(:clj class :cljs type) writer-schema)})))
-  (when-not (instance? ba/ByteArray ba)
-    (throw (ex-info (str "Final argument to `deserialize` must be a byte "
-                         "array. The byte array must include the binary data "
-                         "to be deserialized. Got `" ba "`.")
-                    {:ba ba
-                     :ba-type (#?(:clj class :cljs type) ba)})))
-  (let [is (impl/input-stream ba)]
-    (u/deserialize reader-schema writer-schema is)))
+  ([reader-schema :- LancasterSchema
+    writer-schema :- LancasterSchema
+    ba :- ba/ByteArray]
+   (deserialize reader-schema writer-schema ba {}))
+  ([reader-schema :- LancasterSchema
+    writer-schema :- LancasterSchema
+    ba :- ba/ByteArray
+    opts :- DeserOptions]
+   (when-not (satisfies? u/ILancasterSchema reader-schema)
+     (throw
+      (ex-info (str "First argument to `deserialize` must be a schema "
+                    "object representing the reader's schema. The object "
+                    "must satisfy the ILancasterSchema protocol. Got: `"
+                    reader-schema "`.")
+               {:reader-schema (u/pprint-str reader-schema)
+                :reader-schema-type
+                (#?(:clj class :cljs type) reader-schema)})))
+   (when-not (satisfies? u/ILancasterSchema writer-schema)
+     (throw
+      (ex-info (str "Second argument to `deserialize` must be a schema "
+                    "object representing the writer's schema. The object "
+                    "must satisfy the ILancasterSchema protocol. Got `"
+                    writer-schema "`.")
+               {:writer-schema (u/pprint-str writer-schema)
+                :writer-schema-type
+                (#?(:clj class :cljs type) writer-schema)})))
+   (when-not (instance? ba/ByteArray ba)
+     (throw (ex-info (str "Final argument to `deserialize` must be a byte "
+                          "array. The byte array must include the binary data "
+                          "to be deserialized. Got `" ba "`.")
+                     {:ba ba
+                      :ba-type (#?(:clj class :cljs type) ba)})))
+   (let [is (impl/input-stream ba)
+         {:keys [add-record-name]} opts
+         opts* (cond-> opts
+                 (not (contains? opts :add-record-name))
+                 (assoc :add-record-name :when-ambiguous))]
+     (u/deserialize reader-schema writer-schema is opts*))))
 
 (s/defn deserialize-same :- s/Any
   "Deserializes Avro-encoded data from a byte array, using the given schema
@@ -181,9 +195,13 @@
    since the original writer's schema should always be used to deserialize.
    The writer's schema (in Parsing Canonical Form) should always be stored
    or transmitted with encoded data."
-  [schema :- LancasterSchema
-   ba :- ba/ByteArray]
-  (deserialize schema schema ba))
+  ([schema :- LancasterSchema
+    ba :- ba/ByteArray]
+   (deserialize schema schema ba {}))
+  ([schema :- LancasterSchema
+    ba :- ba/ByteArray
+    opts :- DeserOptions]
+   (deserialize schema schema ba opts)))
 
 (s/defn edn :- s/Any
   "Returns an EDN representation of the given Lancaster schema."
@@ -441,75 +459,3 @@
   [clj-name schema]
   `(def ~clj-name
      (union-schema [null-schema ~schema])))
-
-;;;;;;;;;;;;;;;;;;;; Built-in Logical Types ;;;;;;;;;;;;;;;;;;;;
-
-;; TODO: Validate args
-
-(defn int-map-schema
-  "Creates a Lancaster schema object representing a map of `int` keys
-   to values described by the given `values-schema`.
-   Differs from map-schema, which only allows string keys."
-  [name-kw values-schema]
-  (bilt/flex-map-schema name-kw "int-map" int-schema values-schema int?))
-
-(defn long-map-schema
-  "Creates a Lancaster schema object representing a map of `long` keys
-   to values described by the given `values-schema`.
-   Differs from map-schema, which only allows string keys."
-  [name-kw values-schema]
-  (bilt/flex-map-schema name-kw "long-map" long-schema values-schema
-                        u/long-or-int?))
-
-(defn fixed-map-schema
-  "Creates a Lancaster schema object representing a map of `long` keys
-   to values described by the given `values-schema`.
-   Differs from map-schema, which only allows string keys."
-  [name-kw key-size values-schema]
-  (when-not (nat-int? key-size)
-    (throw (ex-info (str "Second argument to fixed-map-schema must be a "
-                         "positive integer. Got `" key-size "`.")
-                    (u/sym-map key-size))))
-  (let [key-schema-name (keyword (namespace name-kw)
-                                 (str (name name-kw) "-value"))
-        key-schema (fixed-schema key-schema-name key-size)]
-    (bilt/flex-map-schema name-kw "fixed-map" key-schema
-                          values-schema ba/byte-array?)))
-
-(defmacro def-int-map-schema
-  "Defines a var whose value is an int-map-schema object"
-  [clj-name values-schema]
-  (let [ns-name (str (or
-                      (:name (:ns &env)) ;; cljs
-                      *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)
-        name-kw (keyword ns-name schema-name)]
-    `(def ~clj-name
-       (int-map-schema ~name-kw ~values-schema))))
-
-(defmacro def-long-map-schema
-  "Defines a var whose value is an long-map-schema object"
-  [clj-name values-schema]
-  (let [ns-name (str (or
-                      (:name (:ns &env)) ;; cljs
-                      *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)
-        name-kw (keyword ns-name schema-name)]
-    `(def ~clj-name
-       (long-map-schema ~name-kw ~values-schema))))
-
-(defmacro def-fixed-map-schema
-  "Defines a var whose value is an fixed-map-schema object"
-  [clj-name key-size values-schema]
-  (let [ns-name (str (or
-                      (:name (:ns &env)) ;; cljs
-                      *ns*))             ;; clj
-        schema-name (u/schema-name clj-name)
-        name-kw (keyword ns-name schema-name)]
-    `(def ~clj-name
-       (fixed-map-schema ~name-kw ~key-size ~values-schema))))
-
-(def keyword-schema
-  "Lancaster schema object representing a (possibly namespaced)
-   Clojure keyword."
-  bilt/keyword-schema)

@@ -101,6 +101,7 @@
         writer-schema lt/fish-or-person-or-dog-v2-schema
         reader-schema lt/person-or-dog-schema
         encoded (l/serialize writer-schema data)]
+    ;; Reader union schema has no fish schema
     (is (thrown-with-msg?
          #?(:clj ExceptionInfo :cljs js/Error)
          #"do not match."
