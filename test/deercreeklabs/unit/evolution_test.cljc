@@ -314,3 +314,46 @@
         decoded (l/deserialize r-schema w-schema encoded)
         expected (dissoc data :unit-1 :unit-2)]
     (is (= expected decoded))))
+
+(def name-keyword-schema-v1
+  (l/edn->schema
+    {:name :lancaster.schemas/container
+     :type :record
+     :fields [{:name :things
+               :type {:type :array
+                      :items {:name :lancaster.schemas/thing
+                              :type :record
+                              :fields []}}}
+              {:name :things-copy
+               :type {:type :array
+                      :items :lancaster.schemas/thing}}]}))
+
+(def name-keyword-schema-v2
+  (l/edn->schema
+    {:name :lancaster.schemas/container
+     :type :record
+     :fields [{:name :things
+               :type {:type :array
+                      :items {:name :lancaster.schemas/thing
+                              :type :record
+                              ; This entry in :fields is the only difference
+                              :fields [{:name :new-field
+                                        :type [:null :string]
+                                        :default nil}]}}}
+              {:name :things-copy
+               :type {:type :array
+                      :items :lancaster.schemas/thing}}]}))
+
+(deftest test-record-schema-evolution-with-name-keyword-add-field
+  (let [value {:things [{}]
+               :things-copy [{}]}]
+    (is (= value (l/deserialize name-keyword-schema-v2
+                                name-keyword-schema-v1
+                                (l/serialize name-keyword-schema-v1 value))))))
+
+(deftest test-record-schema-evolution-with-name-keyword-remove-field
+  (let [value {:things [{}]
+               :things-copy [{}]}]
+    (is (= value (l/deserialize name-keyword-schema-v1
+                                name-keyword-schema-v2
+                                (l/serialize name-keyword-schema-v2 value))))))
