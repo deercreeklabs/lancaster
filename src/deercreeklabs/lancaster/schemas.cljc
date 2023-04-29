@@ -84,8 +84,12 @@
     (try
       (let [writer-fp (-> (u/fingerprint256 writer-schema)
                           (ba/byte-array->b64))
-            deser (or (@*writer-fp->deserializer writer-fp)
-                      (let [deser* (deser/make-deserializer
+            _ (println "before")
+            deser (or (do
+                        (println "first")
+                        (@*writer-fp->deserializer writer-fp))
+                      (let [_ (println "second")
+                            deser* (deser/make-deserializer
                                     (u/edn-schema writer-schema)
                                     edn-schema
                                     (:name->edn-schema writer-schema)
@@ -93,6 +97,7 @@
                                     (atom {}))]
                         (swap! *writer-fp->deserializer assoc writer-fp deser*)
                         deser*))]
+        (println "after")
         (deser is opts))
       (catch #?(:clj Exception :cljs js/Error) e
         (if-not (u/match-exception? e)

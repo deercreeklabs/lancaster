@@ -20,25 +20,27 @@
 (defmulti make-deserializer
   (fn [writer-edn-schema reader-edn-schema & _]
     (let [writer-type (u/get-avro-type writer-edn-schema)
-          reader-type (u/get-avro-type reader-edn-schema)]
-      (cond
-        (:logical-type reader-edn-schema)
-        :logical-type
+          reader-type (u/get-avro-type reader-edn-schema)
+          dispatch (cond
+                     (:logical-type reader-edn-schema)
+                     :logical-type
 
-        (and (= :union writer-type) (not= :union reader-type))
-        [:union :other]
+                     (and (= :union writer-type) (not= :union reader-type))
+                     [:union :other]
 
-        (and (not= :union writer-type) (= :union reader-type))
-        [:other :union]
+                     (and (not= :union writer-type) (= :union reader-type))
+                     [:other :union]
 
-        (and (= :name-keyword writer-type) (not= :name-keyword reader-type))
-        [:name-keyword :other]
+                     (and (= :name-keyword writer-type) (not= :name-keyword reader-type))
+                     [:name-keyword :other]
 
-        (and (not= :name-keyword writer-type) (= :name-keyword reader-type))
-        [:other :name-keyword]
+                     (and (not= :name-keyword writer-type) (= :name-keyword reader-type))
+                     [:other :name-keyword]
 
-        :else
-        [writer-type reader-type]))))
+                     :else
+                     [writer-type reader-type])]
+      (println dispatch)
+      dispatch)))
 
 (defmethod make-deserializer [:null :null]
   [writer-edn-schema reader-edn-schema & _]
@@ -424,12 +426,14 @@
 (defn make-recursive-deserializer
   ([writer-edn-schema reader-edn-schema writer-name->edn-schema
     reader-name->edn-schema *deserializers]
+   (println "make-recursive-deserialezer 5 arity")
    (make-recursive-deserializer
     writer-edn-schema reader-edn-schema
     writer-name->edn-schema reader-name->edn-schema
     *deserializers false))
   ([writer-edn-schema reader-edn-schema writer-name->edn-schema
     reader-name->edn-schema *deserializers in-ambiguous-union?]
+   (println "make-recursive-deserialezer 6 arity")
    (if-not (u/edn-schemas-match? writer-edn-schema reader-edn-schema
                                  writer-name->edn-schema reader-name->edn-schema)
      (throw (ex-info "Reader and writer schemas do not match."
@@ -500,11 +504,13 @@
 (defmethod make-deserializer [:name-keyword :name-keyword]
   ([writer-name-kw reader-name-kw writer-name->edn-schema
     reader-name->edn-schema *deserializers]
+   (println "make-deserializer 5 arity")
    (make-deserializer writer-name-kw reader-name-kw
                       writer-name->edn-schema reader-name->edn-schema
                       *deserializers false))
   ([writer-name-kw reader-name-kw writer-name->edn-schema
     reader-name->edn-schema *deserializers in-ambiguous-union?]
+   (println "make-deserializer arity")
    (let [writer-edn-schema (kw->edn-schema writer-name-kw
                                            writer-name->edn-schema)
          reader-edn-schema (kw->edn-schema reader-name-kw

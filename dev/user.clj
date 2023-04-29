@@ -1,5 +1,6 @@
 (ns user
   (:require
+   [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]))
 
 (def writer-edn
@@ -13,7 +14,6 @@
             {:name :things-copy
              :type {:type :array
                     :items :lancaster.schemas/thing}}]})
-
 
 (def reader-edn
   {:name :lancaster.schemas/container
@@ -44,3 +44,14 @@
 (l/deserialize (l/edn->schema reader-edn)
                (l/edn->schema writer-edn)
                (l/serialize (l/edn->schema writer-edn) value))
+(l/deserialize (l/edn->schema writer-edn)
+               (l/edn->schema reader-edn)
+               (l/serialize (l/edn->schema reader-edn) value))
+
+;; This doesn't even touch the same code path, it never uses :name-keyword.
+(def a (l/record-schema ::a [[:old l/string-schema]]))
+(def b (l/record-schema ::a [[:old l/string-schema] [:new l/string-schema]]))
+(def v {:old "thing"})
+(l/deserialize b a (l/serialize a v))
+
+(l/edn (l/record-schema ::c [[:n l/null-schema]]))
