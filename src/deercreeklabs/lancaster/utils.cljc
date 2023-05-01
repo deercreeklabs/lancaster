@@ -1785,10 +1785,12 @@
              reader-fields :fields} reader-edn-schema]
         (and (= writer-name reader-name)
              (reduce (fn [acc field-name]
-                       (let [w-field (some #(when (= field-name (:name %)) %)
+                       (let [w-field (or (some #(when (= field-name (:name %)) %)
                                            writer-fields)
-                             r-field (some #(when (= field-name (:name %)) %)
-                                           reader-fields)]
+                                         {:type :null})
+                             r-field (or (some #(when (= field-name (:name %)) %)
+                                           reader-fields)
+                                         {:type :null})]
                          (if (edn-schemas-match? (:type w-field) (:type r-field)
                                                  writer-name->edn-schema
                                                  reader-name->edn-schema)
