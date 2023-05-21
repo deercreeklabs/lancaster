@@ -291,20 +291,27 @@
        docstring (assoc :doc docstring)))))
 
 (defmethod make-edn-schema :enum
-  ([schema-type name-kw symbols]
-   (make-edn-schema schema-type name-kw nil symbols))
-  ([schema-type name-kw docstring symbols]
-   (doseq [symbol symbols]
-     (when (qualified-keyword? symbol)
-       (throw (ex-info (str "Enum symbol keywords must not be namespaced. "
-                            "Bad symbol keyword: " symbol)
-                       (u/sym-map symbol symbols docstring)))))
-   (let [name-kw (u/qualify-name-kw name-kw {})]
-     (cond-> {:name name-kw
-              :type :enum
-              :symbols symbols
-              :default (first symbols)}
-       docstring (assoc :doc docstring)))))
+  ([schema-type name-kw symbols*]
+   (make-edn-schema schema-type name-kw nil symbols*))
+  ([schema-type name-kw docstring symbols*]
+   (let [symbols (cond
+                   (vector symbols*) symbols*
+                   (sequential? symbols*) (vec symbols*)
+                   :else (throw (ex-info (str "Enum symbols list must be a "
+                                              "sequence. Got `"
+                                              (or symbols* "nil") "`.")
+                                         {:symbols symbols*})))]
+     (doseq [symbol symbols]
+       (when (qualified-keyword? symbol)
+         (throw (ex-info (str "Enum symbol keywords must not be namespaced. "
+                              "Bad symbol keyword: " symbol)
+                         (u/sym-map symbol symbols docstring)))))
+     (let [name-kw (u/qualify-name-kw name-kw {})]
+       (cond-> {:name name-kw
+                :type :enum
+                :symbols symbols
+                :default (first symbols)}
+         docstring (assoc :doc docstring))))))
 
 (defmethod make-edn-schema :fixed
   [schema-type name-kw size]

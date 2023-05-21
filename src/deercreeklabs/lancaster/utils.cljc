@@ -1179,7 +1179,7 @@
         rec-name-set (when rec-branch?
                        (rec-edn-schema->names-set edn-schema))]
     (cond
-      (and enum-branch? (> num-enums 1))
+      (and enum-branch? (> (int num-enums) 1))
       (fn [data path]
         (enum-symbol-set data))
 
