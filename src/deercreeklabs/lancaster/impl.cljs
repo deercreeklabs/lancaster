@@ -2,8 +2,7 @@
   (:require
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.utils :as u]
-   [goog.object :as googo]
-   [schema.core :as s :include-macros true]))
+   [goog.object :as googo]))
 
 (defprotocol IResize
   (embiggen [this min-added-bytes]))

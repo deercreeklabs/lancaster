@@ -5,6 +5,8 @@
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.utils :as u]))
 
+#?(:clj (set! *warn-on-reflection* true))
+
 (defn path-type* [path-entry]
   (cond
     (keyword? path-entry) :keyword

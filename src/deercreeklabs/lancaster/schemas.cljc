@@ -8,17 +8,13 @@
    [deercreeklabs.lancaster.impl :as impl]
    [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
    [deercreeklabs.lancaster.utils :as u]
-   #?(:clj [clj-commons.primitive-math :as pm])
-   [schema.core :as s :include-macros true]))
+   #?(:clj [clj-commons.primitive-math :as pm])))
 
 #?(:clj (pm/use-primitive-operators))
 
+#?(:clj (set! *warn-on-reflection* true))
+
 (declare edn-schema->lancaster-schema)
-
-(def LancasterSchemaOrNameKW (s/if keyword?
-                               s/Keyword
-                               (s/protocol u/ILancasterSchema)))
-
 
 (defn child-schema*
   ([edn-schema child-info]
@@ -71,7 +67,7 @@
 
 (defrecord LancasterSchema
     [edn-schema name->edn-schema json-schema parsing-canonical-form
-     fingerprint64 fingerprint128 fingerprint256 plumatic-schema serializer
+     fingerprint64 fingerprint128 fingerprint256 serializer
      default-data-size *name->serializer *writer-fp->deserializer child-info]
   u/ILancasterSchema
   (serialize [this data]
@@ -116,8 +112,6 @@
     fingerprint128)
   (fingerprint256 [this]
     fingerprint256)
-  (plumatic-schema [this]
-    plumatic-schema)
   (child-schema [this]
     (child-schema* edn-schema child-info))
   (child-schema [this field-or-branch]
@@ -559,8 +553,6 @@
         fingerprint128 (fingerprint/fingerprint128 parsing-canonical-form)
         fingerprint256 (fingerprint/fingerprint256 parsing-canonical-form)
         fp-str (ba/byte-array->b64 fingerprint128)
-        plumatic-schema (u/edn-schema->plumatic-schema edn-schema*
-                                                       name->edn-schema)
         *writer-fp->deserializer (atom {})
         serializer (u/make-serializer edn-schema* name->edn-schema
                                       *name->serializer)
@@ -573,7 +565,7 @@
             lancaster-schema (->LancasterSchema
                               edn-schema* name->edn-schema json-schema*
                               parsing-canonical-form fingerprint64
-                              fingerprint128 fingerprint256 plumatic-schema
+                              fingerprint128 fingerprint256
                               serializer default-data-size *name->serializer
                               *writer-fp->deserializer child-info)]
         (register-schema! (assoc arg

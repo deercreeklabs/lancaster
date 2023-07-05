@@ -3,13 +3,9 @@
    [clojure.test :refer [deftest is]]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
-   [deercreeklabs.lancaster.utils :as u]
-   [schema.core :as s :include-macros true])
+   [deercreeklabs.lancaster.utils :as u])
   #?(:clj
      (:import (clojure.lang ExceptionInfo))))
-
-;; Use this instead of fixtures, which are hard to make work w/ async testing.
-(s/set-fn-validation! true)
 
 (l/def-enum-schema month-or-year-schema
   :month :year)

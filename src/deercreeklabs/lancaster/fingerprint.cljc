@@ -4,16 +4,15 @@
   (:require
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster.utils :as u]
-   #?(:cljs [goog.math :as gm])
-   [schema.core :as s :include-macros true])
+   #?(:cljs [goog.math :as gm]))
   #?(:cljs
      (:import
       (goog.math Long))))
 
 #?(:clj (set! *warn-on-reflection* true))
 
-(s/defn make-long :- Long
-  [x :- s/Any]
+(defn make-long
+  [x]
   (when-not (nil? x)
     #?(:clj (clojure.core/long x)
        :cljs (if (u/long? x)
@@ -70,17 +69,17 @@
           (recur (f acc b)
                  (inc i)))))))
 
-(s/defn fingerprint64 :- Long
-  [s :- s/Str]
+(defn fingerprint64
+  [s]
   (->  (ba/utf8->byte-array s)
        (ba->fp64)))
 
-(s/defn fingerprint128 :- ba/ByteArray
-  [s :- s/Str]
+(defn fingerprint128
+  [s]
   (->  (ba/utf8->byte-array s)
        (ba/md5)))
 
-(s/defn fingerprint256 :- ba/ByteArray
-  [s :- s/Str]
+(defn fingerprint256
+  [s]
   (->  (ba/utf8->byte-array s)
        (ba/sha256)))

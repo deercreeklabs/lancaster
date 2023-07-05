@@ -4,8 +4,7 @@
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
    [deercreeklabs.lancaster.utils :as u]
-   [deercreeklabs.unit.lancaster-test :as lt]
-   [schema.core :as s :include-macros true])
+   [deercreeklabs.unit.lancaster-test :as lt])
   #?(:clj
      (:import
       (clojure.lang ExceptionInfo))))

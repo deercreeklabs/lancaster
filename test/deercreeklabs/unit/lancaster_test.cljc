@@ -5,17 +5,13 @@
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
    [deercreeklabs.lancaster.pcf-utils :as pcf-utils]
-   [deercreeklabs.lancaster.utils :as u]
-   [schema.core :as s :include-macros true])
+   [deercreeklabs.lancaster.utils :as u])
   #?(:clj
      (:import
       (clojure.lang ExceptionInfo)
       (org.apache.avro Schema
                        SchemaNormalization
                        Schema$Parser))))
-
-;; Use this instead of fixtures, which are hard to make work w/ async testing.
-(s/set-fn-validation! true)
 
 (defn abs-err [expected actual]
   (let [err (- expected actual)]
@@ -912,26 +908,24 @@
   (is (not (l/schema? :foo))))
 
 (deftest test-bad-serialize-arg
-  (s/without-fn-validation ;; Allow built-in handlers to throw
-   (is (thrown-with-msg?
-        #?(:clj ExceptionInfo :cljs js/Error)
-        #"First argument to `serialize` must be a schema object"
-        (l/serialize nil nil)))))
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"First argument to `serialize` must be a schema object"
+       (l/serialize nil nil))))
 
 (deftest test-bad-deserialize-args
-  (s/without-fn-validation ;; Allow built-in handlers to throw
-   (is (thrown-with-msg?
-        #?(:clj ExceptionInfo :cljs js/Error)
-        #"First argument to `deserialize` must be a schema object"
-        (l/deserialize nil nil nil)))
-   (is (thrown-with-msg?
-        #?(:clj ExceptionInfo :cljs js/Error)
-        #"Second argument to `deserialize` must be a "
-        (l/deserialize why-schema nil (ba/byte-array []))))
-   (is (thrown-with-msg?
-        #?(:clj ExceptionInfo :cljs js/Error)
-        #"argument to `deserialize` must be a byte array"
-        (l/deserialize why-schema why-schema [])))))
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"First argument to `deserialize` must be a schema object"
+       (l/deserialize nil nil nil)))
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"Second argument to `deserialize` must be a "
+       (l/deserialize why-schema nil (ba/byte-array []))))
+  (is (thrown-with-msg?
+       #?(:clj ExceptionInfo :cljs js/Error)
+       #"argument to `deserialize` must be a byte array"
+       (l/deserialize why-schema why-schema []))))
 
 (deftest test-field-default-validation
   (is (thrown-with-msg?

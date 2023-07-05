@@ -4,10 +4,7 @@
    [clojure.test :refer [deftest is use-fixtures]]
    [deercreeklabs.baracus :as ba]
    [deercreeklabs.lancaster :as l]
-   [deercreeklabs.lancaster.utils :as u]
-   [schema.core :as s :include-macros true]))
-
-(s/set-fn-validation! false)
+   [deercreeklabs.lancaster.utils :as u]))
 
 (l/def-record-schema add-to-cart-req-schema
   [:sku l/int-schema]

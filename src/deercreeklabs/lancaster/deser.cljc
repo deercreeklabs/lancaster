@@ -9,6 +9,8 @@
      (:import
       (goog.math Long))))
 
+#?(:clj (set! *warn-on-reflection* true))
+
 (defn check-names [writer-edn-schema reader-edn-schema]
   (let [writer-name (:name writer-edn-schema)
         reader-name (:name reader-edn-schema)]

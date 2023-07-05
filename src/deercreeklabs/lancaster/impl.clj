@@ -1,8 +1,7 @@
 (ns deercreeklabs.lancaster.impl
   (:require
    [cheshire.core :as json]
-   [deercreeklabs.lancaster.utils :as u]
-   [schema.core :as s :include-macros true])
+   [deercreeklabs.lancaster.utils :as u])
   (:import
    (com.google.common.io LittleEndianDataInputStream
                          LittleEndianDataOutputStream)

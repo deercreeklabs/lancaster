@@ -9,8 +9,7 @@
    [deercreeklabs.baracus :as ba]
    #?(:cljs [goog.math :as gm])
    #?(:clj [clj-commons.primitive-math :as pm])
-   #?(:clj [puget.printer :refer [cprint-str]])
-   [schema.core :as s])
+   #?(:clj [puget.printer :refer [cprint-str]]))
   #?(:cljs
      (:require-macros
       [deercreeklabs.lancaster.utils :refer [sym-map]]))
@@ -18,8 +17,9 @@
      (:import
       (goog.math Long))))
 
-#?(:cljs (def class type))
+#?(:clj (set! *warn-on-reflection* true))
 
+#?(:cljs (def class type))
 #?(:cljs (def max-int (Long.fromInt 2147483647)))
 #?(:cljs (def min-int (Long.fromInt -2147483648)))
 
@@ -48,7 +48,6 @@
   (fingerprint64 [this])
   (fingerprint128 [this])
   (fingerprint256 [this])
-  (plumatic-schema [this])
   (child-schema [this] [this field-name-kw]))
 
 (defprotocol IOutputStream
@@ -79,7 +78,6 @@
 (def avro-primitive-types #{:null :boolean :int :long :float :double
                             :bytes :string})
 (def avro-primitive-type-strings (into #{} (map name avro-primitive-types)))
-(def Nil (s/eq nil))
 
 (defn pprint-str [x]
   (with-out-str (pprint/pprint x)))
@@ -88,24 +86,24 @@
   #?(:clj (.write *out* (str (cprint-str x) "\n"))
      :cljs (pprint/pprint (str x "\n"))))
 
-(s/defn ex-msg :- s/Str
+(defn ex-msg
   [e]
   #?(:clj (.toString ^Exception e)
      :cljs (.-message e)))
 
-(s/defn ex-stacktrace :- s/Str
+(defn ex-stacktrace
   [e]
   #?(:clj (str/join "\n" (map str (.getStackTrace ^Exception e)))
      :cljs (.-stack e)))
 
-(s/defn ex-msg-and-stacktrace :- s/Str
+(defn ex-msg-and-stacktrace
   [e]
   (str "\nException:\n"
        (ex-msg e)
        "\nStacktrace:\n"
        (ex-stacktrace e)))
 
-(s/defn current-time-ms :- s/Num
+(defn current-time-ms
   []
   #?(:clj (System/currentTimeMillis)
      :cljs (.getTime (js/Date.))))
@@ -183,7 +181,7 @@
       (str kw-ns "." kw-name)
       kw-name)))
 
-(s/defn get-avro-type :- s/Keyword
+(defn get-avro-type
   ([edn-schema]
    (get-avro-type edn-schema nil))
   ([edn-schema name->edn-schema]
@@ -209,8 +207,8 @@
          (get-avro-type es))
        at))))
 
-(s/defn name-kw->name-str :- s/Str
-  [kw :- s/Keyword]
+(defn name-kw->name-str
+  [kw]
   (cond
     (simple-keyword? kw) (name kw)
     (qualified-keyword? kw) (str (namespace kw) "." (name kw))
@@ -255,7 +253,7 @@
 
     :else nil))
 
-(s/defn edn-schema->name-kw :- s/Keyword
+(defn edn-schema->name-kw
   [edn-schema]
   (cond
     (avro-named-types (:type edn-schema))
@@ -354,22 +352,19 @@
 
 (defmulti make-serializer avro-type-dispatch)
 (defmulti edn-schema->avro-schema avro-type-dispatch)
-(defmulti edn-schema->plumatic-schema avro-type-dispatch)
 (defmulti make-default-data-size avro-type-dispatch)
 
-(s/defn long? :- s/Bool
-  [x :- s/Any]
+(defn long?
+  [x]
   (if x
     (boolean (= Long (class x)))
     false))
 
-(s/defn long-or-int? :- s/Bool
+(defn long-or-int?
   "Is the argument a long or an integer?"
-  [x :- s/Any]
+  [x]
   (or (long? x)
       (integer? x)))
-
-(def LongOrInt (s/pred long-or-int?))
 
 (defn valid-int? [data]
   (and (long-or-int? data)
@@ -391,8 +386,6 @@
   (or (string? data)
       (ba/byte-array? data)))
 
-(def StringOrBytes (s/pred valid-bytes-or-string?))
-
 (defn valid-array? [data]
   (sequential? data))
 
@@ -402,9 +395,8 @@
          (string? (-> data first first))
          true)))
 
-(s/defn long= :- s/Bool
-  [a :- s/Any
-   b :- s/Any]
+(defn long=
+  [a b]
   #?(:clj (= a b)
      :cljs (when (and a b)
              (cond
@@ -427,24 +419,22 @@
            (-compare [l other]
              (.compare l other))))
 
-(s/defn ints->long :- Long
-  [high :- s/Int
-   low :- s/Int]
+(defn ints->long
+  [high low]
   #?(:clj (bit-or (bit-shift-left (long high) 32)
                   (bit-and low 0xFFFFFFFF))
      :cljs (.fromBits ^Long Long (int low) (int high))))
 
-(s/defn long->ints :- (s/pair s/Int :high-int
-                              s/Int :low-int)
-  [l :- Long]
-  (let [high (int #?(:clj (bit-shift-right l 32)
-                     :cljs (.getHighBits l)))
-        low (int #?(:clj (.intValue l)
-                    :cljs (.getLowBits l)))]
+(defn long->ints
+  [l]
+  (let [high (int #?(:clj (bit-shift-right ^Long l 32)
+                     :cljs (.getHighBits ^Long l)))
+        low (int #?(:clj (.intValue ^Long l)
+                    :cljs (.getLowBits ^Long l)))]
     [high low]))
 
-(s/defn str->long :- Long
-  [s :- s/Str]
+(defn str->long
+  [s]
   #?(:clj (Long/parseLong s)
      :cljs (.fromString ^Long Long s)))
 
@@ -460,8 +450,8 @@
                   {:input l
                    :class-of-input (class l)})))
 
-(s/defn long->int :- s/Int
-  [l :- LongOrInt]
+(defn long->int
+  [l]
   (if-not (long? l)
     l
     #?(:clj (if (and (<= ^Long l 2147483647) (>= ^Long l -2147483648))
@@ -1320,80 +1310,6 @@
                         {:qualified-name qualified-name-kw
                          :name->serializer-keys (keys @*name->serializer)}))))))
 
-(defmethod edn-schema->plumatic-schema :null
-  [edn-schema name->edn-schema]
-  Nil)
-
-(defmethod edn-schema->plumatic-schema :boolean
-  [edn-schema name->edn-schema]
-  s/Bool)
-
-(defmethod edn-schema->plumatic-schema :int
-  [edn-schema name->edn-schema]
-  s/Int)
-
-(defmethod edn-schema->plumatic-schema :long
-  [edn-schema name->edn-schema]
-  LongOrInt)
-
-(defmethod edn-schema->plumatic-schema :float
-  [edn-schema name->edn-schema]
-  s/Num)
-
-(defmethod edn-schema->plumatic-schema :double
-  [edn-schema name->edn-schema]
-  s/Num)
-
-(defmethod edn-schema->plumatic-schema :bytes
-  [edn-schema name->edn-schema]
-  StringOrBytes)
-
-(defmethod edn-schema->plumatic-schema :string
-  [edn-schema name->edn-schema]
-  StringOrBytes)
-
-(defmethod edn-schema->plumatic-schema :enum
-  [edn-schema name->edn-schema]
-  (let [{:keys [name symbols]} edn-schema]
-    (apply s/enum symbols)))
-
-(defmethod edn-schema->plumatic-schema :fixed
-  [edn-schema name->edn-schema]
-  StringOrBytes)
-
-(defmethod edn-schema->plumatic-schema :array
-  [edn-schema name->edn-schema]
-  [(edn-schema->plumatic-schema (:items edn-schema) name->edn-schema)])
-
-(defmethod edn-schema->plumatic-schema :map
-  [edn-schema name->edn-schema]
-  {s/Str (edn-schema->plumatic-schema (:values edn-schema) name->edn-schema)})
-
-(defmethod edn-schema->plumatic-schema :record
-  [edn-schema name->edn-schema]
-  (let [record-name-kw (:name edn-schema)]
-    (binding [**enclosing-namespace**
-              (or (namespace record-name-kw)
-                  (:namespace edn-schema))]
-      (reduce (fn [acc {:keys [name type]}]
-                (let [key-fn (if (and (= :union (get-avro-type type))
-                                      (= :null (first type)))
-                               s/optional-key
-                               s/required-key)]
-                  (assoc acc (key-fn name)
-                         (edn-schema->plumatic-schema type name->edn-schema))))
-              {s/Any s/Any} (:fields edn-schema)))))
-
-(defmethod edn-schema->plumatic-schema :name-keyword
-  [name-kw name->edn-schema]
-  ;; Schemas are looser than optimal, due to recursion issues
-  (if-let [edn-schema (name->edn-schema name-kw)]
-    (case (get-avro-type edn-schema)
-      :record {s/Any s/Any}
-      :fixed StringOrBytes
-      :enum s/Keyword)
-    s/Any))
-
 (def avro-type->pred
   {:null nil?
    :boolean boolean?
@@ -1414,24 +1330,6 @@
   (-> edn-schema
       (get-avro-type name->edn-schema)
       (avro-type->pred)))
-
-(defn edn-schema->pred-and-plumatic-schema [edn-schema name->edn-schema]
-  (let [pred (edn-schema->pred edn-schema name->edn-schema)
-        pschema (edn-schema->plumatic-schema edn-schema name->edn-schema)]
-    [pred pschema]))
-
-(defmethod edn-schema->plumatic-schema :union
-  [edn-schema name->edn-schema]
-  (let [pairs (reduce
-               (fn [acc item-schema]
-                 (let [[pred pschema] (edn-schema->pred-and-plumatic-schema
-                                       item-schema name->edn-schema)]
-                   (-> acc
-                       (conj pred)
-                       (conj pschema))))
-               []
-               edn-schema)]
-    (apply s/conditional pairs)))
 
 (defn get-schemas!
   [edn-schema *name->edn-schema]

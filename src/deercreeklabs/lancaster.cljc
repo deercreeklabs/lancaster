@@ -6,27 +6,19 @@
    [deercreeklabs.lancaster.schemas :as schemas]
    [deercreeklabs.lancaster.sub :as sub]
    [deercreeklabs.lancaster.utils :as u]
-   #?(:cljs [goog.math :as gm])
-   [schema.core :as s :include-macros true])
+   #?(:cljs [goog.math :as gm]))
   #?(:cljs
      (:require-macros deercreeklabs.lancaster))
   #?(:cljs
      (:import
       (goog.math Long))))
 
-(def ^:no-doc LancasterSchema (s/protocol u/ILancasterSchema))
-(def ^:no-doc LancasterSchemaOrNameKW (s/if keyword?
-                                        s/Keyword
-                                        LancasterSchema))
-
+#?(:clj (set! *warn-on-reflection* true))
 (def ^:no-doc valid-add-record-name-values #{:always :never :when-ambiguous})
-(s/defschema ^:no-doc DeserOptions
-  {(s/optional-key :add-record-name)
-   (apply s/enum valid-add-record-name-values)})
 
-(s/defn json->schema :- LancasterSchema
+(defn json->schema
   "Creates a Lancaster schema object from an Avro schema in JSON format."
-  [json :- s/Str]
+  [json]
   (when-not (string? json)
     (throw (ex-info (str "Argument to json->schema must be a string. Got "
                          (if (nil? json)
@@ -67,55 +59,48 @@
   "Lancaster schema object representing an Avro string."
   (schemas/primitive-schema :string))
 
-(s/defn record-schema :- LancasterSchema
+(defn record-schema
   "Creates a Lancaster schema object representing an Avro record
    with the given field definitions. For a more
    concise way to declare a record schema, see def-record-schema."
   ;; Field def: [field-name [docstring] [:required] field-schema [default]]
-  ([name-kw :- s/Keyword
-    fields :- s/Any]
+  ([name-kw fields]
    (schemas/schema :record name-kw nil fields))
-  ([name-kw :- s/Keyword
-    docstring :- s/Str
-    fields :- s/Any]
+  ([name-kw docstring fields]
    (schemas/schema :record name-kw docstring fields)))
 
-(s/defn enum-schema :- LancasterSchema
+(defn enum-schema
   "Creates a Lancaster schema object representing an Avro enum
    with the given symbol keywords. For a more concise way to declare
    an enum schema, see def-enum-schema."
-  ([name-kw :- s/Keyword
-    symbol-keywords :- [s/Keyword]]
+  ([name-kw symbol-keywords]
    (schemas/schema :enum name-kw nil symbol-keywords))
-  ([name-kw :- s/Keyword
-    docstring :- s/Str
-    symbol-keywords :- [s/Keyword]]
+  ([name-kw docstring symbol-keywords]
    (schemas/schema :enum name-kw docstring symbol-keywords)))
 
-(s/defn fixed-schema :- LancasterSchema
+(defn fixed-schema
   "Creates a Lancaster schema object representing an Avro fixed
    with the given size. For a more concise way to declare a fixed
    schema, see def-fixed-schema."
-  ([name-kw :- s/Keyword
-    size :- s/Int]
+  ([name-kw size]
    (schemas/schema :fixed name-kw size)))
 
-(s/defn array-schema :- LancasterSchema
+(defn array-schema
   "Creates a Lancaster schema object representing an Avro array
    with the given items schema."
-  [items-schema :- LancasterSchemaOrNameKW]
+  [items-schema]
   (schemas/schema :array nil items-schema))
 
-(s/defn map-schema :- LancasterSchema
+(defn map-schema
   "Creates a Lancaster schema object representing an Avro map
    with the given values schema. Keys are always strings."
-  [values-schema :- LancasterSchemaOrNameKW]
+  [values-schema]
   (schemas/schema :map nil values-schema))
 
-(s/defn union-schema :- LancasterSchema
+(defn union-schema
   "Creates a Lancaster schema object representing an Avro union
    with the given member schemas."
-  [member-schemas :- [LancasterSchemaOrNameKW]]
+  [member-schemas]
   (schemas/schema :union nil member-schemas))
 
 (def string-set-schema
@@ -123,20 +108,20 @@
    Implemented using an Avro map with null values."
   (map-schema null-schema))
 
-(s/defn maybe :- LancasterSchema
+(defn maybe
   "Creates a Lancaster union schema whose members are l/null-schema
    and the given schema. Makes a schema nillable. If the given schema
    is a union, returns a schema with l/null-schema in the first postion.
    If the given union schema already has l/null-schema as a member, it
    is returned unchanged. Similarly, if the given schema is
    l/null-schema, it is returned unchanged."
-  [schema :- LancasterSchemaOrNameKW]
+  [schema]
   (schemas/maybe schema))
 
-(s/defn serialize :- ba/ByteArray
+(defn serialize
   "Serializes data to a byte array, using the given Lancaster schema."
-  [writer-schema :- LancasterSchema
-   data :- s/Any]
+  [writer-schema
+   data]
   (when-not (satisfies? u/ILancasterSchema writer-schema)
     (throw
      (ex-info (str "First argument to `serialize` must be a schema "
@@ -147,17 +132,12 @@
   (u/serialize writer-schema data))
 
 
-(s/defn deserialize :- s/Any
+(defn deserialize
   "Deserializes Avro-encoded data from a byte array, using the given reader and
    writer schemas."
-  ([reader-schema :- LancasterSchema
-    writer-schema :- LancasterSchema
-    ba :- ba/ByteArray]
+  ([reader-schema writer-schema ba]
    (deserialize reader-schema writer-schema ba {}))
-  ([reader-schema :- LancasterSchema
-    writer-schema :- LancasterSchema
-    ba :- ba/ByteArray
-    opts :- DeserOptions]
+  ([reader-schema writer-schema ba opts]
    (when-not (satisfies? u/ILancasterSchema reader-schema)
      (throw
       (ex-info (str "First argument to `deserialize` must be a schema "
@@ -189,78 +169,74 @@
                  (assoc :add-record-name :when-ambiguous))]
      (u/deserialize reader-schema writer-schema is opts*))))
 
-(s/defn deserialize-same :- s/Any
+(defn deserialize-same
   "Deserializes Avro-encoded data from a byte array, using the given schema
    as both the reader and writer schema. Note that this is not recommended,
    since the original writer's schema should always be used to deserialize.
    The writer's schema (in Parsing Canonical Form) should always be stored
    or transmitted with encoded data."
-  ([schema :- LancasterSchema
-    ba :- ba/ByteArray]
+  ([schema ba]
    (deserialize schema schema ba {}))
-  ([schema :- LancasterSchema
-    ba :- ba/ByteArray
-    opts :- DeserOptions]
+  ([schema ba opts]
    (deserialize schema schema ba opts)))
 
-(s/defn edn :- s/Any
+(defn edn
   "Returns an EDN representation of the given Lancaster schema."
-  [schema :- LancasterSchema]
+  [schema ]
   (u/edn-schema schema))
 
-(s/defn edn->schema :- LancasterSchema
-  [edn :- s/Any]
+(defn edn->schema
+  [edn]
   (schemas/edn-schema->lancaster-schema
    {:*name->serializer (atom {})
     :edn-schema edn
     :name->edn-schema (u/make-name->edn-schema edn)}))
 
-(s/defn json :- s/Str
+(defn json
   "Returns an Avro-compliant JSON representation of the given Lancaster schema."
-  [schema :- LancasterSchema]
+  [schema]
   (u/json-schema schema))
 
-(s/defn name-kw :- s/Keyword
+(defn name-kw
   "Returns the name keyword for the given Lancaster schema."
-  [schema :- LancasterSchema]
+  [schema]
   (-> (u/edn-schema schema)
       (u/edn-schema->name-kw)))
 
-(s/defn pcf :- s/Str
+(defn pcf
   "Returns a JSON string containing the Avro Parsing Canonical Form of
   the given Lancaster schema."
-  [schema :- LancasterSchema]
+  [schema]
   (u/parsing-canonical-form schema))
 
-(s/defn fingerprint64 :- Long
+(defn fingerprint64
   "Returns the 64-bit Rabin fingerprint of the Parsing Canonical Form
    of the given Lancaster schema."
-  [schema :- LancasterSchema]
+  [schema]
   (u/fingerprint64 schema))
 
-(s/defn fingerprint128 :- ba/ByteArray
+(defn fingerprint128
   "Returns the 128-bit MD5 digest of the Parsing Canonical Form
    of the given Lancaster schema."
-  [schema :- LancasterSchema]
+  [schema]
   (u/fingerprint128 schema))
 
-(s/defn fingerprint256 :- ba/ByteArray
+(defn fingerprint256
   "Returns the 256-bit SHA-256 hash of the Parsing Canonical Form
    of the given Lancaster schema."
-  [schema :- LancasterSchema]
+  [schema]
   (u/fingerprint256 schema))
 
-(s/defn schema? :- s/Bool
+(defn schema?
   "Returns a boolean indicating whether or not the argument is a
    Lancaster schema object."
-  [arg :- s/Any]
+  [arg]
   (satisfies? u/ILancasterSchema arg))
 
-(s/defn schemas-match? :- s/Bool
+(defn schemas-match?
   "Returns a boolean indicating whether or not the given reader and
    writer schemas match, according to the Avro matching rules."
-  [reader-schema :- LancasterSchema
-   writer-schema :- LancasterSchema]
+  [reader-schema writer-schema]
   (when-not (satisfies? u/ILancasterSchema reader-schema)
     (throw
      (ex-info (str "reader-schema must be a schema object. Got `"
@@ -273,14 +249,10 @@
               {:given-arg writer-schema})))
   (schemas/match? reader-schema writer-schema))
 
-(s/defn plumatic-schema :- s/Any
-  "Returns a Plumatic schema for the given Lancaster schema."
-  [schema :- LancasterSchema]
-  (u/plumatic-schema schema))
 
-(s/defn default-data :- s/Any
+(defn default-data
   "Creates default data that conforms to the given Lancaster schema."
-  [schema :- LancasterSchema]
+  [schema]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
      (ex-info (str "Argument to default-data must be a schema object. Got `"
@@ -288,21 +260,17 @@
               {:given-arg schema})))
   (u/default-data (edn schema)))
 
-(s/defn child-schema :- LancasterSchema
+(defn child-schema
   "Returns the child schema of the given schema"
   ([schema]
    (u/child-schema schema))
   ([schema field-kw-or-branch-i]
    (u/child-schema schema field-kw-or-branch-i)))
 
-(s/defn schema-at-path :- (s/maybe LancasterSchema)
-  ([schema :- LancasterSchema
-   path :- [s/Any]]
+(defn schema-at-path
+  ([schema path]
    (schema-at-path schema path {}))
-  ([schema :- LancasterSchema
-    path :- [s/Any]
-    {:keys [branches?] :as opts} :- {(s/optional-key :branches?) s/Bool
-             s/Keyword s/Any}]
+  ([schema path {:keys [branches?] :as opts}]
    (when-not (satisfies? u/ILancasterSchema schema)
      (throw
       (ex-info (str "First argument to schema-at-path must be a schema object. "
@@ -325,11 +293,11 @@
             "union if the corresponding schema is a union rather than causing "
             "a search in the union for an array. Got: `" branches? "`.")
        {:given-opts opts})))
-  (sub/schema-at-path schema path opts)))
+   (sub/schema-at-path schema path opts)))
 
-(s/defn member-schemas :- [LancasterSchema]
+(defn member-schemas
   "Returns the member schemas of the given union schema."
-  [union-schema :- LancasterSchema]
+  [union-schema]
   (when-not (satisfies? u/ILancasterSchema union-schema)
     (throw
      (ex-info (str "The argument to `member-schemas` must satisfy the "
@@ -339,10 +307,10 @@
                :schema-type (#?(:clj class :cljs type) union-schema)})))
   (sub/member-schemas union-schema))
 
-(s/defn member-schema-at-branch :- LancasterSchema
+(defn member-schema-at-branch
   "Returns the member schema at the given union schema branch index."
-  [union-schema :- LancasterSchema
-   branch-index :- s/Int]
+  [union-schema
+   branch-index]
   (when-not (satisfies? u/ILancasterSchema union-schema)
     (throw
      (ex-info (str "The first argument to `member-schema-at-branch` must "
@@ -358,9 +326,9 @@
             (u/sym-map branch-index))))
   (sub/member-schema-at-branch union-schema branch-index))
 
-(s/defn schema-type :- s/Keyword
+(defn schema-type
   "Returns the Avro type of the given schema"
-  [schema :- LancasterSchema]
+  [schema]
   (when-not (satisfies? u/ILancasterSchema schema)
     (throw
      (ex-info (str "Argument to `schema-type` must be a schema object. Got `"

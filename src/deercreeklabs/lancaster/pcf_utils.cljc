@@ -2,8 +2,9 @@
   (:require
    [clojure.string :as string]
    [deercreeklabs.lancaster.impl :as impl]
-   [deercreeklabs.lancaster.utils :as u]
-   [schema.core :as s :include-macros true]))
+   [deercreeklabs.lancaster.utils :as u]))
+
+#?(:clj (set! *warn-on-reflection* true))
 
 (defmulti filter-attrs u/avro-type-dispatch)
 (defmulti emit u/avro-type-dispatch)
