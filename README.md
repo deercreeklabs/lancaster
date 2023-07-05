@@ -29,9 +29,7 @@ Lancaster provides for:
 * Serialization of arbitrarily-complex data structures to a byte array
 * Deserialization from a byte array, including
 [schema resolution](https://avro.apache.org/docs/1.11.1/specification/#schema-resolution)
-* Conversion from Lancaster schemas to
-[Plumatic schemas](https://github.com/plumatic/schema) (spec support is
-planned).
+
 
 Lancaster does not support:
 * Avro protocols
@@ -171,7 +169,6 @@ of the schema.
 [Parsing Canonical Form](https://avro.apache.org/docs/1.11.1/specification/#parsing-canonical-form-for-schemas)
 of the schema.
 * [schema?](#schema): Is the argument a Lancaster schema?
-* [plumatic-schema](#plumatic-schema): Returns a [Plumatic schema](https://github.com/plumatic/schema) for the schema.
 * [default-data](#default-data): Returns default data that conforms to the schema.
 
 # Data Types
@@ -944,29 +941,6 @@ JSON representation of the given Lancaster schema
 
 #### See Also
 * [edn](#edn): Returns the EDN representation of the schema.
-
--------------------------------------------------------------------------------
-### plumatic-schema
-```clojure
-(plumatic-schema schema)
-```
-Returns a [Plumatic schema](https://github.com/plumatic/schema)
-for the given Lancaster schema.
-
-#### Parameters
-* `schema`: The Lancaster schema
-
-#### Return Value
-A Plumatic schema that matches the Lancaster schema
-
-#### Example
-```clojure
-(l/def-enum-schema suite-schema
-  :clubs :diamonds :hearts :spades)
-
-(l/plumatic-schema suite-schema)
-;; (enum :spades :diamonds :clubs :hearts)
-```
 
 -------------------------------------------------------------------------------
 ### pcf

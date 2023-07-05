@@ -4,7 +4,7 @@
   <groupId>deercreeklabs</groupId>
   <artifactId>lancaster</artifactId>
   <packaging>jar</packaging>
-  <version>0.11.2</version>
+  <version>0.12.0</version>
   <name>lancaster</name>
   <description>Tools for working with Apache Avro</description>
   <url>https://github.com/deercreeklabs/lancaster</url>
@@ -43,11 +43,6 @@
       <version>1.0.0</version>
     </dependency>
     <dependency>
-      <groupId>prismatic</groupId>
-      <artifactId>schema</artifactId>
-      <version>1.2.1</version>
-    </dependency>
-    <dependency>
       <groupId>cheshire</groupId>
       <artifactId>cheshire</artifactId>
       <version>5.11.0</version>
@@ -55,7 +50,7 @@
     <dependency>
       <groupId>deercreeklabs</groupId>
       <artifactId>baracus</artifactId>
-      <version>0.3.5</version>
+      <version>0.5.0</version>
     </dependency>
     <dependency>
       <groupId>camel-snake-kebab</groupId>
