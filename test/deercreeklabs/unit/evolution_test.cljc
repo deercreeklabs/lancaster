@@ -86,6 +86,22 @@
         expected (dissoc data :tag-number)]
     (is (= expected decoded))))
 
+(deftest test-schema-evolution-union-root-to-non-union-root
+  (let [data 1
+        writer-schema (l/maybe l/int-schema)
+        reader-schema l/int-schema
+        encoded (l/serialize writer-schema data)
+        decoded (l/deserialize reader-schema writer-schema encoded)]
+    (is (= data decoded ))))
+
+(deftest test-schema-evolution-union-root-to-non-union-root-2
+  (let [data "A"
+        writer-schema (l/union-schema [l/int-schema l/string-schema])
+        reader-schema l/string-schema
+        encoded (l/serialize writer-schema data)
+        decoded (l/deserialize reader-schema writer-schema encoded)]
+    (is (= data decoded))))
+
 (deftest test-schema-evolution-union-remove-member-success
   (let [data {:name "Runner" :owner "Tommy" :tag-number 134}
         writer-schema lt/fish-or-person-or-dog-v2-schema
